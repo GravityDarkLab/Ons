@@ -1,0 +1,970 @@
+openapi: 3.1.0
+
+info:
+  title: Matching Platform API
+  description: |
+    Privacy-oriented couple matching backend.
+
+    **Privacy model:** Instagram handles are never stored in the applicant profile.
+    They are AES-256-GCM encrypted in a separate `identities` collection and
+    resolvable only by authorized admins (every access is audit-logged).
+    Applicants are identified throughout the system by a human-friendly alias
+    such as "Blue Falcon" or "Silent River".
+
+    **Rate limits:**
+    - Public form submission: 100 requests per 10 minutes per IP
+    - Admin endpoints: 20 requests per minute per IP
+  version: 1.0.0
+  contact:
+    name: Admin
+
+servers:
+  - url: http://localhost:3001
+    description: Local development
+  - url: https://api.yourdomain.com
+    description: Production
+
+tags:
+  - name: Health
+    description: Server liveness check
+  - name: Form
+    description: Public form submission (no auth required)
+  - name: Admin – Auth
+    description: Admin login
+  - name: Admin – Applicants
+    description: Manage applicant profiles (JWT required)
+  - name: Admin – Audit
+    description: View audit logs (JWT required)
+  - name: Matching
+    description: Matching engine endpoints
+
+# ─── Security ──────────────────────────────────────────────────────────────────
+components:
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: JWT obtained from `POST /api/v1/admin/login`. Valid for 8 hours.
+
+  # ─── Reusable schemas ────────────────────────────────────────────────────────
+  schemas:
+
+    # ── Errors ────────────────────────────────────────────────────────────────
+    ErrorResponse:
+      type: object
+      required: [success, error]
+      properties:
+        success:
+          type: boolean
+          enum: [false]
+        error:
+          type: string
+          example: "Internal server error"
+
+    ValidationErrorResponse:
+      type: object
+      required: [success, error, details]
+      properties:
+        success:
+          type: boolean
+          enum: [false]
+        error:
+          type: string
+          example: "Validation failed"
+        details:
+          type: object
+          additionalProperties:
+            type: array
+            items:
+              type: string
+          example:
+            age: ["Must be at least 18 years old"]
+            disclaimer_agreed: ["You must agree to the disclaimer"]
+
+    # ── Form ──────────────────────────────────────────────────────────────────
+    FormAnswers:
+      type: object
+      required:
+        - instagram_handle
+        - location
+        - age
+        - work
+        - gender_identity
+        - sexual_orientation
+        - religion
+        - vibe_words
+        - lifestyle
+        - relationship_type
+        - open_to_long_distance
+        - preferred_physical_traits
+        - preferred_character_traits
+        - deal_breakers
+        - okay_with_opposite_gender_friends
+        - religion_deal_breaker
+        - physical_affection_importance
+        - dream_first_date
+        - disclaimer_agreed
+      properties:
+        instagram_handle:
+          type: string
+          pattern: '^@?[\w.]+$'
+          example: "@johndoe"
+          description: "Sensitive — stored encrypted, never appears in matching profile."
+        location:
+          type: string
+          example: "Paris, France"
+        age:
+          type: integer
+          minimum: 18
+          example: 27
+        height_cm:
+          type: integer
+          minimum: 100
+          maximum: 250
+          example: 178
+        work:
+          type: string
+          example: "Software Engineer"
+        gender_identity:
+          type: string
+          enum: [Male, Female, Non-binary, Genderqueer, "Prefer not to say", Other]
+          example: "Male"
+        sexual_orientation:
+          type: string
+          enum: [Straight, Gay, Lesbian, Bisexual, Pansexual, Asexual, "Prefer not to say", Other]
+          example: "Straight"
+        religion:
+          type: string
+          example: "Agnostic"
+        vibe_words:
+          type: string
+          example: "curious, calm, funny"
+          description: "Three words describing your vibe."
+        lifestyle:
+          type: string
+          example: "Social drinker, non-smoker"
+        relationship_type:
+          type: string
+          enum: ["Long Term", "Short Term", "Open to Both", "Casual", "Not Sure"]
+          example: "Long Term"
+        open_to_long_distance:
+          type: boolean
+          example: true
+        preferred_physical_traits:
+          type: string
+          example: "Athletic, tall"
+        preferred_character_traits:
+          type: string
+          example: "Ambitious, kind, funny"
+        deal_breakers:
+          type: string
+          example: "Dishonesty, smoking"
+        okay_with_opposite_gender_friends:
+          type: boolean
+          example: true
+        religion_deal_breaker:
+          type: boolean
+          example: false
+        physical_affection_importance:
+          type: integer
+          minimum: 1
+          maximum: 10
+          example: 8
+          description: "Scale from 1 (low) to 10 (very important)."
+        dream_first_date:
+          type: string
+          example: "Coffee at a bookstore, then a walk by the river"
+        disclaimer_agreed:
+          type: boolean
+          enum: [true]
+          description: "Must be exactly `true`. User consents to data collection for matchmaking only."
+
+    FormSubmissionRequest:
+      type: object
+      required: [questionnaireVersion, answers]
+      properties:
+        questionnaireVersion:
+          type: string
+          pattern: '^\d+\.\d+\.\d+$'
+          example: "1.0.0"
+          description: "Semver version of the questionnaire this submission targets."
+        answers:
+          $ref: '#/components/schemas/FormAnswers'
+
+    FormSubmissionResponse:
+      type: object
+      required: [success, alias, applicantId, message]
+      properties:
+        success:
+          type: boolean
+          enum: [true]
+        alias:
+          type: string
+          example: "Blue Falcon"
+          description: "Human-friendly codename assigned to this applicant. This is their permanent identifier in the matching system."
+        applicantId:
+          type: string
+          example: "64f1a2b3c4d5e6f7a8b9c0d1"
+          description: "MongoDB ObjectId hex string."
+        message:
+          type: string
+          example: "Your profile has been submitted successfully."
+
+    # ── Auth ──────────────────────────────────────────────────────────────────
+    AdminLoginRequest:
+      type: object
+      required: [username, password]
+      properties:
+        username:
+          type: string
+          example: "admin"
+        password:
+          type: string
+          format: password
+          example: "s3cr3t"
+
+    AdminLoginResponse:
+      type: object
+      required: [success, token]
+      properties:
+        success:
+          type: boolean
+          enum: [true]
+        token:
+          type: string
+          example: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+          description: "JWT Bearer token. Valid for 8 hours."
+
+    # ── Applicant ─────────────────────────────────────────────────────────────
+    ApplicantStatus:
+      type: string
+      enum: [active, inactive, matched, withdrawn]
+
+    Applicant:
+      type: object
+      required: [_id, alias, questionnaireVersion, answers, status, createdAt, updatedAt]
+      properties:
+        _id:
+          type: string
+          example: "64f1a2b3c4d5e6f7a8b9c0d1"
+        alias:
+          type: string
+          example: "Blue Falcon"
+        questionnaireVersion:
+          type: string
+          example: "1.0.0"
+        answers:
+          type: object
+          description: "All non-sensitive answers. instagram_handle is never present."
+          additionalProperties: true
+          example:
+            location: "Paris, France"
+            age: 27
+            height_cm: 178
+            work: "Software Engineer"
+            relationship_type: "Long Term"
+        status:
+          $ref: '#/components/schemas/ApplicantStatus'
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+
+    ApplicantListResponse:
+      type: object
+      required: [success, data, pagination]
+      properties:
+        success:
+          type: boolean
+          enum: [true]
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/Applicant'
+        pagination:
+          type: object
+          required: [page, limit, total, totalPages]
+          properties:
+            page:
+              type: integer
+              example: 1
+            limit:
+              type: integer
+              example: 20
+            total:
+              type: integer
+              example: 142
+            totalPages:
+              type: integer
+              example: 8
+
+    ApplicantResponse:
+      type: object
+      required: [success, data]
+      properties:
+        success:
+          type: boolean
+          enum: [true]
+        data:
+          $ref: '#/components/schemas/Applicant'
+
+    IdentityResponse:
+      type: object
+      required: [success, data]
+      properties:
+        success:
+          type: boolean
+          enum: [true]
+        data:
+          type: object
+          required: [alias, instagramHandle, applicantId]
+          properties:
+            alias:
+              type: string
+              example: "Blue Falcon"
+            instagramHandle:
+              type: string
+              example: "@johndoe"
+              description: "Decrypted Instagram handle. This response is audit-logged."
+            applicantId:
+              type: string
+              example: "64f1a2b3c4d5e6f7a8b9c0d1"
+
+    # ── Audit log ─────────────────────────────────────────────────────────────
+    AuditLogEntry:
+      type: object
+      required: [_id, adminId, action, ipAddress, userAgent, timestamp]
+      properties:
+        _id:
+          type: string
+          example: "64f1a2b3c4d5e6f7a8b9c0d2"
+        adminId:
+          type: string
+          example: "admin"
+        action:
+          type: string
+          enum:
+            - RESOLVE_IDENTITY
+            - LIST_APPLICANTS
+            - VIEW_APPLICANT
+            - DEACTIVATE_APPLICANT
+            - ADMIN_LOGIN
+        targetAlias:
+          type: string
+          example: "Blue Falcon"
+        targetApplicantId:
+          type: string
+          example: "64f1a2b3c4d5e6f7a8b9c0d1"
+        ipAddress:
+          type: string
+          example: "203.0.113.42"
+        userAgent:
+          type: string
+          example: "Mozilla/5.0 ..."
+        timestamp:
+          type: string
+          format: date-time
+        metadata:
+          type: object
+          additionalProperties: true
+
+    AuditLogListResponse:
+      type: object
+      required: [success, data, pagination]
+      properties:
+        success:
+          type: boolean
+          enum: [true]
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/AuditLogEntry'
+        pagination:
+          type: object
+          required: [page, limit, total, totalPages]
+          properties:
+            page:
+              type: integer
+            limit:
+              type: integer
+            total:
+              type: integer
+            totalPages:
+              type: integer
+
+    # ── Matching ──────────────────────────────────────────────────────────────
+    MatchScoreBreakdown:
+      type: object
+      description: "Per-dimension scores, each in [0, 1]."
+      properties:
+        relationship_type:
+          type: number
+          format: float
+          minimum: 0
+          maximum: 1
+          example: 1.0
+        deal_breakers:
+          type: number
+          format: float
+          minimum: 0
+          maximum: 1
+          example: 0.9
+        religion_compatibility:
+          type: number
+          format: float
+          minimum: 0
+          maximum: 1
+          example: 0.5
+        affection_importance:
+          type: number
+          format: float
+          minimum: 0
+          maximum: 1
+          example: 0.78
+        long_distance:
+          type: number
+          format: float
+          minimum: 0
+          maximum: 1
+          example: 1.0
+        lifestyle:
+          type: number
+          format: float
+          minimum: 0
+          maximum: 1
+          example: 0.6
+
+    RankedCandidate:
+      type: object
+      required: [alias, applicantId, score, breakdown]
+      properties:
+        alias:
+          type: string
+          example: "Silent River"
+        applicantId:
+          type: string
+          example: "64f1a2b3c4d5e6f7a8b9c0d3"
+        score:
+          type: number
+          format: float
+          minimum: 0
+          maximum: 1
+          example: 0.83
+          description: "Weighted composite score across all dimensions."
+        breakdown:
+          $ref: '#/components/schemas/MatchScoreBreakdown'
+
+    CandidatesResponse:
+      type: object
+      required: [success, applicantId, algorithm, candidates]
+      properties:
+        success:
+          type: boolean
+          enum: [true]
+        applicantId:
+          type: string
+          example: "64f1a2b3c4d5e6f7a8b9c0d1"
+        algorithm:
+          type: string
+          example: "baseline"
+        candidates:
+          type: array
+          items:
+            $ref: '#/components/schemas/RankedCandidate'
+
+    MatchingRunRequest:
+      type: object
+      properties:
+        algorithm:
+          type: string
+          enum: [baseline]
+          default: baseline
+
+    MatchingRunResponse:
+      type: object
+      required: [success, algorithm, totalApplicants, results]
+      properties:
+        success:
+          type: boolean
+          enum: [true]
+        algorithm:
+          type: string
+          example: "baseline"
+        totalApplicants:
+          type: integer
+          example: 42
+        results:
+          type: object
+          description: "Map of applicantId → top 10 ranked candidates."
+          additionalProperties:
+            type: array
+            items:
+              $ref: '#/components/schemas/RankedCandidate'
+
+# ─── Paths ─────────────────────────────────────────────────────────────────────
+paths:
+
+  # ── Health ───────────────────────────────────────────────────────────────────
+  /health:
+    get:
+      tags: [Health]
+      summary: Server health check
+      operationId: getHealth
+      responses:
+        '200':
+          description: Server is running
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: "ok"
+                  timestamp:
+                    type: string
+                    format: date-time
+                  env:
+                    type: string
+                    example: "development"
+
+  # ── Form ─────────────────────────────────────────────────────────────────────
+  /api/v1/form/submit:
+    post:
+      tags: [Form]
+      summary: Submit a matching form
+      operationId: submitForm
+      description: |
+        Accepts a completed questionnaire. The `instagram_handle` answer is
+        encrypted and stored separately — it never appears in the returned data
+        or the matching profile. The applicant receives a human-friendly alias.
+
+        **Rate limit:** 100 requests per 10 minutes per IP.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/FormSubmissionRequest'
+            example:
+              questionnaireVersion: "1.0.0"
+              answers:
+                instagram_handle: "@johndoe"
+                location: "Paris, France"
+                age: 27
+                height_cm: 178
+                work: "Software Engineer"
+                gender_identity: "Male"
+                sexual_orientation: "Straight"
+                religion: "Agnostic"
+                vibe_words: "curious, calm, funny"
+                lifestyle: "Social drinker, non-smoker"
+                relationship_type: "Long Term"
+                open_to_long_distance: true
+                preferred_physical_traits: "Athletic, tall"
+                preferred_character_traits: "Ambitious, kind, funny"
+                deal_breakers: "Dishonesty, smoking"
+                okay_with_opposite_gender_friends: true
+                religion_deal_breaker: false
+                physical_affection_importance: 8
+                dream_first_date: "Coffee at a bookstore, then a walk by the river"
+                disclaimer_agreed: true
+      responses:
+        '201':
+          description: Form submitted successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FormSubmissionResponse'
+              example:
+                success: true
+                alias: "Blue Falcon"
+                applicantId: "64f1a2b3c4d5e6f7a8b9c0d1"
+                message: "Your profile has been submitted successfully."
+        '400':
+          description: Questionnaire version not found or inactive
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '422':
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ValidationErrorResponse'
+        '429':
+          description: Rate limit exceeded
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                success: false
+                error: "Too many form submissions. Please wait before trying again."
+
+  # ── Admin – Auth ─────────────────────────────────────────────────────────────
+  /api/v1/admin/login:
+    post:
+      tags: [Admin – Auth]
+      summary: Admin login
+      operationId: adminLogin
+      description: |
+        Authenticates an admin and returns a JWT valid for 8 hours.
+        The login action is recorded in the audit log.
+
+        **Rate limit:** 20 requests per minute per IP.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AdminLoginRequest'
+      responses:
+        '200':
+          description: Login successful
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AdminLoginResponse'
+        '401':
+          description: Invalid credentials
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                success: false
+                error: "Invalid username or password"
+        '422':
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ValidationErrorResponse'
+        '429':
+          description: Rate limit exceeded
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  # ── Admin – Applicants ───────────────────────────────────────────────────────
+  /api/v1/admin/applicants:
+    get:
+      tags: [Admin – Applicants]
+      summary: List applicants
+      operationId: listApplicants
+      security:
+        - BearerAuth: []
+      description: |
+        Returns a paginated list of applicant profiles. No sensitive data
+        (instagram handles) is included. Audit-logged as LIST_APPLICANTS.
+      parameters:
+        - name: status
+          in: query
+          schema:
+            $ref: '#/components/schemas/ApplicantStatus'
+          example: active
+        - name: page
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            default: 1
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 20
+      responses:
+        '200':
+          description: Paginated applicant list
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApplicantListResponse'
+        '401':
+          description: Missing or invalid token
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '429':
+          description: Rate limit exceeded
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /api/v1/admin/applicants/{id}:
+    get:
+      tags: [Admin – Applicants]
+      summary: Get an applicant by ID
+      operationId: getApplicant
+      security:
+        - BearerAuth: []
+      description: "Returns the full applicant profile (no sensitive data). Audit-logged as VIEW_APPLICANT."
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+          example: "64f1a2b3c4d5e6f7a8b9c0d1"
+      responses:
+        '200':
+          description: Applicant profile
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApplicantResponse'
+        '400':
+          description: Invalid ObjectId format
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Missing or invalid token
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Applicant not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+    delete:
+      tags: [Admin – Applicants]
+      summary: Deactivate an applicant
+      operationId: deactivateApplicant
+      security:
+        - BearerAuth: []
+      description: |
+        Sets the applicant status to `withdrawn`. Does not delete data.
+        Audit-logged as DEACTIVATE_APPLICANT.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+          example: "64f1a2b3c4d5e6f7a8b9c0d1"
+      responses:
+        '200':
+          description: Applicant deactivated
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    enum: [true]
+                  message:
+                    type: string
+                    example: "Applicant withdrawn successfully."
+        '401':
+          description: Missing or invalid token
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Applicant not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /api/v1/admin/applicants/{id}/identity:
+    get:
+      tags: [Admin – Applicants]
+      summary: Resolve applicant identity (decrypt Instagram handle)
+      operationId: resolveIdentity
+      security:
+        - BearerAuth: []
+      description: |
+        Decrypts and returns the real Instagram handle for an applicant.
+
+        ⚠️ **Every call to this endpoint is recorded in the audit log** with the
+        admin ID, IP address, user-agent, timestamp, and target alias.
+        Use only when necessary for matchmaking coordination.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+          example: "64f1a2b3c4d5e6f7a8b9c0d1"
+      responses:
+        '200':
+          description: Decrypted identity
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/IdentityResponse'
+              example:
+                success: true
+                data:
+                  alias: "Blue Falcon"
+                  instagramHandle: "@johndoe"
+                  applicantId: "64f1a2b3c4d5e6f7a8b9c0d1"
+        '401':
+          description: Missing or invalid token
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Identity record not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  # ── Admin – Audit ─────────────────────────────────────────────────────────────
+  /api/v1/admin/audit-logs:
+    get:
+      tags: [Admin – Audit]
+      summary: List audit logs
+      operationId: listAuditLogs
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: page
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            default: 1
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 50
+      responses:
+        '200':
+          description: Paginated audit log entries
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuditLogListResponse'
+        '401':
+          description: Missing or invalid token
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  # ── Matching ──────────────────────────────────────────────────────────────────
+  /api/v1/matching/candidates/{applicantId}:
+    get:
+      tags: [Matching]
+      summary: Get top match candidates for an applicant
+      operationId: getCandidates
+      description: |
+        Returns the top N candidates scored against the given applicant using
+        the selected algorithm. Returns aliases and scores only — no PII.
+      parameters:
+        - name: applicantId
+          in: path
+          required: true
+          schema:
+            type: string
+          example: "64f1a2b3c4d5e6f7a8b9c0d1"
+        - name: topN
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 10
+        - name: algorithm
+          in: query
+          schema:
+            type: string
+            enum: [baseline]
+            default: baseline
+      responses:
+        '200':
+          description: Ranked candidate list
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CandidatesResponse'
+              example:
+                success: true
+                applicantId: "64f1a2b3c4d5e6f7a8b9c0d1"
+                algorithm: "baseline"
+                candidates:
+                  - alias: "Silent River"
+                    applicantId: "64f1a2b3c4d5e6f7a8b9c0d3"
+                    score: 0.83
+                    breakdown:
+                      relationship_type: 1.0
+                      deal_breakers: 0.9
+                      religion_compatibility: 0.5
+                      affection_importance: 0.78
+                      long_distance: 1.0
+                      lifestyle: 0.6
+        '400':
+          description: Invalid applicant ID or unknown algorithm
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Applicant not found or inactive
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /api/v1/matching/run:
+    post:
+      tags: [Matching]
+      summary: Run a full matching pass (admin only)
+      operationId: runMatching
+      security:
+        - BearerAuth: []
+      description: |
+        Scores all active applicants pairwise and returns a map of
+        `applicantId → top 10 ranked candidates`. Computationally
+        O(n²) — intended for offline/scheduled use, not real-time.
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/MatchingRunRequest'
+            example:
+              algorithm: "baseline"
+      responses:
+        '200':
+          description: Full matching results
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MatchingRunResponse'
+        '401':
+          description: Missing or invalid token
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: No active questionnaire found or other server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
