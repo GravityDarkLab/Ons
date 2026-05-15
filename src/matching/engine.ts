@@ -1,0 +1,140 @@
+import type { ApplicantDoc } from "../models/applicant.model.js";
+import type { QuestionnaireDoc } from "../models/questionnaire.model.js";
+import { getDb } from "../db/connection.js";
+import { getApplicantsCollection } from "../db/collections.js";
+import { getActiveQuestionnaire } from "../services/questionnaire.service.js";
+import { baselineAlgorithm } from "./algorithms/baseline.js";
+
+export interface MatchScore {
+  score: number;
+  breakdown: Record<string, number>;
+}
+
+export interface RankedCandidate {
+  alias: string;
+  applicantId: string;
+  score: number;
+  breakdown: Record<string, number>;
+}
+
+/**
+ * Plugin interface that all matching algorithms must implement.
+ */
+export interface Algorithm {
+  name: string;
+  score(
+    a: ApplicantDoc,
+    b: ApplicantDoc,
+    questionnaire: QuestionnaireDoc
+  ): MatchScore;
+}
+
+const ALGORITHM_REGISTRY: Record<string, Algorithm> = {
+  baseline: baselineAlgorithm,
+};
+
+/**
+ * Returns the top N candidates scored against the given applicant.
+ */
+export async function getCandidates(
+  applicantId: string,
+  topN = 10,
+  algorithmName = "baseline"
+): Promise<RankedCandidate[]> {
+  const algorithm = ALGORITHM_REGISTRY[algorithmName];
+  if (!algorithm) {
+    throw new Error(`Unknown algorithm: ${algorithmName}`);
+  }
+
+  const questionnaire = await getActiveQuestionnaire();
+  if (!questionnaire) {
+    throw new Error("No active questionnaire found");
+  }
+
+  const db = await getDb();
+  const col = getApplicantsCollection(db);
+
+  const { ObjectId } = await import("mongodb");
+  let targetId: import("mongodb").ObjectId;
+  try {
+    targetId = new ObjectId(applicantId);
+  } catch {
+    throw new Error(`Invalid applicant ID: ${applicantId}`);
+  }
+
+  const target = await col.findOne({ _id: targetId, status: "active" });
+  if (!target) {
+    throw new Error(`Active applicant not found: ${applicantId}`);
+  }
+
+  // Load all other active applicants
+  const others = await col
+    .find({ _id: { $ne: targetId }, status: "active" })
+    .toArray();
+
+  // Score pairwise
+  const scored: RankedCandidate[] = others.map((other) => {
+    const result = algorithm.score(target, other, questionnaire);
+    return {
+      alias: other.alias,
+      applicantId: other._id.toHexString(),
+      score: result.score,
+      breakdown: result.breakdown,
+    };
+  });
+
+  // Sort descending by score, return top N
+  return scored.sort((a, b) => b.score - a.score).slice(0, topN);
+}
+
+/**
+ * Runs a full pairwise matching pass over all active applicants.
+ * Returns a map of applicantId -> ranked candidates.
+ */
+export async function runFullMatchingPass(
+  algorithmName = "baseline"
+): Promise<Record<string, RankedCandidate[]>> {
+  const algorithm = ALGORITHM_REGISTRY[algorithmName];
+  if (!algorithm) {
+    throw new Error(`Unknown algorithm: ${algorithmName}`);
+  }
+
+  const questionnaire = await getActiveQuestionnaire();
+  if (!questionnaire) {
+    throw new Error("No active questionnaire found");
+  }
+
+  const db = await getDb();
+  const col = getApplicantsCollection(db);
+  const applicants = await col.find({ status: "active" }).toArray();
+
+  if (applicants.length < 2) {
+    return {};
+  }
+
+  const results: Record<string, RankedCandidate[]> = {};
+
+  for (const applicant of applicants) {
+    const scored: RankedCandidate[] = [];
+
+    for (const other of applicants) {
+      if (other._id.equals(applicant._id)) continue;
+
+      const result = algorithm.score(applicant, other, questionnaire);
+      scored.push({
+        alias: other.alias,
+        applicantId: other._id.toHexString(),
+        score: result.score,
+        breakdown: result.breakdown,
+      });
+    }
+
+    results[applicant._id.toHexString()] = scored
+      .sort((a, b) => b.score - a.score)
+      .slice(0, 10);
+  }
+
+  return results;
+}
+
+export { ALGORITHM_REGISTRY };
