@@ -1,6 +1,33 @@
-# Matching Backend
+# Matching
 
-Privacy-oriented couple matching platform backend built with Bun, Hono, and MongoDB.
+Privacy-oriented couple matching platform — monorepo with a Bun/Hono API and a React frontend.
+
+## Structure
+
+```
+matching/
+├── api/        ← Backend (Bun + Hono + MongoDB)
+├── frontend/   ← Frontend (Vite + React + Tailwind)
+└── openapi.yaml
+```
+
+### Run the API
+```bash
+cd api
+bun install
+bun run seed   # seed questionnaire v1.0.0
+bun run dev    # → http://localhost:3001
+```
+
+### Run the frontend
+```bash
+cd frontend
+bun install
+# cp .env.example .env.local and set VITE_INVITE_KEY + VITE_API_URL
+bun run dev    # → http://localhost:5174
+```
+
+---
 
 ## Architecture
 
