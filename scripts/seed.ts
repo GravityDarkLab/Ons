@@ -11,9 +11,7 @@
  * Requires api/.env to be configured (MONGODB_URI etc).
  */
 
-import { resolve } from "path";
-
-const apiDir = resolve(import.meta.dir, "../api");
+const apiDir = new URL("../api", import.meta.url).pathname;
 
 console.log("[seed] Running questionnaire seed via api workspace…\n");
 

@@ -9,22 +9,21 @@
  *   bun run dev:frontend     # frontend only
  */
 
-import { resolve } from "path";
-
-const ROOT = resolve(import.meta.dir, "..");
+// import.meta.dir = .../matching/scripts — no "path" import needed
+const ROOT = new URL("..", import.meta.url).pathname;
 
 const RESET = "\x1b[0m";
 const BOLD  = "\x1b[1m";
 
 const SERVICES = [
-  { name: "api",      color: "\x1b[36m", cwd: resolve(ROOT, "api") },
-  { name: "frontend", color: "\x1b[35m", cwd: resolve(ROOT, "frontend") },
+  { name: "api",      color: "\x1b[36m", cwd: ROOT + "api" },
+  { name: "frontend", color: "\x1b[35m", cwd: ROOT + "frontend" },
 ];
 
 async function pipeWithLabel(
   stream: ReadableStream<Uint8Array>,
   label: string,
-  out: typeof process.stdout
+  out: NodeJS.WriteStream
 ) {
   const reader  = stream.getReader();
   const decoder = new TextDecoder();
