@@ -1,0 +1,14 @@
+{
+  "name": "matching",
+  "version": "0.1.0",
+  "private": true,
+  "workspaces": ["api", "frontend"],
+  "scripts": {
+    "dev":          "bun run scripts/dev.ts",
+    "dev:api":      "bun --cwd api run dev",
+    "dev:frontend": "bun --cwd frontend run dev",
+    "seed":         "bun run scripts/seed.ts",
+    "build":        "bun run --filter '*' build",
+    "typecheck":    "bun run --filter '*' typecheck"
+  }
+}

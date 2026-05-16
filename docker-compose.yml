@@ -1,0 +1,60 @@
+# Production — builds optimised images.
+# Set secrets in api/.env and pass VITE_* as build args or in a .env file at root.
+#
+# Usage:
+#   docker compose up --build
+#   docker compose up api --build        # api only
+#   docker compose up frontend --build   # frontend only
+
+services:
+
+  # ── MongoDB ────────────────────────────────────────────────────────────────
+  mongo:
+    image: mongo:7
+    restart: unless-stopped
+    volumes:
+      - mongo_data:/data/db
+    healthcheck:
+      test: >
+        mongosh --quiet --eval "db.adminCommand('ping').ok"
+      interval: 10s
+      timeout:  5s
+      retries:  5
+      start_period: 10s
+
+  # ── API ───────────────────────────────────────────────────────────────────
+  api:
+    build:
+      context:    ./api
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    ports:
+      - "3001:3001"
+    environment:
+      NODE_ENV:        production
+      PORT:            3001
+      MONGODB_URI:     mongodb://mongo:27017
+      MONGODB_DB_NAME: matching
+    env_file:
+      - path: ./api/.env
+        required: true          # must exist in production
+    depends_on:
+      mongo:
+        condition: service_healthy
+
+  # ── Frontend ──────────────────────────────────────────────────────────────
+  frontend:
+    build:
+      context:    ./frontend
+      dockerfile: Dockerfile
+      args:
+        VITE_API_URL:    ${VITE_API_URL:-http://localhost:3001}
+        VITE_INVITE_KEY: ${VITE_INVITE_KEY:?VITE_INVITE_KEY must be set}
+    restart: unless-stopped
+    ports:
+      - "80:80"
+    depends_on:
+      - api
+
+volumes:
+  mongo_data:
