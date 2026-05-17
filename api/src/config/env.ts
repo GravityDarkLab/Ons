@@ -29,14 +29,31 @@ export const env = {
   mongodbDbName: optional("MONGODB_DB_NAME", "matching"),
   encryptionKey: validateEncryptionKey(required("ENCRYPTION_KEY")),
   jwtSecret: required("JWT_SECRET"),
+  jwtExpiry: optional("JWT_EXPIRY", "8h"),
   adminUsername: required("ADMIN_USERNAME"),
   adminPassword: required("ADMIN_PASSWORD"),
   allowedOrigins: optional("ALLOWED_ORIGINS", "http://localhost:3000")
     .split(",")
     .map((o) => o.trim())
     .filter(Boolean),
+  // HMAC secret used to sign per-version submission keys — prevents version enumeration.
+  // Generate with: openssl rand -hex 32
+  formSecret: required("FORM_SECRET"),
+
+  // ── Embedding provider (used only by the "embedding-cosine" algorithm) ──────
+  // Providers: openai | local
+  // See api/src/matching/embeddings/provider.ts for full documentation.
+  embeddingProvider: required("EMBEDDING_PROVIDER") as "openai" | "local",
+  embeddingModel: required("EMBEDDING_MODEL"),  // e.g. text-embedding-3-small, text-embedding-embeddinggemma-300m
+  embeddingBaseUrl: required("EMBEDDING_BASE_URL"),  // required for local
+  openaiApiKey: optional("OPENAI_API_KEY", ""),          // required for openai
+  
+  // Server config
   port: parseInt(optional("PORT", "3001"), 10),
   nodeEnv: optional("NODE_ENV", "development"),
+  // Base URL used in startup logs. Defaults to localhost for dev.
+  // Override in test/prod: PUBLIC_URL=https://api.yourdomain.com
+  publicUrl: optional("PUBLIC_URL", "").replace(/\/$/, ""),
 } as const;
 
 export type Env = typeof env;
