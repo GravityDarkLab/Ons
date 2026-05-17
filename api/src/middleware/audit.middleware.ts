@@ -1,3 +1,5 @@
+import { Context } from "hono";
+import { getConnInfo } from "hono/bun";
 import { ObjectId } from "mongodb";
 import { getDb } from "../db/connection.js";
 import { getAuditLogsCollection } from "../db/collections.js";
@@ -44,15 +46,20 @@ export async function writeAuditLog(
 }
 
 /**
- * Extracts audit context from a Hono request context.
+ * Extracts audit context from a Hono context.
+ * Prefers proxy headers (x-forwarded-for, x-real-ip) set by a reverse proxy,
+ * then falls back to the raw socket address exposed by Bun via getConnInfo.
  */
 export function extractAuditContext(
   adminId: string,
-  req: Request
+  c: Context
 ): AuditContext {
+  const req = c.req.raw;
+
   const ipAddress =
     req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ??
     req.headers.get("x-real-ip") ??
+    getConnInfo(c).remote.address ??
     "unknown";
 
   const userAgent = req.headers.get("user-agent") ?? "unknown";
