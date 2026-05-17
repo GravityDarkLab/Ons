@@ -6,10 +6,11 @@ import {
   getQuestionnaireByVersion,
   buildQuestionMap,
   getSensitiveQuestionIds,
-  getActiveQuestionnaire,
 } from "./questionnaire.service.js";
 import { generateUniqueAlias } from "../privacy/alias.generator.js";
 import { storeIdentity } from "../privacy/identity.service.js";
+import { verifySubmissionKey } from "../privacy/submission-key.js";
+import { embedApplicant } from "./embedding.service.js";
 
 export interface FormSubmissionResult {
   alias: string;
@@ -28,7 +29,8 @@ export interface FormSubmissionResult {
  * 6. Persist encrypted identity
  */
 export async function processFormSubmission(
-  input: FormSubmissionInput
+  input: FormSubmissionInput,
+  submissionKey: string
 ): Promise<FormSubmissionResult> {
   // 1. Load questionnaire
   const questionnaire = await getQuestionnaireByVersion(
@@ -37,7 +39,7 @@ export async function processFormSubmission(
 
   if (!questionnaire) {
     throw new Error(
-      `Questionnaire version ${input.questionnaireVersion} not found`
+      `Questionnaire not found`
     );
   }
 
@@ -45,6 +47,12 @@ export async function processFormSubmission(
     throw new Error(
       `Questionnaire version ${input.questionnaireVersion} is no longer active. Please use the latest version.`
     );
+  }
+
+  // Verify the submission key — proves the client obtained the version from
+  // GET /questionnaire rather than guessing semver strings.
+  if (!verifySubmissionKey(input.questionnaireVersion, submissionKey)) {
+    throw new Error("Invalid submission key.");
   }
 
   // 2. Cross-check answer keys against questionnaire question IDs
@@ -104,6 +112,14 @@ export async function processFormSubmission(
   // 6. Store encrypted identity
   const instagramHandle = sensitiveAnswers["instagram_handle"] as string;
   await storeIdentity(applicantId, alias, instagramHandle);
+
+  // 7. Pre-compute embeddings for the embedding-cosine algorithm.
+  // Fire-and-forget — never blocks or fails the form submission.
+  // If the embedding provider is unavailable, prepare() will compute
+  // missing embeddings on the next matching run.
+  embedApplicant(applicantId, publicAnswers).catch((err) =>
+    console.error(`[form] Background embedding failed for ${alias}:`, err)
+  );
 
   return { alias, applicantId: applicantId.toHexString() };
 }
