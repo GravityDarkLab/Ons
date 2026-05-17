@@ -5,12 +5,20 @@ interface RateLimitRecord {
 }
 
 /**
- * Simple in-memory sliding window rate limiter.
+ * Generic in-memory sliding window rate limiter function.
  *
  * Each unique key (IP address) gets a window of `windowMs` milliseconds
  * and at most `maxRequests` requests per window.
  *
  * Memory is bounded: old timestamps are evicted on each check.
+ * 
+ * @param options Configuration for the rate limiter
+ * @param options.windowMs Time window in milliseconds
+ * @param options.maxRequests Maximum allowed requests per window
+ * @param options.keyFn Optional function to extract a unique key from the request context (defaults to IP address)
+ * @param options.message Custom error message for rate limit responses
+ * 
+ * @returns Hono middleware function that enforces the specified rate limit
  */
 export function createRateLimiter(options: {
   windowMs: number;
@@ -25,6 +33,7 @@ export function createRateLimiter(options: {
     message = "Too many requests. Please try again later.",
   } = options;
 
+  // In-memory store: Map of key to array of request timestamps
   const store = new Map<string, RateLimitRecord>();
 
   // Periodically clean up stale entries (every 5 minutes)
@@ -46,6 +55,7 @@ export function createRateLimiter(options: {
     c: Context,
     next: Next
   ): Promise<Response | void> {
+    // Determine the unique key for this request (default to IP address)
     const key = keyFn
       ? keyFn(c)
       : (c.req.header("x-forwarded-for")?.split(",")[0]?.trim() ??

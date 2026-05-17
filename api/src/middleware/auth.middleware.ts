@@ -4,7 +4,7 @@ import { env } from "../config/env.js";
 
 const SECRET = new TextEncoder().encode(env.jwtSecret);
 const ALGORITHM = "HS256";
-const EXPIRY = "8h";
+const EXPIRY = env.jwtExpiry || "8h";
 
 /**
  * Signs a JWT for the admin user.

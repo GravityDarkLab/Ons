@@ -2,7 +2,7 @@ import crypto from "crypto";
 import { env } from "../config/env.js";
 
 const ALGORITHM = "aes-256-gcm";
-const IV_LENGTH = 16; // bytes
+const IV_LENGTH = 16; // bytes - IV: stands for Initialization Vector, a random value that ensures unique ciphertexts for the same plaintext. GCM mode requires a 12 or 16 byte IV.
 const TAG_LENGTH = 16; // bytes — GCM auth tag
 
 /**
