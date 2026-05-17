@@ -14,7 +14,9 @@ updates:
     # (typosquatting, hijacked maintainer accounts) are usually caught and
     # yanked within days — a cooldown window filters most of that noise.
     # Major bumps get a longer window (30d) since they carry more risk.
-    cooldown: 15
+    cooldown:
+      default-days: 15
+      semver-major-days: 30
     # Group all deps into a single PR so CI runs once, not N times.
     groups:
       all-dependencies:
@@ -30,7 +32,9 @@ updates:
       day: monday
       time: "06:00"
       timezone: "UTC"
-    cooldown: 15
+    cooldown:
+      default-days: 15
+      semver-major-days: 30
     labels: ["dependencies", "docker", "automated"]
 
   # ── GitHub Actions ───────────────────────────────────────────────────────
@@ -41,7 +45,9 @@ updates:
       day: monday
       time: "06:00"
       timezone: "UTC"
-    cooldown: 15
+    cooldown:
+      default-days: 15
+      semver-major-days: 30
     groups:
       github-actions:
         patterns: ["*"]
