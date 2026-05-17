@@ -20,9 +20,9 @@ jobs:
         with:
           bun-version: latest
 
+      # Install from the monorepo root — bun.lock lives here, not in api/
       - name: Install dependencies
-        working-directory: api
-        run: bun install --frozen-lockfile
+        run: bun install --frozen
 
       - name: Run TypeScript type-check
         working-directory: api
