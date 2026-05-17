@@ -5,22 +5,21 @@
 FROM oven/bun:1.2-alpine AS deps
 WORKDIR /app
 
-# Copy the monorepo lockfile + workspace manifests needed for install.
-COPY bun.lock package.json ./
-COPY api/package.json ./api/
-
-# --frozen: respect the lockfile exactly (correct flag for text bun.lock).
-# --production: skip devDependencies to keep the image lean.
-RUN bun install --frozen --production
+# Install only the API's own production dependencies.
+# We don't use workspace mode here — the monorepo root package.json declares
+# a "frontend" workspace that doesn't exist in this build context, which
+# causes bun install to fail. Installing from api/package.json directly is
+# simpler and correct for a single-service Docker image.
+COPY api/package.json ./
+RUN bun install --production
 
 # ─── Stage 2: production image ────────────────────────────────────────────────
 FROM oven/bun:1.2-alpine AS runner
-WORKDIR /app/api
+WORKDIR /app
 
 ENV NODE_ENV=production
 
-# Bun workspaces hoist all packages to the root node_modules.
-COPY --from=deps /app/node_modules ../node_modules
+COPY --from=deps /app/node_modules ./node_modules
 
 # Copy API source only — no tests, seeds, or dev tooling.
 COPY api/src ./src
