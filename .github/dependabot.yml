@@ -6,9 +6,9 @@ updates:
     directory: "/"
     schedule:
       interval: weekly
-      day: monday
+      day: sunday
       time: "06:00"
-      timezone: "UTC"
+      timezone: "Europe/Berlin"
     # Supply-chain protection: only propose versions that have been
     # published for at least 15 days. Newly-published malicious packages
     # (typosquatting, hijacked maintainer accounts) are usually caught and
@@ -29,9 +29,9 @@ updates:
     directory: "/api"
     schedule:
       interval: weekly
-      day: monday
+      day: sunday
       time: "06:00"
-      timezone: "UTC"
+      timezone: "Europe/Berlin"
     cooldown:
       default-days: 15
       semver-major-days: 30
@@ -42,9 +42,9 @@ updates:
     directory: "/"
     schedule:
       interval: weekly
-      day: monday
+      day: sunday
       time: "06:00"
-      timezone: "UTC"
+      timezone: "Europe/Berlin"
     cooldown:
       default-days: 15
       semver-major-days: 30
