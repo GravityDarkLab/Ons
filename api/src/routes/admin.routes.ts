@@ -1,6 +1,6 @@
 import { Hono } from "hono";
 import { zValidator } from "@hono/zod-validator";
-import { adminLoginSchema } from "../validators/admin.validator.js";
+import { adminLoginSchema, createQuestionnaireSchema } from "../validators/admin.validator.js";
 import {
   login,
   getApplicants,
@@ -8,6 +8,7 @@ import {
   getApplicantIdentityHandler,
   deleteApplicant,
   getAuditLogs,
+  createQuestionnaireHandler,
 } from "../controllers/admin.controller.js";
 import { requireAdmin } from "../middleware/auth.middleware.js";
 import { adminRateLimiter } from "../middleware/rateLimit.middleware.js";
@@ -45,5 +46,22 @@ adminRoutes.get(
 );
 adminRoutes.delete("/applicants/:id", requireAdmin, deleteApplicant);
 adminRoutes.get("/audit-logs", requireAdmin, getAuditLogs);
+adminRoutes.post(
+  "/questionnaires",
+  requireAdmin,
+  zValidator("json", createQuestionnaireSchema, (result, c) => {
+    if (!result.success) {
+      return c.json(
+        {
+          success: false,
+          error: "Validation failed",
+          details: result.error.flatten().fieldErrors,
+        },
+        422
+      );
+    }
+  }),
+  createQuestionnaireHandler
+);
 
 export { adminRoutes };

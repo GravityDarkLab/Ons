@@ -7,9 +7,11 @@ import {
   getApplicantIdentity,
   deactivateApplicant,
   listAuditLogs,
+  createQuestionnaire,
 } from "../services/admin.service.js";
 import { writeAuditLog, extractAuditContext } from "../middleware/audit.middleware.js";
 import type { ApplicantStatus } from "../models/applicant.model.js";
+import type { CreateQuestionnaireInput } from "../validators/admin.validator.js";
 
 /**
  * POST /api/v1/admin/login
@@ -27,7 +29,7 @@ export async function login(c: Context): Promise<Response> {
   }
 
   // Audit login
-  const auditCtx = extractAuditContext(username, c.req.raw);
+  const auditCtx = extractAuditContext(username, c);
   await writeAuditLog(auditCtx, "ADMIN_LOGIN", {
     metadata: { username },
   });
@@ -45,7 +47,7 @@ export async function getApplicants(c: Context): Promise<Response> {
   const status = query.status as ApplicantStatus | undefined;
 
   const adminId = c.get("adminId") as string;
-  const auditCtx = extractAuditContext(adminId, c.req.raw);
+  const auditCtx = extractAuditContext(adminId, c);
 
   await writeAuditLog(auditCtx, "LIST_APPLICANTS", {
     metadata: { page, limit, status },
@@ -67,7 +69,7 @@ export async function getApplicant(c: Context): Promise<Response> {
   const id = c.req.param("id") ?? "";
   const adminId = c.get("adminId") as string;
 
-  const auditCtx = extractAuditContext(adminId, c.req.raw);
+  const auditCtx = extractAuditContext(adminId, c);
 
   try {
     const applicant = await getApplicantById(id);
@@ -96,7 +98,7 @@ export async function getApplicantIdentityHandler(c: Context): Promise<Response>
   const id = c.req.param("id") ?? "";
   const adminId = c.get("adminId") as string;
 
-  const auditCtx = extractAuditContext(adminId, c.req.raw);
+  const auditCtx = extractAuditContext(adminId, c);
 
   try {
     const identity = await getApplicantIdentity(id);
@@ -132,7 +134,7 @@ export async function deleteApplicant(c: Context): Promise<Response> {
   const id = c.req.param("id") ?? "";
   const adminId = c.get("adminId") as string;
 
-  const auditCtx = extractAuditContext(adminId, c.req.raw);
+  const auditCtx = extractAuditContext(adminId, c);
 
   try {
     const applicant = await getApplicantById(id);
@@ -155,6 +157,41 @@ export async function deleteApplicant(c: Context): Promise<Response> {
   } catch (err) {
     const message = err instanceof Error ? err.message : "Failed to deactivate applicant";
     return c.json({ success: false, error: message }, 500);
+  }
+}
+
+/**
+ * POST /api/v1/admin/questionnaires
+ * Creates a new questionnaire and deactivates all existing ones.
+ */
+export async function createQuestionnaireHandler(c: Context): Promise<Response> {
+  const body = c.req.valid("json" as never) as CreateQuestionnaireInput;
+  const adminId = c.get("adminId") as string;
+
+  try {
+    const result = await createQuestionnaire(body);
+
+    const auditCtx = extractAuditContext(adminId, c);
+    await writeAuditLog(auditCtx, "CREATE_QUESTIONNAIRE", {
+      metadata: {
+        version: result.version,
+        deactivatedCount: result.deactivatedCount,
+      },
+    });
+
+    return c.json(
+      {
+        success: true,
+        id: result.id,
+        version: result.version,
+        deactivatedCount: result.deactivatedCount,
+        message: `Questionnaire v${result.version} created. ${result.deactivatedCount} previous version(s) deactivated.`,
+      },
+      201
+    );
+  } catch (err) {
+    const message = err instanceof Error ? err.message : "Failed to create questionnaire";
+    return c.json({ success: false, error: message }, 400);
   }
 }
 

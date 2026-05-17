@@ -3,9 +3,11 @@ import { getDb } from "../db/connection.js";
 import {
   getApplicantsCollection,
   getAuditLogsCollection,
+  getQuestionnairesCollection,
 } from "../db/collections.js";
 import type { ApplicantDoc, ApplicantStatus } from "../models/applicant.model.js";
 import type { AuditLogDoc } from "../models/auditLog.model.js";
+import type { CreateQuestionnaireInput } from "../validators/admin.validator.js";
 import { resolveIdentityById } from "../privacy/identity.service.js";
 import { env } from "../config/env.js";
 import { signAdminToken } from "../middleware/auth.middleware.js";
@@ -134,6 +136,43 @@ export async function deactivateApplicant(id: string): Promise<boolean> {
   );
 
   return result.matchedCount > 0;
+}
+
+/**
+ * Creates a new questionnaire and deactivates all existing ones atomically.
+ * Returns the new questionnaire's version and id.
+ */
+export async function createQuestionnaire(
+  input: CreateQuestionnaireInput
+): Promise<{ id: string; version: string; deactivatedCount: number }> {
+  const db = await getDb();
+  const col = getQuestionnairesCollection(db);
+
+  const existing = await col.findOne({ version: input.version });
+  if (existing) {
+    throw new Error(`Questionnaire version ${input.version} already exists.`);
+  }
+
+  const now = new Date();
+  const newId = new ObjectId();
+
+  // Deactivate all current questionnaires, then insert the new active one
+  const { modifiedCount } = await col.updateMany(
+    { isActive: true },
+    { $set: { isActive: false, updatedAt: now } }
+  );
+
+  await col.insertOne({
+    _id: newId,
+    version: input.version,
+    name: input.name,
+    isActive: true,
+    sections: input.sections,
+    createdAt: now,
+    updatedAt: now,
+  });
+
+  return { id: newId.toHexString(), version: input.version, deactivatedCount: modifiedCount };
 }
 
 export interface AuditLogView {

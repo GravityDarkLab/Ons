@@ -5,7 +5,8 @@ export type AuditAction =
   | "LIST_APPLICANTS"
   | "VIEW_APPLICANT"
   | "DEACTIVATE_APPLICANT"
-  | "ADMIN_LOGIN";
+  | "ADMIN_LOGIN"
+  | "CREATE_QUESTIONNAIRE";
 
 export interface AuditLogDoc {
   _id: ObjectId;

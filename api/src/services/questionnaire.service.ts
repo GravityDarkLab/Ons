@@ -12,6 +12,15 @@ export async function getActiveQuestionnaire(): Promise<QuestionnaireDoc | null>
 }
 
 /**
+ * Returns all questionnaires ordered by creation date descending.
+ */
+export async function getAllQuestionnaires(): Promise<QuestionnaireDoc[]> {
+  const db = await getDb();
+  const col = getQuestionnairesCollection(db);
+  return col.find({}).sort({ createdAt: -1 }).toArray();
+}
+
+/**
  * Returns the questionnaire matching the given version, or null.
  */
 export async function getQuestionnaireByVersion(

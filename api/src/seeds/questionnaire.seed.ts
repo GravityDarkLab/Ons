@@ -10,12 +10,10 @@ import { getDb, closeDb } from "../db/connection.js";
 import { getQuestionnairesCollection } from "../db/collections.js";
 import type { QuestionnaireDoc } from "../models/questionnaire.model.js";
 
-const questionnaire: Omit<QuestionnaireDoc, "_id"> = {
+const questionnaire: Omit<QuestionnaireDoc, "_id" | "createdAt" | "updatedAt"> = {
   version: "1.0.0",
   name: "Matching Form v1",
   isActive: true,
-  createdAt: new Date(),
-  updatedAt: new Date(),
   sections: [
     {
       id: "identity",
