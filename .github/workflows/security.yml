@@ -54,7 +54,7 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Initialize CodeQL
-        uses: github/codeql-action/init@v3
+        uses: github/codeql-action/init@v4
         with:
           languages: javascript-typescript
           # Focus on injection, path-traversal, auth bypass, etc.
@@ -62,7 +62,7 @@ jobs:
 
       # CodeQL auto-builds TypeScript projects — no explicit build step needed.
       - name: Perform analysis
-        uses: github/codeql-action/analyze@v3
+        uses: github/codeql-action/analyze@v4
         with:
           category: /language:javascript-typescript
 
@@ -93,7 +93,7 @@ jobs:
       - name: Upload Trivy SARIF to Security tab
         # Always upload so findings are visible even when the job fails.
         if: always()
-        uses: github/codeql-action/upload-sarif@v3
+        uses: github/codeql-action/upload-sarif@v4
         with:
           sarif_file: trivy-fs.sarif
           category: trivy-fs
