@@ -1,14 +1,16 @@
-import { Collection, Db } from "mongodb";
+import { Collection, Db, IndexSpecification } from "mongodb";
 import type { QuestionnaireDoc } from "../models/questionnaire.model.js";
 import type { ApplicantDoc } from "../models/applicant.model.js";
 import type { IdentityDoc } from "../models/identity.model.js";
 import type { AuditLogDoc } from "../models/auditLog.model.js";
+import type { EmbeddingDoc } from "../models/embedding.model.js";
 
 export const COLLECTION_NAMES = {
   questionnaires: "questionnaires",
   applicants: "applicants",
   identities: "identities",
   auditLogs: "audit_logs",
+  embeddings: "embeddings",
 } as const;
 
 export function getQuestionnairesCollection(
@@ -29,27 +31,56 @@ export function getAuditLogsCollection(db: Db): Collection<AuditLogDoc> {
   return db.collection<AuditLogDoc>(COLLECTION_NAMES.auditLogs);
 }
 
+export function getEmbeddingsCollection(db: Db): Collection<EmbeddingDoc> {
+  return db.collection<EmbeddingDoc>(COLLECTION_NAMES.embeddings);
+}
+
 /**
  * Creates all required indexes. Call once on startup.
  */
 export async function ensureIndexes(db: Db): Promise<void> {
   const questionnaires = getQuestionnairesCollection(db);
-  await questionnaires.createIndex({ version: 1 }, { unique: true });
-  await questionnaires.createIndex({ isActive: 1 });
+  if (!await questionnaires.indexExists("version_1")) {
+      console.log("[DB] Creating indexes for questionnaires...");
+      await questionnaires.createIndex({ version: 1 }, { unique: true });
+  }
+  if(!await questionnaires.indexExists("isActive_1")) {
+      console.log("[DB] Creating index for questionnaires isActive...");
+        await questionnaires.createIndex({ isActive: 1 });
+  }
 
   const applicants = getApplicantsCollection(db);
-  await applicants.createIndex({ alias: 1 }, { unique: true });
-  await applicants.createIndex({ status: 1 });
-  await applicants.createIndex({ createdAt: -1 });
+  await _createIndexIfNotExists(applicants, { alias: 1 }, { unique: true });
+  await _createIndexIfNotExists(applicants, { status: 1 });
+  await _createIndexIfNotExists(applicants, { createdAt: -1 });
 
   const identities = getIdentitiesCollection(db);
-  await identities.createIndex({ applicantId: 1 }, { unique: true });
-  await identities.createIndex({ alias: 1 });
+  await _createIndexIfNotExists(identities, { applicantId: 1 }, { unique: true });
+  await _createIndexIfNotExists(identities, { alias: 1 });
 
   const auditLogs = getAuditLogsCollection(db);
-  await auditLogs.createIndex({ timestamp: -1 });
-  await auditLogs.createIndex({ adminId: 1 });
-  await auditLogs.createIndex({ targetApplicantId: 1 });
+  await _createIndexIfNotExists(auditLogs, { timestamp: -1 });
+  await _createIndexIfNotExists(auditLogs, { adminId: 1 });
+  await _createIndexIfNotExists(auditLogs, { targetApplicantId: 1 });
 
-  console.log("[DB] Indexes ensured");
+  const embeddings = getEmbeddingsCollection(db);
+  await _createIndexIfNotExists(embeddings, { applicantId: 1 }, { unique: true });
+  await _createIndexIfNotExists(embeddings, { model: 1 });
+
+  console.info("[DB] Indexes verification done");
+
+  async function _createIndexIfNotExists(collection: Collection<any>, indexSpec: IndexSpecification, options?: Record<string, unknown>) {
+    const indexName = Object.entries(indexSpec).map(([field, order]) => `${field}_${order}`).join("_");
+    let exists = false;
+    try {
+      exists = await collection.indexExists(indexName);
+    } catch (err: any) {
+      // Collection doesn't exist yet — createIndex will create it
+      if (err?.code !== 26) throw err;
+    }
+    if (!exists) {
+      console.log(`[DB] Creating index ${indexName} for collection ${collection.collectionName}...`);
+      await collection.createIndex(indexSpec, options);
+    }
+  }
 }
