@@ -9,6 +9,7 @@ import { env } from "./config/env.js";
 import { Hono } from "hono";
 import { logger } from "hono/logger";
 import { secureHeaders } from "hono/secure-headers";
+import { swaggerUI } from "@hono/swagger-ui";
 import { buildCorsMiddleware } from "./config/cors.js";
 import { getDb } from "./db/connection.js";
 import { ensureIndexes } from "./db/collections.js";
@@ -16,12 +17,25 @@ import { formRoutes } from "./routes/form.routes.js";
 import { adminRoutes } from "./routes/admin.routes.js";
 import { matchingRoutes } from "./routes/matching.routes.js";
 
+const API_PREFIX_V1 = "/api/v1";
+
 const app = new Hono();
 
 // Global middleware
 app.use("*", logger());
 app.use("*", secureHeaders());
 app.use("*", buildCorsMiddleware());
+
+// Docs — dev and test only
+if (env.nodeEnv !== "production") {
+  const specPath = new URL("../docs/openapi.yaml", import.meta.url).pathname;
+  const specText = await Bun.file(specPath).text();
+  const yaml = await import("js-yaml");
+  const spec = yaml.load(specText);
+
+  app.get(API_PREFIX_V1 + "/docs", swaggerUI({ url: API_PREFIX_V1 + "/openapi.json" }));
+  app.get(API_PREFIX_V1 + "/openapi.json", (c) => c.json(spec));
+}
 
 // Health check — no auth, no rate limit
 app.get("/health", (c) => {
@@ -33,13 +47,13 @@ app.get("/health", (c) => {
 });
 
 // API routes
-app.route("/api/v1/form", formRoutes);
-app.route("/api/v1/admin", adminRoutes);
-app.route("/api/v1/matching", matchingRoutes);
+app.route(API_PREFIX_V1 + "/form", formRoutes);
+app.route(API_PREFIX_V1 + "/admin", adminRoutes);
+app.route(API_PREFIX_V1 + "/matching", matchingRoutes);
 
 // Global 404 handler
 app.notFound((c) => {
-  return c.json({ success: false, error: "Route not found" }, 404);
+  return c.json({ success: false, error: "Nothing here" }, 404);
 });
 
 // Global error handler
@@ -65,7 +79,13 @@ async function bootstrap() {
 
 await bootstrap();
 
-console.log(`[SERVER] Listening on http://localhost:${env.port}`);
+const base = env.publicUrl || `http://localhost:${env.port}`;
+
+console.info(`[SERVER] Server started in ${env.nodeEnv} mode and ready to work!`);
+if (env.nodeEnv !== "production") {
+  console.info(`[SERVER] API docs    → ${base}${API_PREFIX_V1}/docs`);
+  console.info(`[SERVER] Health      → ${base}/health`);
+}
 
 // Bun native serve — no @hono/node-server needed
 export default {
