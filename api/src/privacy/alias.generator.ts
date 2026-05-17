@@ -1,6 +1,7 @@
 /**
  * Generates human-friendly two-word codenames for applicants.
- * Format: "{Adjective} {Noun}" e.g. "Blue Falcon", "Silent River"
+ * Format: "{Adjective} {Noun}" or "{Noun} {Adjective}" e.g. "Blue Falcon", "River Silent"
+ * Pool size: 36 adjectives × 36 nouns × 2 orderings = 2 592 unique combinations.
  */
 
 const ADJECTIVES: readonly string[] = [
@@ -97,14 +98,18 @@ export function generateUniqueAlias(
   for (let i = 0; i < maxAttempts; i++) {
     const adjective = pickRandom(ADJECTIVES);
     const noun = pickRandom(NOUNS);
-    const alias = `${adjective} ${noun}`;
+    // Randomly pick either "Adjective Noun" or "Noun Adjective" order,
+    // doubling the pool from 1 296 to 2 592 unique combinations.
+    const alias = Math.random() < 0.5
+      ? `${adjective} ${noun}`
+      : `${noun} ${adjective}`;
 
     if (!existing.has(alias)) {
       return alias;
     }
   }
 
-  // Extremely unlikely given the pool size (36 * 36 = 1296 combinations)
+  // Extremely unlikely given the pool size (36 × 36 × 2 = 2 592 combinations)
   // but fallback to adjective + noun + random suffix
   const adjective = pickRandom(ADJECTIVES);
   const noun = pickRandom(NOUNS);
