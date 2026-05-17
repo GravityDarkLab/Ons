@@ -1,29 +1,43 @@
 #!/usr/bin/env bun
 /**
  * Seeds the questionnaire into MongoDB.
- * Runs inside the api/ workspace so it has access to api dependencies and env.
  *
  * Usage:
- *   bun run seed
- *   # or directly:
- *   bun run scripts/seed.ts
+ *   bun run seed              → uses api/.env.dev (default)
+ *   bun run seed dev          → api/.env.dev
+ *   bun run seed test         → api/.env.test
+ *   bun run seed prod         → api/.env.prod
  *
- * Requires api/.env to be configured (MONGODB_URI etc).
+ * Bun's --env-file flag loads the file before running the seed,
+ * so no manual dotenv parsing is needed.
  */
 
-const apiDir = new URL("../api", import.meta.url).pathname;
+const VALID_ENVS = ["dev", "test", "prod"] as const;
+type Env = (typeof VALID_ENVS)[number];
 
-console.log("[seed] Running questionnaire seed via api workspace…\n");
+const arg = process.argv[2];
+
+if (arg && !VALID_ENVS.includes(arg as Env)) {
+  console.error(`[seed] Unknown environment: "${arg}"`);
+  console.error(`[seed] Valid options: ${VALID_ENVS.join(", ")}`);
+  process.exit(1);
+}
+
+const env: Env = (arg as Env) ?? "dev";
+const envFile = `.env.${env}`;
+const apiDir  = new URL("../api", import.meta.url).pathname;
+
+console.log(`[seed] Environment : ${env}`);
+console.log(`[seed] Env file    : api/${envFile}`);
+console.log(`[seed] Working dir : ${apiDir}\n`);
 
 const proc = Bun.spawn(
-  ["bun", "run", "src/seeds/questionnaire.seed.ts"],
+  ["bun", `--env-file=${envFile}`, "run", "src/seeds/questionnaire.seed.ts"],
   {
     cwd: apiDir,
     stdout: "inherit",
     stderr: "inherit",
-    env: { ...process.env },
   }
 );
 
-const code = await proc.exited;
-process.exit(code);
+process.exit(await proc.exited);
