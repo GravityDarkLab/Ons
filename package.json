@@ -5,9 +5,14 @@
   "workspaces": ["api", "frontend"],
   "scripts": {
     "dev":          "bun run scripts/dev.ts",
-    "dev:api":      "bun --cwd api run dev",
-    "dev:frontend": "bun --cwd frontend run dev",
-    "seed":         "bun run scripts/seed.ts",
+    "dev:api":      "cd api && bun run dev",
+    "dev:frontend": "cd frontend && bun run dev",
+    "seed":                  "bun run scripts/seed.ts",
+    "seed:dev":              "bun run scripts/seed.ts dev",
+    "seed:test":             "bun run scripts/seed.ts test",
+    "seed:prod":             "bun run scripts/seed.ts prod",
+    "seed:applicants":       "bun run scripts/seed-applicants.ts",
+    "seed:applicants:test":  "bun run scripts/seed-applicants.ts test",
     "build":        "bun run --filter '*' build",
     "typecheck":    "bunx tsc --noEmit -p tsconfig.json && bun run --filter '*' typecheck"
   },
