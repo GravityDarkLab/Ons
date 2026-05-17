@@ -33,8 +33,7 @@ updates:
       time: "06:00"
       timezone: "Europe/Berlin"
     cooldown:
-      default-days: 15
-      semver-major-days: 30
+      default-days: 15   # semver-major-days not supported for docker
     labels: ["dependencies", "docker", "automated"]
 
   # ── GitHub Actions ───────────────────────────────────────────────────────
@@ -46,8 +45,7 @@ updates:
       time: "06:00"
       timezone: "Europe/Berlin"
     cooldown:
-      default-days: 15
-      semver-major-days: 30
+      default-days: 15   # semver-major-days not supported for github-actions
     groups:
       github-actions:
         patterns: ["*"]
