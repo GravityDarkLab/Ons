@@ -1,0 +1,41 @@
+version: 2
+
+updates:
+  # ── npm (Bun reads package.json / bun.lock) ─────────────────────────────
+  - package-ecosystem: npm
+    directory: "/"
+    schedule:
+      interval: weekly
+      day: monday
+      time: "06:00"
+      timezone: "UTC"
+    # Group all deps into a single PR so CI runs once, not N times.
+    groups:
+      all-dependencies:
+        patterns: ["*"]
+    # Keep PRs manageable.
+    open-pull-requests-limit: 5
+    labels: ["dependencies", "automated"]
+
+  # ── Docker base images ───────────────────────────────────────────────────
+  - package-ecosystem: docker
+    directory: "/api"
+    schedule:
+      interval: weekly
+      day: monday
+      time: "06:00"
+      timezone: "UTC"
+    labels: ["dependencies", "docker", "automated"]
+
+  # ── GitHub Actions ───────────────────────────────────────────────────────
+  - package-ecosystem: github-actions
+    directory: "/"
+    schedule:
+      interval: weekly
+      day: monday
+      time: "06:00"
+      timezone: "UTC"
+    groups:
+      github-actions:
+        patterns: ["*"]
+    labels: ["dependencies", "github-actions", "automated"]

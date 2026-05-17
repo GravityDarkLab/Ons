@@ -25,8 +25,9 @@ services:
   # ── API ───────────────────────────────────────────────────────────────────
   api:
     build:
-      context:    ./api
-      dockerfile: Dockerfile
+      # Context is the monorepo root so the Dockerfile can access bun.lock.
+      context:    .
+      dockerfile: api/Dockerfile
     restart: unless-stopped
     ports:
       - "3001:3001"
