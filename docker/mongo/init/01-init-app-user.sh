@@ -1,9 +1,9 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-APP_DB="${MONGO_APP_DB:-matching}"
-APP_USER="${MONGO_APP_USERNAME:-matching_app}"
-APP_PASS="${MONGO_APP_PASSWORD:-matching_app_dev_password}"
+APP_DB="${MONGO_APP_DB:-ons}"
+APP_USER="${MONGO_APP_USERNAME:-ons_app}"
+APP_PASS="${MONGO_APP_PASSWORD:-ons_app_dev_password}"
 
 mongosh --quiet <<EOF
 db = db.getSiblingDB("${APP_DB}");

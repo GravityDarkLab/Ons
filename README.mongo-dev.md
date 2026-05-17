@@ -29,7 +29,7 @@ docker compose -f docker-compose-mongo-dev.yml down -v
 App user (recommended for API):
 
 ```txt
-mongodb://matching_app:matching_app_dev_password@localhost:27017/matching?authSource=matching
+mongodb://ons_app:ons_app_dev_password@localhost:27017/ons?authSource=ons
 ```
 
 Root/admin:

@@ -1,6 +1,6 @@
 {
-  "name": "matching",
-  "version": "0.1.0",
+  "name": "ons",
+  "version": "1.0.0",
   "private": true,
   "workspaces": ["api", "frontend"],
   "scripts": {

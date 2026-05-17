@@ -26,7 +26,7 @@ function validateEncryptionKey(key: string): string {
 
 export const env = {
   mongodbUri: required("MONGODB_URI"),
-  mongodbDbName: optional("MONGODB_DB_NAME", "matching"),
+  mongodbDbName: optional("MONGODB_DB_NAME", "ons"),
   encryptionKey: validateEncryptionKey(required("ENCRYPTION_KEY")),
   jwtSecret: required("JWT_SECRET"),
   jwtExpiry: optional("JWT_EXPIRY", "8h"),
