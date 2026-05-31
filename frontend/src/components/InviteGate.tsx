@@ -1,27 +1,19 @@
 import { useState, useEffect, useRef } from 'react'
+import { useTranslation } from 'react-i18next'
+import LanguageSwitcher from './LanguageSwitcher'
 
 const STORAGE_KEY = 'matching_unlocked'
 const VALID_KEY = import.meta.env.VITE_INVITE_KEY ?? ''
 
 function isUnlocked(): boolean {
-  try {
-    return localStorage.getItem(STORAGE_KEY) === 'true'
-  } catch {
-    return false
-  }
+  try { return localStorage.getItem(STORAGE_KEY) === 'true' } catch { return false }
 }
-
 function unlock() {
-  try {
-    localStorage.setItem(STORAGE_KEY, 'true')
-  } catch {}
+  try { localStorage.setItem(STORAGE_KEY, 'true') } catch {}
 }
 
-interface InviteGateProps {
-  children: React.ReactNode
-}
-
-export default function InviteGate({ children }: InviteGateProps) {
+export default function InviteGate({ children }: { children: React.ReactNode }) {
+  const { t } = useTranslation()
   const [unlocked, setUnlocked] = useState(isUnlocked)
   const [value, setValue] = useState('')
   const [error, setError] = useState(false)
@@ -29,17 +21,13 @@ export default function InviteGate({ children }: InviteGateProps) {
   const [loading, setLoading] = useState(false)
   const inputRef = useRef<HTMLInputElement>(null)
 
-  useEffect(() => {
-    if (!unlocked) inputRef.current?.focus()
-  }, [unlocked])
+  useEffect(() => { if (!unlocked) inputRef.current?.focus() }, [unlocked])
 
   if (unlocked) return <>{children}</>
 
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
     setLoading(true)
-
-    // Small artificial delay so it feels deliberate, not instant
     setTimeout(() => {
       if (VALID_KEY && value.trim() === VALID_KEY.trim()) {
         unlock()
@@ -60,56 +48,32 @@ export default function InviteGate({ children }: InviteGateProps) {
   }
 
   return (
-    <div className="min-h-screen bg-bg flex flex-col items-center justify-center px-6 py-16">
+    <div className="min-h-screen bg-bg flex flex-col">
+      <div className="flex justify-end px-6 py-4">
+        <LanguageSwitcher />
+      </div>
+      <div className="flex-1 flex flex-col items-center justify-center px-6 pb-16">
       <div className="w-full max-w-[360px] flex flex-col items-center gap-8">
-
-        {/* Icon */}
         <div className="flex items-center justify-center w-16 h-16 rounded-full bg-accent-light border border-accent/20">
-          <svg
-            className="w-7 h-7 text-accent"
-            xmlns="http://www.w3.org/2000/svg"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="2"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            aria-hidden="true"
-          >
+          <svg className="w-7 h-7 text-accent" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
             <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
             <path d="M7 11V7a5 5 0 0 1 10 0v4" />
           </svg>
         </div>
 
-        {/* Text */}
         <div className="text-center flex flex-col gap-2">
-          <h1 className="text-2xl font-semibold text-primary tracking-tight">
-            Invite only
-          </h1>
-          <p className="text-sm text-muted leading-relaxed">
-            This is a private matchmaking experience.<br />
-            Enter your invite key to continue.
-          </p>
+          <h1 className="text-2xl font-semibold text-primary tracking-tight">{t('invite.title')}</h1>
+          <p className="text-sm text-muted leading-relaxed">{t('invite.subtitle')}</p>
         </div>
 
-        {/* Form */}
-        <form
-          onSubmit={handleSubmit}
-          className="w-full flex flex-col gap-3"
-          noValidate
-        >
-          <div
-            className={[
-              'transition-all duration-150',
-              shake ? 'animate-shake' : '',
-            ].join(' ')}
-          >
+        <form onSubmit={handleSubmit} className="w-full flex flex-col gap-3" noValidate>
+          <div className={['transition-all duration-150', shake ? 'animate-shake' : ''].join(' ')}>
             <input
               ref={inputRef}
               type="text"
               value={value}
               onChange={handleChange}
-              placeholder="Enter invite key"
+              placeholder={t('invite.placeholder')}
               autoComplete="off"
               autoCorrect="off"
               autoCapitalize="none"
@@ -124,11 +88,7 @@ export default function InviteGate({ children }: InviteGateProps) {
                   : 'border-border focus:border-accent focus:ring-2 focus:ring-accent/20',
               ].join(' ')}
             />
-            {error && (
-              <p className="mt-2 text-xs text-error text-center font-medium">
-                Invalid key. Check your invite and try again.
-              </p>
-            )}
+            {error && <p className="mt-2 text-xs text-error text-center font-medium">{t('invite.error')}</p>}
           </div>
 
           <button
@@ -146,32 +106,22 @@ export default function InviteGate({ children }: InviteGateProps) {
           >
             {loading ? (
               <>
-                <svg
-                  className="h-4 w-4 animate-spin"
-                  xmlns="http://www.w3.org/2000/svg"
-                  fill="none"
-                  viewBox="0 0 24 24"
-                  aria-hidden="true"
-                >
+                <svg className="h-4 w-4 animate-spin" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" aria-hidden="true">
                   <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
                   <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
                 </svg>
-                Verifying…
+                {t('invite.verifying')}
               </>
-            ) : (
-              'Unlock'
-            )}
+            ) : t('invite.unlock')}
           </button>
         </form>
 
-        {/* Footer */}
         <p className="text-xs text-muted text-center">
-          Don't have an invite?{' '}
-          <span className="text-primary font-medium">
-            Ask a friend who's already in.
-          </span>
+          {t('invite.noInvite')}{' '}
+          <span className="text-primary font-medium">{t('invite.noInviteLink')}</span>
         </p>
 
+      </div>
       </div>
     </div>
   )

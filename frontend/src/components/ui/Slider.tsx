@@ -1,3 +1,5 @@
+import { useTranslation } from 'react-i18next'
+
 interface SliderProps {
   label?: string
   value: number
@@ -19,7 +21,28 @@ export default function Slider({
   highLabel = 'very important',
   error,
 }: SliderProps) {
+  const { i18n } = useTranslation()
+  const isRTL = i18n.dir() === 'rtl'
+
   const percentage = ((value - min) / (max - min)) * 100
+
+  // In RTL the user expects dragging RIGHT → lower value, dragging LEFT → higher value.
+  // We keep dir="ltr" on the native input for consistent cross-browser behaviour, but
+  // invert the value fed to the input so drag direction matches the Arabic reading order.
+  const nativeValue  = isRTL ? max + min - value : value
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const v = Number(e.target.value)
+    onChange(isRTL ? max + min - v : v)
+  }
+
+  // Visual positioning: thumb and fill always anchored to inline-start
+  const thumbStyle = isRTL
+    ? { right: `calc(${percentage}% - 10px)`, left: 'auto' }
+    : { left:  `calc(${percentage}% - 10px)`, right: 'auto' }
+
+  const fillStyle = isRTL
+    ? { width: `${percentage}%`, marginLeft: 'auto' }
+    : { width: `${percentage}%` }
 
   return (
     <div className="flex flex-col gap-3">
@@ -29,32 +52,40 @@ export default function Slider({
           <span className="text-sm font-semibold text-accent tabular-nums">{value} / {max}</span>
         </div>
       )}
+
       <div className="relative py-2">
         <div className="h-2 rounded-full bg-border overflow-hidden">
           <div
             className="h-full rounded-full bg-accent transition-all duration-150"
-            style={{ width: `${percentage}%` }}
+            style={fillStyle}
           />
         </div>
+
+        {/* Native range — forced LTR; value is inverted for RTL so drag direction is natural */}
         <input
           type="range"
+          dir="ltr"
           min={min}
           max={max}
-          value={value}
-          onChange={(e) => onChange(Number(e.target.value))}
+          value={nativeValue}
+          onChange={handleChange}
           className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
           aria-label={label}
         />
-        {/* Thumb indicator */}
+
+        {/* Custom thumb */}
         <div
           className="absolute top-1/2 -translate-y-1/2 w-5 h-5 rounded-full bg-accent shadow-md border-2 border-white pointer-events-none transition-all duration-150"
-          style={{ left: `calc(${percentage}% - 10px)` }}
+          style={thumbStyle}
         />
       </div>
+
+      {/* Low / high labels — flex order naturally flips in RTL */}
       <div className="flex justify-between">
         <span className="text-xs text-muted">{lowLabel}</span>
         <span className="text-xs text-muted">{highLabel}</span>
       </div>
+
       {/* Tick marks */}
       <div className="flex justify-between px-0.5 -mt-2">
         {Array.from({ length: max - min + 1 }, (_, i) => i + min).map((tick) => (
@@ -71,6 +102,7 @@ export default function Slider({
           </button>
         ))}
       </div>
+
       {error && <p className="text-xs text-error font-medium">{error}</p>}
     </div>
   )

@@ -21,17 +21,15 @@ export default function Input({
   return (
     <div className="flex flex-col gap-1.5">
       {label && (
-        <label
-          htmlFor={inputId}
-          className="text-sm font-medium text-primary"
-        >
+        <label htmlFor={inputId} className="text-sm font-medium text-primary">
           {label}
-          {rest.required && <span className="ml-1 text-accent">*</span>}
+          {rest.required && <span className="ms-1 text-accent">*</span>}
         </label>
       )}
       <div className="relative flex items-center">
         {prefix && (
-          <span className="absolute left-4 text-muted font-medium select-none pointer-events-none">
+          // Use start-4 (logical property) so @ sits at inline-start in both LTR and RTL
+          <span className="absolute start-4 text-muted font-medium select-none pointer-events-none">
             {prefix}
           </span>
         )}
@@ -42,10 +40,8 @@ export default function Input({
             'placeholder:text-muted',
             'transition-all duration-200',
             'focus:outline-none focus:ring-2 focus:ring-accent/30 focus:border-accent',
-            error
-              ? 'border-error focus:ring-error/30 focus:border-error'
-              : 'border-border',
-            prefix ? 'pl-8' : '',
+            error ? 'border-error focus:ring-error/30 focus:border-error' : 'border-border',
+            prefix ? 'ps-8' : '',  // padding-inline-start: logical property
             className,
           ]
             .filter(Boolean)
@@ -53,12 +49,8 @@ export default function Input({
           {...rest}
         />
       </div>
-      {hint && !error && (
-        <p className="text-xs text-muted leading-relaxed">{hint}</p>
-      )}
-      {error && (
-        <p className="text-xs text-error font-medium">{error}</p>
-      )}
+      {hint && !error && <p className="text-xs text-muted leading-relaxed">{hint}</p>}
+      {error && <p className="text-xs text-error font-medium">{error}</p>}
     </div>
   )
 }
