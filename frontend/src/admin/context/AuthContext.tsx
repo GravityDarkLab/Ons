@@ -1,29 +1,37 @@
-import { createContext, useContext, useState, useCallback, type ReactNode } from 'react'
-import { hasValidToken, saveToken, clearToken } from '../api/client'
+import { createContext, useContext, useState, useEffect, useCallback, type ReactNode } from 'react'
+import { getMe, adminLogout } from '../api/client'
 
 interface AuthState {
   isAuthenticated: boolean
-  login: (token: string) => void
-  logout: () => void
+  isLoading: boolean
+  login: () => void
+  logout: () => Promise<void>
 }
 
 const AuthContext = createContext<AuthState | null>(null)
 
 export function AuthProvider({ children }: { children: ReactNode }) {
-  const [isAuthenticated, setIsAuthenticated] = useState(hasValidToken)
+  const [isAuthenticated, setIsAuthenticated] = useState(false)
+  const [isLoading, setIsLoading] = useState(true)
 
-  const login = useCallback((token: string) => {
-    saveToken(token)
-    setIsAuthenticated(true)
+  // On mount, probe the /me endpoint — if the HttpOnly cookie is valid the
+  // server returns 200; a 401 means no session (cookie absent or expired).
+  useEffect(() => {
+    getMe()
+      .then(() => setIsAuthenticated(true))
+      .catch(() => setIsAuthenticated(false))
+      .finally(() => setIsLoading(false))
   }, [])
 
-  const logout = useCallback(() => {
-    clearToken()
+  const login = useCallback(() => setIsAuthenticated(true), [])
+
+  const logout = useCallback(async () => {
+    await adminLogout()
     setIsAuthenticated(false)
   }, [])
 
   return (
-    <AuthContext.Provider value={{ isAuthenticated, login, logout }}>
+    <AuthContext.Provider value={{ isAuthenticated, isLoading, login, logout }}>
       {children}
     </AuthContext.Provider>
   )

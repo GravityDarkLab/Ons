@@ -1,38 +1,14 @@
 import type { Applicant, AuditLog, MatchCandidate, MatchingRun, Paginated } from '../types'
 
 const BASE = import.meta.env.VITE_API_URL ?? 'http://localhost:3001'
-const TOKEN_KEY = 'admin_token'
 
-export function getToken(): string | null {
-  return localStorage.getItem(TOKEN_KEY)
-}
-
-export function saveToken(token: string): void {
-  localStorage.setItem(TOKEN_KEY, token)
-}
-
-export function clearToken(): void {
-  localStorage.removeItem(TOKEN_KEY)
-}
-
-export function hasValidToken(): boolean {
-  const token = getToken()
-  if (!token) return false
-  try {
-    const payload = JSON.parse(atob(token.split('.')[1]))
-    return typeof payload.exp === 'number' && payload.exp * 1000 > Date.now()
-  } catch {
-    return false
-  }
-}
-
+// All requests include credentials so the browser sends the HttpOnly session cookie.
 async function request<T>(path: string, opts: RequestInit = {}): Promise<T> {
-  const token = getToken()
   const res = await fetch(`${BASE}${path}`, {
     ...opts,
+    credentials: 'include',
     headers: {
       'Content-Type': 'application/json',
-      ...(token ? { Authorization: `Bearer ${token}` } : {}),
       ...(opts.headers ?? {}),
     },
   })
@@ -40,7 +16,6 @@ async function request<T>(path: string, opts: RequestInit = {}): Promise<T> {
   const body = await res.json()
 
   if (res.status === 401) {
-    clearToken()
     window.location.replace('/admin/login')
     throw new Error('Session expired')
   }
@@ -51,17 +26,30 @@ async function request<T>(path: string, opts: RequestInit = {}): Promise<T> {
 
 // ── Auth ──────────────────────────────────────────────────────────────────────
 
-export async function adminLogin(username: string, password: string): Promise<string> {
-  // Bypass the generic request() so a 401 here means wrong credentials,
-  // not session expiry — avoiding the unwanted redirect to /admin/login.
+export async function adminLogin(username: string, password: string): Promise<void> {
+  // Raw fetch — a 401 here means wrong credentials, not an expired session,
+  // so we must not trigger the redirect in request().
   const res = await fetch(`${BASE}/api/v1/admin/login`, {
     method: 'POST',
+    credentials: 'include',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ username, password }),
   })
   const body = await res.json()
   if (!body.success) throw new Error(body.error ?? 'Invalid credentials')
-  return body.token as string
+  // Token is delivered as an HttpOnly cookie — nothing to store in JS.
+}
+
+export async function adminLogout(): Promise<void> {
+  await fetch(`${BASE}/api/v1/admin/logout`, {
+    method: 'POST',
+    credentials: 'include',
+  })
+}
+
+export async function getMe(): Promise<{ adminId: string; adminRole: string }> {
+  const res = await request<{ data: { adminId: string; adminRole: string } }>('/api/v1/admin/me')
+  return res.data
 }
 
 // ── Applicants ────────────────────────────────────────────────────────────────
@@ -116,7 +104,7 @@ export async function runMatching(algorithm: string): Promise<MatchingRun> {
 export async function fetchCandidates(
   applicantId: string,
   top = 10,
-  algorithm = 'baseline',
+  algorithm = 'embedding-cosine',
 ): Promise<MatchCandidate[]> {
   const params = new URLSearchParams({ top: String(top), algorithm })
   const res = await request<{ candidates: MatchCandidate[] }>(

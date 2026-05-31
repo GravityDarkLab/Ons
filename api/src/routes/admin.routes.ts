@@ -3,6 +3,8 @@ import { zValidator } from "@hono/zod-validator";
 import { adminLoginSchema, createQuestionnaireSchema } from "../validators/admin.validator.js";
 import {
   login,
+  logout,
+  me,
   getApplicants,
   getApplicant,
   getApplicantIdentityHandler,
@@ -35,6 +37,10 @@ adminRoutes.post(
   }),
   login
 );
+
+// Auth utility routes
+adminRoutes.post("/logout", logout);
+adminRoutes.get("/me", requireAdmin, me);
 
 // Protected admin routes
 adminRoutes.get("/applicants", requireAdmin, getApplicants);

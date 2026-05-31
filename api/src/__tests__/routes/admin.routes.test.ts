@@ -98,13 +98,16 @@ beforeEach(() => {
 // ── POST /admin/login ─────────────────────────────────────────────────────────
 
 describe("POST /admin/login", () => {
-  it("returns 200 with a token on valid credentials", async () => {
+  it("returns 200 and sets an HttpOnly cookie on valid credentials", async () => {
     mockAdminLogin.mockResolvedValue("jwt.token.here");
     const res = await post("/admin/login", { username: "admin", password: "secret" });
     expect(res.status).toBe(200);
     const body = await res.json() as any;
     expect(body.success).toBe(true);
-    expect(typeof body.token).toBe("string");
+    expect(body.token).toBeUndefined();
+    const cookie = res.headers.get("set-cookie") ?? "";
+    expect(cookie).toContain("admin_token=");
+    expect(cookie).toContain("HttpOnly");
   });
 
   it("returns 401 on invalid credentials", async () => {

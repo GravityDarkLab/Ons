@@ -1,4 +1,5 @@
 import { Context } from "hono";
+import { setCookie, deleteCookie } from "hono/cookie";
 import { ObjectId } from "mongodb";
 import {
   adminLogin,
@@ -10,7 +11,10 @@ import {
   createQuestionnaire,
 } from "../services/admin.service.js";
 import { writeAuditLog, extractAuditContext } from "../middleware/audit.middleware.js";
+import { COOKIE_NAME, COOKIE_MAX_AGE } from "../middleware/auth.middleware.js";
+import { env } from "../config/env.js";
 import type { ApplicantStatus } from "../models/applicant.model.js";
+import type { AdminRole } from "../models/admin.model.js";
 import type { CreateQuestionnaireInput } from "../validators/admin.validator.js";
 
 /**
@@ -28,13 +32,41 @@ export async function login(c: Context): Promise<Response> {
     return c.json({ success: false, error: "Invalid credentials" }, 401);
   }
 
-  // Audit login
-  const auditCtx = extractAuditContext(username, c);
-  await writeAuditLog(auditCtx, "ADMIN_LOGIN", {
-    metadata: { username },
+  setCookie(c, COOKIE_NAME, token, {
+    httpOnly: true,
+    secure: env.nodeEnv === "production",
+    sameSite: "Lax",
+    path: "/api/v1/admin",
+    maxAge: COOKIE_MAX_AGE,
   });
 
-  return c.json({ success: true, token });
+  const auditCtx = extractAuditContext(username, c);
+  await writeAuditLog(auditCtx, "ADMIN_LOGIN", { metadata: { username } });
+
+  return c.json({ success: true });
+}
+
+/**
+ * POST /api/v1/admin/logout
+ */
+export async function logout(c: Context): Promise<Response> {
+  deleteCookie(c, COOKIE_NAME, { path: "/api/v1/admin" });
+  return c.json({ success: true });
+}
+
+/**
+ * GET /api/v1/admin/me
+ * Returns the current admin's identity from the verified JWT claims.
+ * Used by the frontend to check session validity on page load.
+ */
+export async function me(c: Context): Promise<Response> {
+  return c.json({
+    success: true,
+    data: {
+      adminId:   c.get("adminId")   as string,
+      adminRole: c.get("adminRole") as AdminRole,
+    },
+  });
 }
 
 /**

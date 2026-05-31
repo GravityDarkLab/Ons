@@ -21,8 +21,8 @@ export function Login() {
     setError('')
     setLoading(true)
     try {
-      const token = await adminLogin(username, password)
-      login(token)
+      await adminLogin(username, password)
+      login()
       navigate('/admin')
     } catch (err) {
       setError(err instanceof Error ? err.message : t('admin.login.invalidCredentials'))
