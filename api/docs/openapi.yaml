@@ -741,7 +741,7 @@ paths:
                       version: "1.0.0"
                       name: "Matching Form v1"
                       isActive: true
-                      submissionKey: "a3f9d2c1e4b7089f..."
+                      submissionKey: "<64-hex-hmac-key>"
                       sections:
                         - id: "identity"
                           title: "Your Identity"
