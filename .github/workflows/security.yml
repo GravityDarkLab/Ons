@@ -5,98 +5,79 @@ on:
     branches: ["**"]
   pull_request:
     branches: ["**"]
-  # Full scan every Monday at 06:00 UTC — catches newly-disclosed CVEs
-  # even when no code was pushed.
   schedule:
-    - cron: "0 6 * * 1"
+    - cron: "0 6 * * 1" # every Monday 06:00 UTC — catches newly-disclosed CVEs
 
 env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
 
 concurrency:
-  group: security-${{ github.workflow }}-${{ github.ref }}
+  group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
 permissions:
   contents: read
-  # Required to upload SARIF results to the Security tab.
   security-events: write
 
 jobs:
   # ── Secret detection ────────────────────────────────────────────────────────
+
   gitleaks:
     name: Secret scan (Gitleaks)
     runs-on: ubuntu-latest
     permissions:
       contents: read
-
     steps:
-      - name: Checkout (full history)
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
         with:
-          fetch-depth: 0
-
-      - name: Gitleaks — full source scan
-        uses: gitleaks/gitleaks-action@v2
+          fetch-depth: 0 # full history — detect secrets in any commit
+      - uses: gitleaks/gitleaks-action@v2
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          # "detect" scans all files in the working tree, not just the
-          # commits in the current push delta.
           GITLEAKS_SCAN_MODE: detect
 
   # ── SAST ────────────────────────────────────────────────────────────────────
+
   codeql:
     name: SAST (CodeQL)
     runs-on: ubuntu-latest
     permissions:
       contents: read
       security-events: write
-
+      actions: read
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Initialize CodeQL
-        uses: github/codeql-action/init@v4
+      - uses: actions/checkout@v4
+      - uses: github/codeql-action/init@v4
         with:
           languages: javascript-typescript
-          # Focus on injection, path-traversal, auth bypass, etc.
           queries: security-extended
-
-      # CodeQL auto-builds TypeScript projects — no explicit build step needed.
-      - name: Perform analysis
-        uses: github/codeql-action/analyze@v4
+      - uses: github/codeql-action/analyze@v4
         with:
           category: /language:javascript-typescript
 
   # ── Dependency vulnerability scan ───────────────────────────────────────────
-  trivy-fs:
+
+  trivy:
     name: Dependency scan (Trivy)
     runs-on: ubuntu-latest
     permissions:
       contents: read
       security-events: write
-
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Trivy — filesystem scan (HIGH + CRITICAL CVEs)
-        uses: aquasecurity/trivy-action@master
+      - uses: actions/checkout@v4
+      - name: Scan for HIGH/CRITICAL CVEs
+        uses: aquasecurity/trivy-action@0.30.0
         with:
           scan-type: fs
           scan-ref: .
           severity: HIGH,CRITICAL
           format: sarif
-          output: trivy-fs.sarif
-          # Fail the job if any HIGH or CRITICAL vuln is found.
+          output: trivy.sarif
           exit-code: "1"
           ignore-unfixed: true
-
-      - name: Upload Trivy SARIF to Security tab
-        # Always upload so findings are visible even when the job fails.
+      - name: Upload results to Security tab
         if: always()
         uses: github/codeql-action/upload-sarif@v4
         with:
-          sarif_file: trivy-fs.sarif
-          category: trivy-fs
+          sarif_file: trivy.sarif
+          category: trivy
