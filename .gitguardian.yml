@@ -1,0 +1,28 @@
+version: 2
+
+# Allowlist for ggshield / GitGuardian GitHub App.
+# All entries below are dev-only defaults or test fixtures — never real credentials.
+ignore-secrets:
+  # ── Docker dev defaults ──────────────────────────────────────────────────────
+  - match: "matching_app_dev_password"
+    name: "legacy dev default MongoDB app password (docker-compose)"
+  - match: "ons_app_dev_password"
+    name: "dev default MongoDB app password (docker-compose)"
+  - match: "devadmin_password"
+    name: "dev default mongo-express password (docker-compose)"
+
+  # ── Test fixtures (api/src/__tests__/setup.ts) ───────────────────────────────
+  - match: "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+    name: "test-only AES-256 key placeholder (64 repeated chars, not a real key)"
+  - match: "super-secret-jwt-key-for-testing-only"
+    name: "test-only JWT secret"
+  - match: "form-secret-hex-string-for-testing-purposes-only-64chars-padding"
+    name: "test-only HMAC form secret"
+
+  # ── Staging example placeholders (.env.example files) ───────────────────────
+  - match: "changeme_staging_app"
+    name: "staging env example placeholder"
+  - match: "changeme_express"
+    name: "staging env example placeholder"
+  - match: "changeme_staging"
+    name: "staging env example placeholder"
