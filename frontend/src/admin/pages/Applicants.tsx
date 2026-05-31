@@ -1,0 +1,136 @@
+import { useEffect, useState } from 'react'
+import { Link, useSearchParams } from 'react-router-dom'
+import { useTranslation } from 'react-i18next'
+import { fetchApplicants } from '../api/client'
+import type { Applicant, ApplicantStatus } from '../types'
+
+const STATUS_BADGE: Record<ApplicantStatus, string> = {
+  active:    'bg-success-light text-success',
+  matched:   'bg-accent-light text-accent',
+  inactive:  'bg-border text-muted',
+  withdrawn: 'bg-error-light text-error',
+}
+
+const LIMIT = 20
+
+export function Applicants() {
+  const { t } = useTranslation()
+  const [searchParams, setSearchParams] = useSearchParams()
+  const status = searchParams.get('status') ?? ''
+  const page   = parseInt(searchParams.get('page') ?? '1', 10)
+
+  const [applicants, setApplicants] = useState<Applicant[]>([])
+  const [total, setTotal]           = useState(0)
+  const [totalPages, setTotalPages] = useState(1)
+  const [loading, setLoading]       = useState(true)
+
+  const FILTERS = [
+    { value: '',           label: t('admin.applicants.all') },
+    { value: 'active',    label: t('admin.applicants.active') },
+    { value: 'matched',   label: t('admin.applicants.matched') },
+    { value: 'inactive',  label: t('admin.applicants.inactive') },
+    { value: 'withdrawn', label: t('admin.applicants.withdrawn') },
+  ]
+
+  useEffect(() => {
+    setLoading(true)
+    fetchApplicants(page, LIMIT, status || undefined)
+      .then(res => { setApplicants(res.data); setTotal(res.total); setTotalPages(res.totalPages) })
+      .finally(() => setLoading(false))
+  }, [page, status])
+
+  function setFilter(s: string) { setSearchParams(s ? { status: s } : {}) }
+  function setPage(p: number) {
+    setSearchParams(prev => { const n = new URLSearchParams(prev); n.set('page', String(p)); return n })
+  }
+
+  return (
+    <div className="space-y-6">
+      <div>
+        <h1 className="text-xl font-semibold text-primary">{t('admin.applicants.title')}</h1>
+        <p className="text-sm text-muted mt-0.5">{loading ? '—' : t('admin.applicants.total', { count: total })}</p>
+      </div>
+
+      <div className="flex gap-1 bg-surface border border-border rounded-xl p-1 w-fit">
+        {FILTERS.map(f => (
+          <button key={f.value} onClick={() => setFilter(f.value)}
+            className={`px-3 py-1.5 rounded-lg text-sm transition-colors ${
+              status === f.value ? 'bg-primary text-white font-medium' : 'text-muted hover:text-primary'
+            }`}>
+            {f.label}
+          </button>
+        ))}
+      </div>
+
+      <div className="bg-surface border border-border rounded-2xl overflow-hidden">
+        <table className="w-full text-sm">
+          <thead>
+            <tr className="border-b border-border">
+              <Th>{t('admin.applicants.colAlias')}</Th>
+              <Th>{t('admin.applicants.colStatus')}</Th>
+              <Th>{t('admin.applicants.colLocation')}</Th>
+              <Th>{t('admin.applicants.colAge')}</Th>
+              <Th>{t('admin.applicants.colSubmitted')}</Th>
+              <Th />
+            </tr>
+          </thead>
+          <tbody>
+            {loading ? (
+              Array.from({ length: 6 }).map((_, i) => (
+                <tr key={i} className="border-b border-border last:border-0 animate-pulse">
+                  {Array.from({ length: 6 }).map((_, j) => (
+                    <td key={j} className="px-4 py-3.5"><div className="h-4 bg-border rounded w-20" /></td>
+                  ))}
+                </tr>
+              ))
+            ) : applicants.length === 0 ? (
+              <tr><td colSpan={6} className="px-4 py-10 text-center text-sm text-muted">{t('admin.applicants.empty')}</td></tr>
+            ) : (
+              applicants.map(a => (
+                <tr key={a.id} className="border-b border-border last:border-0 hover:bg-bg transition-colors">
+                  <td className="px-4 py-3.5 font-mono text-xs text-primary">{a.alias}</td>
+                  <td className="px-4 py-3.5">
+                    <span className={`inline-flex px-2 py-0.5 rounded-full text-xs font-medium ${STATUS_BADGE[a.status]}`}>
+                      {t(`admin.applicants.${a.status}`)}
+                    </span>
+                  </td>
+                  <td className="px-4 py-3.5 text-muted">{String(a.answers.location ?? '—')}</td>
+                  <td className="px-4 py-3.5 text-muted">{String(a.answers.age ?? '—')}</td>
+                  <td className="px-4 py-3.5 text-muted">{new Date(a.createdAt).toLocaleDateString()}</td>
+                  <td className="px-4 py-3.5 text-right">
+                    <Link to={`/admin/applicants/${a.id}`} className="text-xs font-medium text-accent hover:underline">
+                      {t('admin.applicants.view')}
+                    </Link>
+                  </td>
+                </tr>
+              ))
+            )}
+          </tbody>
+        </table>
+      </div>
+
+      {totalPages > 1 && (
+        <div className="flex items-center justify-between text-sm">
+          <span className="text-muted">{t('admin.applicants.page', { current: page, total: totalPages })}</span>
+          <div className="flex gap-2">
+            <PageButton onClick={() => setPage(page - 1)} disabled={page <= 1}>{t('admin.applicants.prev')}</PageButton>
+            <PageButton onClick={() => setPage(page + 1)} disabled={page >= totalPages}>{t('admin.applicants.next')}</PageButton>
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}
+
+function Th({ children }: { children?: React.ReactNode }) {
+  return <th className="px-4 py-3 text-left text-xs font-medium text-muted uppercase tracking-wider">{children}</th>
+}
+
+function PageButton({ children, onClick, disabled }: { children: React.ReactNode; onClick: () => void; disabled: boolean }) {
+  return (
+    <button onClick={onClick} disabled={disabled}
+      className="px-3 py-1.5 rounded-lg border border-border text-sm disabled:opacity-40 hover:bg-bg transition-colors">
+      {children}
+    </button>
+  )
+}

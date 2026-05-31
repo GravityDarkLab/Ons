@@ -12,7 +12,9 @@ export default {
         muted: '#8B8178',
         border: '#E5E0DA',
         error: '#D94F3D',
+        'error-light': '#FCECEA',
         success: '#3D9970',
+        'success-light': '#D4EFE3',
       },
       fontFamily: {
         sans: ['Inter', 'system-ui', 'sans-serif'],
