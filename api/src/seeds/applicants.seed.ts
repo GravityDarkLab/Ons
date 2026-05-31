@@ -231,16 +231,24 @@ const FIRST_NAMES = [
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
+// Use crypto.getRandomValues() for all randomness — avoids CodeQL's
+// "insecure randomness" finding and is good practice even for seed data.
+function randomFloat(): number {
+  const buf = new Uint32Array(1);
+  crypto.getRandomValues(buf);
+  return buf[0] / 0x100000000;
+}
+
 function pick<T>(arr: readonly T[]): T {
-  return arr[Math.floor(Math.random() * arr.length)];
+  return arr[Math.floor(randomFloat() * arr.length)];
 }
 
 function pickBool(trueChance = 0.5): boolean {
-  return Math.random() < trueChance;
+  return randomFloat() < trueChance;
 }
 
 function randInt(min: number, max: number): number {
-  return Math.floor(Math.random() * (max - min + 1)) + min;
+  return Math.floor(randomFloat() * (max - min + 1)) + min;
 }
 
 function fakeInstagram(): string {
@@ -251,15 +259,14 @@ function fakeInstagram(): string {
 }
 
 function randomCreatedAt(): Date {
-  // Spread submissions over the last 90 days
-  const msAgo = Math.random() * 90 * 24 * 60 * 60 * 1000;
+  const msAgo = randomFloat() * 90 * 24 * 60 * 60 * 1000;
   return new Date(Date.now() - msAgo);
 }
 
 type ApplicantStatus = "active" | "inactive" | "matched" | "withdrawn";
 
 function randomStatus(): ApplicantStatus {
-  const r = Math.random();
+  const r = randomFloat();
   if (r < 0.70) return "active";
   if (r < 0.85) return "matched";
   if (r < 0.93) return "inactive";

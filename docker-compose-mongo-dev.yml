@@ -15,7 +15,7 @@ services:
       # Passed through to the init script (01-init-app-user.sh)
       MONGO_APP_DB: ${MONGO_APP_DB:-ons}
       MONGO_APP_USERNAME: ${MONGO_APP_USERNAME:-ons_app}
-      MONGO_APP_PASSWORD: ${MONGO_APP_PASSWORD:-ons_app_dev_password}
+      MONGO_APP_PASSWORD: ${MONGO_APP_PASSWORD:-ons_app_dev_password} # gitguardian:ignore — dev default, override via --env-file
     volumes:
       - mongo_data_dev:/data/db
       - ./docker/mongo/init:/docker-entrypoint-initdb.d:ro
@@ -42,7 +42,7 @@ services:
       ME_CONFIG_MONGODB_URL: mongodb://${MONGO_ROOT_USERNAME:-root}:${MONGO_ROOT_PASSWORD:-root}@mongo:27017/admin?authSource=admin
       ME_CONFIG_BASICAUTH_ENABLED: "true"
       ME_CONFIG_BASICAUTH_USERNAME: ${MONGO_EXPRESS_USERNAME:-devadmin}
-      ME_CONFIG_BASICAUTH_PASSWORD: ${MONGO_EXPRESS_PASSWORD:-devadmin}
+      ME_CONFIG_BASICAUTH_PASSWORD: ${MONGO_EXPRESS_PASSWORD:-devadmin} # gitguardian:ignore — dev default, override via --env-file
       ME_CONFIG_OPTIONS_EDITORTHEME: default
     depends_on:
       mongo:
