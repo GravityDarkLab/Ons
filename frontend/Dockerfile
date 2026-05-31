@@ -2,8 +2,9 @@
 FROM oven/bun:1.3-alpine AS builder
 WORKDIR /app
 
-COPY package.json ./
-RUN bun install
+COPY package.json bun.lock ./
+# --frozen enforces the lockfile (bun.lock TOML format, Bun ≥ 1.1)
+RUN bun install --frozen
 
 COPY . .
 
