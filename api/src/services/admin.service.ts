@@ -4,12 +4,12 @@ import {
   getApplicantsCollection,
   getAuditLogsCollection,
   getQuestionnairesCollection,
+  getAdminsCollection,
 } from "../db/collections.js";
 import type { ApplicantDoc, ApplicantStatus } from "../models/applicant.model.js";
 import type { AuditLogDoc } from "../models/auditLog.model.js";
 import type { CreateQuestionnaireInput } from "../validators/admin.validator.js";
 import { resolveIdentityById } from "../privacy/identity.service.js";
-import { env } from "../config/env.js";
 import { signAdminToken } from "../middleware/auth.middleware.js";
 
 export interface PaginatedResult<T> {
@@ -21,17 +21,23 @@ export interface PaginatedResult<T> {
 }
 
 /**
- * Validates admin credentials and returns a signed JWT.
- * Returns null if credentials are invalid.
+ * Validates admin credentials against the admins collection.
+ * Returns a signed JWT on success, null on invalid credentials.
  */
 export async function adminLogin(
   username: string,
   password: string
 ): Promise<string | null> {
-  if (username !== env.adminUsername || password !== env.adminPassword) {
-    return null;
-  }
-  return signAdminToken(username);
+  const db  = await getDb();
+  const col = getAdminsCollection(db);
+
+  const admin = await col.findOne({ username });
+  if (!admin) return null;
+
+  const valid = await Bun.password.verify(password, admin.passwordHash);
+  if (!valid) return null;
+
+  return signAdminToken(admin._id.toHexString(), admin.role);
 }
 
 /**

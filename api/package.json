@@ -4,10 +4,14 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "bun run --watch src/server.ts",
-    "start": "bun run src/server.ts",
+    "dev":      "bun --env-file=.env.dev  run --watch src/server.ts",
+    "dev:test": "bun --env-file=.env.test run --watch src/server.ts",
+    "dev:prod": "bun --env-file=.env.prod run --watch src/server.ts",
+    "start":    "bun --env-file=.env      run         src/server.ts",
     "seed": "bun run src/seeds/questionnaire.seed.ts",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "test": "bun test --preload ./src/__tests__/setup.ts ./src/__tests__",
+    "test:watch": "bun test --watch --preload ./src/__tests__/setup.ts ./src/__tests__"
   },
   "dependencies": {
     "@hono/swagger-ui": "^0.6.1",

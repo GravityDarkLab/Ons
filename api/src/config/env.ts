@@ -30,8 +30,6 @@ export const env = {
   encryptionKey: validateEncryptionKey(required("ENCRYPTION_KEY")),
   jwtSecret: required("JWT_SECRET"),
   jwtExpiry: optional("JWT_EXPIRY", "8h"),
-  adminUsername: required("ADMIN_USERNAME"),
-  adminPassword: required("ADMIN_PASSWORD"),
   allowedOrigins: optional("ALLOWED_ORIGINS", "http://localhost:3000")
     .split(",")
     .map((o) => o.trim())

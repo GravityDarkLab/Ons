@@ -4,13 +4,15 @@ import type { ApplicantDoc } from "../models/applicant.model.js";
 import type { IdentityDoc } from "../models/identity.model.js";
 import type { AuditLogDoc } from "../models/auditLog.model.js";
 import type { EmbeddingDoc } from "../models/embedding.model.js";
+import type { AdminDoc } from "../models/admin.model.js";
 
 export const COLLECTION_NAMES = {
   questionnaires: "questionnaires",
-  applicants: "applicants",
-  identities: "identities",
-  auditLogs: "audit_logs",
-  embeddings: "embeddings",
+  applicants:     "applicants",
+  identities:     "identities",
+  auditLogs:      "audit_logs",
+  embeddings:     "embeddings",
+  admins:         "admins",
 } as const;
 
 export function getQuestionnairesCollection(
@@ -33,6 +35,10 @@ export function getAuditLogsCollection(db: Db): Collection<AuditLogDoc> {
 
 export function getEmbeddingsCollection(db: Db): Collection<EmbeddingDoc> {
   return db.collection<EmbeddingDoc>(COLLECTION_NAMES.embeddings);
+}
+
+export function getAdminsCollection(db: Db): Collection<AdminDoc> {
+  return db.collection<AdminDoc>(COLLECTION_NAMES.admins);
 }
 
 /**
@@ -66,6 +72,9 @@ export async function ensureIndexes(db: Db): Promise<void> {
   const embeddings = getEmbeddingsCollection(db);
   await _createIndexIfNotExists(embeddings, { applicantId: 1 }, { unique: true });
   await _createIndexIfNotExists(embeddings, { model: 1 });
+
+  const admins = getAdminsCollection(db);
+  await _createIndexIfNotExists(admins, { username: 1 }, { unique: true });
 
   console.info("[DB] Indexes verification done");
 
