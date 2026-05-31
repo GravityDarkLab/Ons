@@ -1,20 +1,21 @@
-name: matching-mongo-dev
+name: ons-mongo-dev
 
 services:
   mongo:
     image: mongo:7
-    container_name: matching-mongo
+    container_name: ons-mongo
     restart: unless-stopped
-    command: ["--bind_ip_all", "--port", "27017"]
+    # No explicit `command:` needed — --bind_ip_all and --port 27017 are defaults
     ports:
       - "${MONGO_PORT:-27017}:27017"
     environment:
       MONGO_INITDB_ROOT_USERNAME: ${MONGO_ROOT_USERNAME:-root}
       MONGO_INITDB_ROOT_PASSWORD: ${MONGO_ROOT_PASSWORD:-root}
-      MONGO_INITDB_DATABASE: ${MONGO_APP_DB:-matching}
-      MONGO_APP_DB: ${MONGO_APP_DB:-matching}
-      MONGO_APP_USERNAME: ${MONGO_APP_USERNAME:-matching_app}
-      MONGO_APP_PASSWORD: ${MONGO_APP_PASSWORD:-matching_app_dev_password}
+      MONGO_INITDB_DATABASE: ${MONGO_APP_DB:-ons}
+      # Passed through to the init script (01-init-app-user.sh)
+      MONGO_APP_DB: ${MONGO_APP_DB:-ons}
+      MONGO_APP_USERNAME: ${MONGO_APP_USERNAME:-ons_app}
+      MONGO_APP_PASSWORD: ${MONGO_APP_PASSWORD:-ons_app_dev_password}
     volumes:
       - mongo_data_dev:/data/db
       - ./docker/mongo/init:/docker-entrypoint-initdb.d:ro
@@ -22,7 +23,7 @@ services:
       test:
         [
           "CMD-SHELL",
-          'echo ''db.adminCommand("ping").ok'' | mongosh --quiet -u "${MONGO_ROOT_USERNAME:-root}" -p "${MONGO_ROOT_PASSWORD:-root}" --authenticationDatabase admin localhost:27017/admin | grep 1',
+          'mongosh --quiet -u "${MONGO_ROOT_USERNAME:-root}" -p "${MONGO_ROOT_PASSWORD:-root}" --authenticationDatabase admin --eval "db.adminCommand(\"ping\").ok" | grep 1',
         ]
       interval: 10s
       timeout: 5s
@@ -33,7 +34,7 @@ services:
 
   mongo-express:
     image: mongo-express:1
-    container_name: matching-mongo-express
+    container_name: ons-mongo-express
     restart: unless-stopped
     ports:
       - "${MONGO_EXPRESS_PORT:-8081}:8081"

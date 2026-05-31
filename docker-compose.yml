@@ -1,60 +1,53 @@
-# Production — builds optimised images.
-# Set secrets in api/.env and pass VITE_* as build args or in a .env file at root.
+# Single compose file — behaviour is entirely driven by the env file you provide.
 #
-# Usage:
-#   docker compose up --build
-#   docker compose up api --build        # api only
-#   docker compose up frontend --build   # frontend only
+# ── How to use ─────────────────────────────────────────────────────────────────
+#
+#   docker compose --env-file .env.dev   up --build   # local / dev
+#   docker compose --env-file .env.prod  up --build   # self-hosted production
+#   docker compose --env-file .env.test  up --build   # CI / smoke tests
+#
+# If no --env-file is given, Docker Compose falls back to a .env file in this
+# directory (or bare shell env vars), so the default can be whatever you set.
+#
+# ── AWS ECS / cloud deployments ────────────────────────────────────────────────
+# On ECS (or any container orchestrator) you don't need this file at all.
+# We Build and Push the images independently and We inject secrets via ECS task-definition environment variables or AWS Secrets
+# Manager — not via a mounted .env file.
+#
+# ── Variables expected in the env file ─────────────────────────────────────────
+# See api/.env.example for the full reference.
+# Required:  ENCRYPTION_KEY  JWT_SECRET  FORM_SECRET  MONGODB_URI
+#            VITE_INVITE_KEY
+# Optional:  NODE_ENV (default: production)  PORT (default: 3001)
+#            VITE_API_URL (default: http://localhost:3001)
 
 services:
-
-  # ── MongoDB ────────────────────────────────────────────────────────────────
-  mongo:
-    image: mongo:7
-    restart: unless-stopped
-    volumes:
-      - mongo_data:/data/db
-    healthcheck:
-      test: >
-        mongosh --quiet --eval "db.adminCommand('ping').ok"
-      interval: 10s
-      timeout:  5s
-      retries:  5
-      start_period: 10s
-
-  # ── API ───────────────────────────────────────────────────────────────────
+  # ── API ─────────────────────────────────────────────────────────────────────
   api:
     build:
-      context:    ./api
+      context: ./api
       dockerfile: Dockerfile
     restart: unless-stopped
     ports:
-      - "3001:3001"
-    environment:
-      NODE_ENV:        production
-      PORT:            3001
-      MONGODB_URI:     mongodb://mongo:27017
-      MONGODB_DB_NAME: ons
+      - "${PORT:-3001}:${PORT:-3001}"
     env_file:
-      - path: ./api/.env
-        required: true          # must exist in production
-    depends_on:
-      mongo:
-        condition: service_healthy
+      - path: .env
+        required: false # override with --env-file; falls back to shell env
+    environment:
+      NODE_ENV: ${NODE_ENV:-production}
+      PORT: ${PORT:-3001}
 
-  # ── Frontend ──────────────────────────────────────────────────────────────
+  # ── Frontend ─────────────────────────────────────────────────────────────────
+  # Vite bakes env vars at build time — pass them as --build-arg.
   frontend:
     build:
-      context:    ./frontend
+      context: ./frontend
       dockerfile: Dockerfile
       args:
-        VITE_API_URL:    ${VITE_API_URL:-http://localhost:3001}
+        VITE_API_URL: ${VITE_API_URL:-http://localhost:3001}
         VITE_INVITE_KEY: ${VITE_INVITE_KEY:?VITE_INVITE_KEY must be set}
     restart: unless-stopped
     ports:
       - "80:80"
     depends_on:
       - api
-
-volumes:
-  mongo_data:
