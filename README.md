@@ -52,16 +52,16 @@ docker compose --env-file .env.mongo.dev  -f docker-compose-mongo-dev.yml up -d
 
 For more information, see [Local MongoDB (Docker)](#local-mongodb-docker) below for override options.
 
-Now you can seed the MOngoDB using the seeders ins `scripts/seed.ts` and connect the API using the app user credentials you set in `.env.mongo.dev`:
+Now you can seed MongoDB using the seeders in `scripts/seed.ts` and connect the API using the app user credentials you set in `.env.mongo.dev`:
 
 You also need to set the following in `api/.env`:
 
 ```env
-MONGODB_URI=mongodb://ons_app:ons_app_dev_password@localhost:27017/ons?authSource=ons
+MONGODB_URI=mongodb://ons_app:<MONGO_APP_PASSWORD>@localhost:27017/ons?authSource=ons
 MONGODB_DB_NAME=ons
 ```
 
-Mongo Express is available at http://localhost:8081 (login `devadmin` / `devadmin`).  
+Mongo Express is available at http://localhost:8081 (login with the credentials you set in `.env.mongo.dev`).  
 See [Local MongoDB (Docker)](#local-mongodb-docker) for override options and reset commands.
 
 #### Option B — MongoDB Atlas (production or cloud dev)
@@ -108,7 +108,7 @@ ons/
 │   │   ├── controllers/            ← Request handlers
 │   │   ├── routes/                 ← Hono route definitions
 │   │   ├── middleware/             ← Auth, rate limiting, audit logging
-│   │   └── __tests__/             ← Full test suite (197 tests)
+│   │   └── __tests__/             ← Full test suite (199 tests)
 │   ├── docs/openapi.yaml           ← Full OpenAPI 3.1 spec
 │   ├── Dockerfile
 │   └── README.md                   ← API setup & reference
@@ -196,15 +196,15 @@ docker compose -f docker-compose-mongo-dev.yml down -v
 
 **App user** (use this in `api/.env`):
 ```
-MONGODB_URI=mongodb://ons_app:ons_app_dev_password@localhost:27017/ons?authSource=ons
+MONGODB_URI=mongodb://ons_app:<MONGO_APP_PASSWORD>@localhost:27017/ons?authSource=ons
 ```
 
 **Root** (admin tasks, Mongo Express backend):
 ```
-mongodb://root:root@localhost:27017/admin?authSource=admin
+mongodb://root:<MONGO_ROOT_PASSWORD>@localhost:27017/admin?authSource=admin
 ```
 
-**Mongo Express UI:** http://localhost:8081 — login `devadmin` / `devadmin`
+**Mongo Express UI:** http://localhost:8081 — login with the credentials you set in `.env.mongo.dev`
 
 ### Overriding defaults
 
@@ -322,4 +322,4 @@ Inject secrets via ECS task-definition environment variables or AWS Secrets Mana
 | `bun run seed` | Interactive seed runner — choose questionnaire, applicants, or both; prompts for environment |
 | `bun run build` | Build all workspaces |
 | `bun run typecheck` | Type-check all workspaces |
-| `bun run test` | Run API test suite (197 tests, no DB required) |
+| `bun run test` | Run API test suite (199 tests, no DB required) |

@@ -16,9 +16,8 @@ import { env } from "../config/env.js";
 // ─── Safety guard ─────────────────────────────────────────────────────────────
 
 if (env.nodeEnv === "production") {
-  console.warn(
-    "[SEED:admin] ⚠️  Running in production — ensure you intend to create an admin account."
-  );
+  console.error("[SEED:admin] ❌  Refusing to run in production.");
+  process.exit(1);
 }
 
 // ─── Prompt helpers ───────────────────────────────────────────────────────────
