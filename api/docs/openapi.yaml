@@ -1,15 +1,20 @@
 openapi: 3.1.0
 
 info:
-  title: Matching Platform API
+  title: Ons — Matching Platform API
   description: |
-    Privacy-oriented couple matching backend.
+    Privacy-oriented couple matching backend for the Ons (أنس) platform.
 
     **Privacy model:** Instagram handles are never stored in the applicant profile.
     They are AES-256-GCM encrypted in a separate `identities` collection and
     resolvable only by authorized admins (every access is audit-logged).
     Applicants are identified throughout the system by a human-friendly alias
     such as "Blue Falcon" or "Silent River".
+
+    **Authentication:** Admin endpoints are protected by a session cookie
+    (`admin_token`) set by `POST /api/v1/admin/login`. The cookie is `HttpOnly`
+    (not accessible from JavaScript) and `SameSite=Lax`. API clients may
+    alternatively pass the raw JWT in the `Authorization: Bearer` header.
 
     **Rate limits:**
     - Public form submission: 100 requests per 10 minutes per IP
@@ -30,25 +35,38 @@ tags:
   - name: Form
     description: Public form submission (no auth required)
   - name: Admin – Auth
-    description: Admin login
+    description: "Session management: login, logout, and session probe"
   - name: Admin – Applicants
-    description: Manage applicant profiles (JWT required)
+    description: Manage applicant profiles (session required)
   - name: Admin – Questionnaires
-    description: Manage questionnaire versions (admin only).
+    description: Manage questionnaire versions (session required)
   - name: Admin – Audit
-    description: View audit logs (JWT required)
+    description: View audit logs (session required)
   - name: Matching
     description: Matching engine endpoints
 
 # ─── Security ──────────────────────────────────────────────────────────────────
 components:
   securitySchemes:
+    CookieAuth:
+      type: apiKey
+      in: cookie
+      name: admin_token
+      description: |
+        HttpOnly session cookie set by `POST /api/v1/admin/login`.
+        The browser sends it automatically on every request to `/api/v1/admin/*`.
+        The cookie is invisible to JavaScript (`HttpOnly`), `SameSite=Lax`, and
+        `Secure` in production. Valid for 8 hours (configurable via `JWT_EXPIRY`).
+
     BearerAuth:
       type: http
       scheme: bearer
       bearerFormat: JWT
-      description: >
-        JWT obtained from `POST /api/v1/admin/login`. Valid for 8 hours (configurable via `JWT_EXPIRY`).
+      description: |
+        Fallback for API clients and tooling that cannot send cookies.
+        Pass the raw JWT from `POST /api/v1/admin/login` (when testing via curl or
+        this Swagger UI). The server tries the cookie first; the header is used only
+        when no cookie is present.
         Claims: `sub` = admin MongoDB `_id`, `role` = one of `super_admin | admin | viewer`.
 
     SubmissionKey:
@@ -59,6 +77,17 @@ components:
         64-character hex key obtained from `GET /api/v1/form/questionnaire`.
         Call that endpoint first, copy the `submissionKey` from the response,
         then paste it here before trying out `POST /submit`.
+
+  responses:
+    Unauthorized:
+      description: Missing or invalid session (cookie absent/expired or bad Bearer token)
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            success: false
+            error: "Unauthorized"
 
   # ─── Reusable schemas ────────────────────────────────────────────────────────
   schemas:
@@ -373,17 +402,34 @@ components:
 
     AdminLoginResponse:
       type: object
-      required: [success, token]
+      required: [success]
       properties:
         success:
           type: boolean
           enum: [true]
-        token:
-          type: string
-          example: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
-          description: >
-            JWT Bearer token. Valid for 8 hours (configurable via `JWT_EXPIRY`).
-            Payload carries `sub` (admin `_id`) and `role` (`super_admin | admin | viewer`).
+      description: |
+        The JWT is not returned in the body. It is delivered as an `HttpOnly`
+        cookie (`admin_token`) via the `Set-Cookie` response header.
+
+    AdminMeResponse:
+      type: object
+      required: [success, data]
+      properties:
+        success:
+          type: boolean
+          enum: [true]
+        data:
+          type: object
+          required: [adminId, adminRole]
+          properties:
+            adminId:
+              type: string
+              description: MongoDB `_id` of the authenticated admin.
+              example: "507f1f77bcf86cd799439011"
+            adminRole:
+              type: string
+              enum: [super_admin, admin, viewer]
+              example: "admin"
 
     # ── Applicant ─────────────────────────────────────────────────────────────
     ApplicantStatus:
@@ -895,12 +941,18 @@ paths:
       summary: Admin login
       operationId: adminLogin
       description: |
-        Authenticates an admin against the `admins` collection (bcrypt-verified)
-        and returns a signed JWT valid for 8 hours.
-        The returned token carries the admin's `_id` and `role` (`super_admin | admin | viewer`).
-        The login action is recorded in the audit log.
+        Authenticates an admin against the `admins` collection (bcrypt-verified).
+        On success, sets an `HttpOnly` `admin_token` session cookie — the JWT is
+        **not** present in the response body. The login action is recorded in the
+        audit log.
 
         **Rate limit:** 20 requests per minute per IP.
+
+        > **Swagger UI note:** browsers cannot read the `HttpOnly` cookie set here,
+        > so Swagger UI cannot automatically send it on subsequent calls. To test
+        > protected endpoints in this UI, use the **BearerAuth** scheme: copy the
+        > raw token from the `Set-Cookie` header (visible in DevTools) and paste it
+        > under the **Authorize** button.
       requestBody:
         required: true
         content:
@@ -909,11 +961,20 @@ paths:
               $ref: '#/components/schemas/AdminLoginRequest'
       responses:
         '200':
-          description: Login successful
+          description: Login successful — session cookie set
+          headers:
+            Set-Cookie:
+              description: |
+                `admin_token=<jwt>; Path=/api/v1/admin; HttpOnly; SameSite=Lax`
+                (`Secure` added in production). Expires after `JWT_EXPIRY` (default 8 h).
+              schema:
+                type: string
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/AdminLoginResponse'
+              example:
+                success: true
         '401':
           description: Invalid credentials
           content:
@@ -922,7 +983,7 @@ paths:
                 $ref: '#/components/schemas/ErrorResponse'
               example:
                 success: false
-                error: "Invalid username or password"
+                error: "Invalid credentials"
         '422':
           description: Validation error
           content:
@@ -936,6 +997,57 @@ paths:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
 
+  /api/v1/admin/logout:
+    post:
+      tags: [Admin – Auth]
+      summary: Admin logout
+      operationId: adminLogout
+      description: |
+        Clears the `admin_token` session cookie. Safe to call even when not
+        authenticated — always returns 200.
+      responses:
+        '200':
+          description: Logged out (cookie cleared)
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    enum: [true]
+              example:
+                success: true
+
+  /api/v1/admin/me:
+    get:
+      tags: [Admin – Auth]
+      summary: Session probe — current admin identity
+      operationId: adminMe
+      security:
+        - CookieAuth: []
+        - BearerAuth: []
+      description: |
+        Returns the authenticated admin's ID and role from the verified JWT claims.
+        Used by the frontend on page load to determine whether the session cookie
+        is still valid without storing any credential in JavaScript.
+
+        Returns `401` if the cookie is absent or expired.
+      responses:
+        '200':
+          description: Active session
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AdminMeResponse'
+              example:
+                success: true
+                data:
+                  adminId: "507f1f77bcf86cd799439011"
+                  adminRole: "admin"
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
   # ── Admin – Applicants ───────────────────────────────────────────────────────
   /api/v1/admin/applicants:
     get:
@@ -943,6 +1055,7 @@ paths:
       summary: List applicants
       operationId: listApplicants
       security:
+        - CookieAuth: []
         - BearerAuth: []
       description: |
         Returns a paginated list of applicant profiles. No sensitive data
@@ -974,11 +1087,7 @@ paths:
               schema:
                 $ref: '#/components/schemas/ApplicantListResponse'
         '401':
-          description: Missing or invalid token
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
+          $ref: '#/components/responses/Unauthorized'
         '429':
           description: Rate limit exceeded
           content:
@@ -992,6 +1101,7 @@ paths:
       summary: Get an applicant by ID
       operationId: getApplicant
       security:
+        - CookieAuth: []
         - BearerAuth: []
       description: "Returns the full applicant profile (no sensitive data). Audit-logged as VIEW_APPLICANT."
       parameters:
@@ -1015,11 +1125,7 @@ paths:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
         '401':
-          description: Missing or invalid token
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
+          $ref: '#/components/responses/Unauthorized'
         '404':
           description: Applicant not found
           content:
@@ -1031,6 +1137,7 @@ paths:
       summary: Deactivate an applicant
       operationId: deactivateApplicant
       security:
+        - CookieAuth: []
         - BearerAuth: []
       description: |
         Sets the applicant status to `withdrawn`. Does not delete data.
@@ -1057,11 +1164,7 @@ paths:
                     type: string
                     example: "Applicant withdrawn successfully."
         '401':
-          description: Missing or invalid token
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
+          $ref: '#/components/responses/Unauthorized'
         '404':
           description: Applicant not found
           content:
@@ -1075,6 +1178,7 @@ paths:
       summary: Resolve applicant identity (decrypt Instagram handle)
       operationId: resolveIdentity
       security:
+        - CookieAuth: []
         - BearerAuth: []
       description: |
         Decrypts and returns the real Instagram handle for an applicant.
@@ -1103,11 +1207,7 @@ paths:
                   instagramHandle: "@johndoe"
                   applicantId: "64f1a2b3c4d5e6f7a8b9c0d1"
         '401':
-          description: Missing or invalid token
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
+          $ref: '#/components/responses/Unauthorized'
         '404':
           description: Identity record not found
           content:
@@ -1122,6 +1222,7 @@ paths:
       summary: Create questionnaire
       operationId: createQuestionnaire
       security:
+        - CookieAuth: []
         - BearerAuth: []
       description: |
         Creates a new questionnaire and atomically deactivates all existing ones.
@@ -1198,6 +1299,7 @@ paths:
       summary: List audit logs
       operationId: listAuditLogs
       security:
+        - CookieAuth: []
         - BearerAuth: []
       parameters:
         - name: page
@@ -1221,11 +1323,7 @@ paths:
               schema:
                 $ref: '#/components/schemas/AuditLogListResponse'
         '401':
-          description: Missing or invalid token
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
+          $ref: '#/components/responses/Unauthorized'
 
   # ── Matching ──────────────────────────────────────────────────────────────────
   /api/v1/matching/candidates/{applicantId}:
@@ -1301,6 +1399,7 @@ paths:
       summary: Run a full matching pass (admin only)
       operationId: runMatching
       security:
+        - CookieAuth: []
         - BearerAuth: []
       description: |
         Scores all active applicants pairwise and returns a map of
@@ -1354,11 +1453,7 @@ paths:
                         long_distance: 1.0
                         lifestyle: 0.6
         '401':
-          description: Missing or invalid token
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
+          $ref: '#/components/responses/Unauthorized'
         '403':
           description: Admin role required
           content:
