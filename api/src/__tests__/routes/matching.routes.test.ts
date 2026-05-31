@@ -140,11 +140,11 @@ describe("POST /matching/run", () => {
     expect(algo).toBe("cosine");
   });
 
-  it("defaults to baseline when algorithm is omitted", async () => {
+  it("defaults to embedding-cosine when algorithm is omitted", async () => {
     const token = await adminToken();
     await post("/matching/run", {}, token);
     const [algo] = mockRunFullMatchingPass.mock.calls[0] as unknown as [string];
-    expect(algo).toBe("baseline");
+    expect(algo).toBe("embedding-cosine");
   });
 
   it("returns 422 for an unknown algorithm value", async () => {
