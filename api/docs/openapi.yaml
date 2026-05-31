@@ -47,7 +47,9 @@ components:
       type: http
       scheme: bearer
       bearerFormat: JWT
-      description: JWT obtained from `POST /api/v1/admin/login`. Valid for 8 hours.
+      description: >
+        JWT obtained from `POST /api/v1/admin/login`. Valid for 8 hours (configurable via `JWT_EXPIRY`).
+        Claims: `sub` = admin MongoDB `_id`, `role` = one of `super_admin | admin | viewer`.
 
     SubmissionKey:
       type: apiKey
@@ -379,7 +381,9 @@ components:
         token:
           type: string
           example: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
-          description: "JWT Bearer token. Valid for 8 hours."
+          description: >
+            JWT Bearer token. Valid for 8 hours (configurable via `JWT_EXPIRY`).
+            Payload carries `sub` (admin `_id`) and `role` (`super_admin | admin | viewer`).
 
     # ── Applicant ─────────────────────────────────────────────────────────────
     ApplicantStatus:
@@ -488,7 +492,8 @@ components:
           example: "64f1a2b3c4d5e6f7a8b9c0d2"
         adminId:
           type: string
-          example: "admin"
+          description: MongoDB `_id` of the admin who performed the action.
+          example: "507f1f77bcf86cd799439011"
         action:
           type: string
           enum:
@@ -612,24 +617,30 @@ components:
         algorithm:
           type: string
           enum: [baseline, cosine, embedding-cosine]
-          default: baseline
+          default: embedding-cosine
           description: |
-            **baseline** — Weighted rule-based scoring across 6 hand-crafted dimensions
-            (relationship type, deal breakers, religion, affection, long distance,
-            lifestyle). Fast, predictable, zero external dependencies.
+            **⚠️ Multilingual note:** The platform supports EN / DE / FR / AR.
+            Applicants may submit free-text fields (vibe, lifestyle, traits) in any language.
+            Only `embedding-cosine` handles cross-language semantic matching correctly.
+            `baseline` and `cosine` use keyword overlap — they will produce degraded results
+            when comparing applicants who filled the form in different languages.
+            Use a multilingual embedding model (e.g. `text-embedding-3-small` via OpenAI,
+            or `paraphrase-multilingual-mpnet-base-v2` via Ollama/LM Studio).
 
-            **cosine** — Geometric cosine similarity on encoded feature vectors.
-            Four components: numeric compatibility (25%), lifestyle similarity (20%),
-            bidirectional character cross-match (35%), deal breaker penalty (20%).
-            Better than baseline but still uses keyword overlap for text fields
-            ("driven" ≠ "ambitious").
-
-            **embedding-cosine** — Same structure as `cosine` but replaces
-            keyword matching with dense vector embeddings. "driven" ≈ "ambitious"
-            because they're close in embedding space. Requires `EMBEDDING_PROVIDER`
+            **embedding-cosine** *(default, recommended)* — Replaces keyword matching with
+            dense vector embeddings. "driven" ≈ "ambitious" ≈ "ehrgeizig" ≈ "طموح" because
+            they map to nearby vectors in embedding space. Requires `EMBEDDING_PROVIDER`
             to be configured (openai or local via LM Studio/Ollama).
-            Uses a `prepare()` step to batch-embed all applicants before scoring,
-            so API calls are O(N) not O(N²).
+            Uses a `prepare()` step to batch-embed all applicants before scoring — O(N) API calls.
+
+            **baseline** — Weighted rule-based scoring across 6 hand-crafted dimensions
+            (relationship type, deal breakers, religion, affection, long distance, lifestyle).
+            Fast, zero external dependencies. ⚠️ Free-text fields are not compared — no
+            multilingual degradation but also no semantic depth.
+
+            **cosine** — Cosine similarity on encoded feature vectors. ⚠️ Uses keyword
+            overlap for text fields ("driven" ≠ "ambitieux") — poor results for
+            multilingual applicant pools.
 
     MatchingRunResponse:
       type: object
@@ -641,7 +652,7 @@ components:
         algorithm:
           type: string
           enum: [baseline, cosine, embedding-cosine]
-          example: "baseline"
+          example: "embedding-cosine"
         totalApplicants:
           type: integer
           description: "Number of active applicants included in this pass."
@@ -884,7 +895,9 @@ paths:
       summary: Admin login
       operationId: adminLogin
       description: |
-        Authenticates an admin and returns a JWT valid for 8 hours.
+        Authenticates an admin against the `admins` collection (bcrypt-verified)
+        and returns a signed JWT valid for 8 hours.
+        The returned token carries the admin's `_id` and `role` (`super_admin | admin | viewer`).
         The login action is recorded in the audit log.
 
         **Rate limit:** 20 requests per minute per IP.
@@ -1243,7 +1256,11 @@ paths:
           schema:
             type: string
             enum: [baseline, cosine, embedding-cosine]
-            default: baseline
+            default: embedding-cosine
+            description: >
+              Defaults to `embedding-cosine` (recommended for multilingual applicant pools).
+              `baseline` and `cosine` use keyword overlap on free-text fields and may produce
+              poor results when applicants filled the form in different languages (EN/DE/FR/AR).
       responses:
         '200':
           description: Ranked candidate list
@@ -1321,7 +1338,7 @@ paths:
                 $ref: '#/components/schemas/MatchingRunResponse'
               example:
                 success: true
-                algorithm: "baseline"
+                algorithm: "embedding-cosine"
                 totalApplicants: 42
                 durationMs: 310
                 results:

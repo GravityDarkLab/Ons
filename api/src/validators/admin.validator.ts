@@ -25,7 +25,7 @@ export const applicantFilterSchema = paginationSchema.extend({
 });
 
 export const matchingRunSchema = z.object({
-  algorithm: z.enum(["baseline", "cosine", "embedding-cosine"]).default("baseline"),
+  algorithm: z.enum(["baseline", "cosine", "embedding-cosine"]).default("embedding-cosine"),
 });
 
 export const createQuestionnaireSchema = z.object({

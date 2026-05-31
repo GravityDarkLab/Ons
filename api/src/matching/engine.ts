@@ -54,7 +54,7 @@ const ALGORITHM_REGISTRY: Record<string, Algorithm> = {
 export async function getCandidates(
   applicantId: string,
   topN = 10,
-  algorithmName = "baseline"
+  algorithmName = "embedding-cosine"
 ): Promise<RankedCandidate[]> {
   const algorithm = ALGORITHM_REGISTRY[algorithmName];
   if (!algorithm) {
@@ -115,7 +115,7 @@ export async function getCandidates(
  * Returns a map of applicantId -> ranked candidates.
  */
 export async function runFullMatchingPass(
-  algorithmName = "baseline"
+  algorithmName = "embedding-cosine"
 ): Promise<Record<string, RankedCandidate[]>> {
   const algorithm = ALGORITHM_REGISTRY[algorithmName];
   if (!algorithm) {
