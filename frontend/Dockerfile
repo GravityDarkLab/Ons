@@ -2,11 +2,7 @@
 FROM oven/bun:1.3-alpine AS builder
 WORKDIR /app
 
-COPY package.json bun.lock ./
-# --frozen is omitted intentionally — Bun's lockfile text format can shift
-# between patch releases, causing false failures when the image Bun version
-# differs from the one that generated the lockfile. Resolution still uses the
-# lockfile; it is just not re-serialised for comparison.
+COPY package.json ./
 RUN bun install
 
 COPY . .
