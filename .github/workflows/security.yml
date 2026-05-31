@@ -2,9 +2,8 @@ name: Security
 
 on:
   push:
-    branches: ["**"]
+    branches: [main]
   pull_request:
-    branches: ["**"]
   schedule:
     - cron: "0 6 * * 1" # every Monday 06:00 UTC — catches newly-disclosed CVEs
 
