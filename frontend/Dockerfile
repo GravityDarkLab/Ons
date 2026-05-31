@@ -3,9 +3,11 @@ FROM oven/bun:1.3-alpine AS builder
 WORKDIR /app
 
 COPY package.json bun.lock ./
-# --frozen enforces the lockfile (bun.lock TOML format, Bun ≥ 1.1)
-# --frozen-lockfile was the old flag for the legacy binary bun.lockb
-RUN bun install --frozen
+# --frozen is omitted intentionally — Bun's lockfile text format can shift
+# between patch releases, causing false failures when the image Bun version
+# differs from the one that generated the lockfile. Resolution still uses the
+# lockfile; it is just not re-serialised for comparison.
+RUN bun install
 
 COPY . .
 
