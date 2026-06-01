@@ -16,6 +16,7 @@
     "dev:api:prod": "cd api && bun run dev:prod",
     "dev:frontend": "cd frontend && bun run dev",
     "seed": "bun run scripts/seed.ts",
+    "lockfiles": "sh scripts/gen-lockfiles.sh",
     "build": "bun run --filter '*' build",
     "typecheck": "bunx tsc --noEmit -p tsconfig.json && bun run --filter '*' typecheck",
     "test": "concurrently -n api,frontend -c cyan,magenta \"bun run test:api\" \"bun run test:frontend\"",

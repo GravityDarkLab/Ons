@@ -24,8 +24,8 @@ services:
   # ── API ─────────────────────────────────────────────────────────────────────
   api:
     build:
-      context: .
-      dockerfile: api/Dockerfile
+      context: ./api
+      dockerfile: Dockerfile
     image: ons-api:latest
     container_name: ons-api
     restart: unless-stopped
@@ -71,8 +71,8 @@ services:
   # VITE_API_URL is intentionally empty: relative paths hit nginx → api.
   frontend:
     build:
-      context: .
-      dockerfile: frontend/Dockerfile
+      context: ./frontend
+      dockerfile: Dockerfile
       args:
         VITE_API_URL: ${VITE_API_URL:-}
         VITE_INVITE_KEY: ${VITE_INVITE_KEY:?VITE_INVITE_KEY must be set}
