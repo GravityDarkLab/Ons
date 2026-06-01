@@ -1,0 +1,2 @@
+[test]
+preload = ["./api/src/__tests__/setup.ts"]
