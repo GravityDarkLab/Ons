@@ -58,7 +58,7 @@ export const formSubmissionSchema = z.object({
 
       // Legal
       disclaimer_agreed: z.literal(true, {
-        errorMap: () => ({ message: "You must agree to the disclaimer" }),
+        error: "You must agree to the disclaimer",
       }),
     })
     .passthrough(), // allow extra fields — they'll be filtered against questionnaire

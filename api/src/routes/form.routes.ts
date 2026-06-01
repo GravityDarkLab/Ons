@@ -1,4 +1,5 @@
 import { Hono } from "hono";
+import { z } from "zod";
 import { zValidator } from "@hono/zod-validator";
 import { formSubmissionSchema } from "../validators/form.validator.js";
 import { submitForm, getQuestionnaire } from "../controllers/form.controller.js";
@@ -18,7 +19,7 @@ formRoutes.post(
         {
           success: false,
           error: "Validation failed",
-          details: result.error.flatten().fieldErrors,
+          details: z.flattenError(result.error).fieldErrors,
         },
         422
       );

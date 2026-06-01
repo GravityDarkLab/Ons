@@ -12,11 +12,11 @@ export const step1Schema = z.object({
 
 export const step2Schema = z.object({
   age: z
-    .number({ invalid_type_error: 'Age is required' })
+    .number({ error: 'Age is required' })
     .min(18, 'You must be at least 18')
     .max(99, 'Please enter a valid age'),
   height_cm: z
-    .number({ invalid_type_error: 'Must be a number' })
+    .number({ error: 'Must be a number' })
     .min(100, 'Enter a valid height')
     .max(250, 'Enter a valid height')
     .optional()
@@ -34,7 +34,7 @@ export const step3Schema = z.object({
 
 export const step4Schema = z.object({
   relationship_type: z.enum(['Long Term', 'Short Term', 'Open to Both', 'Casual', 'Not Sure'], {
-    errorMap: () => ({ message: 'Please select a relationship type' }),
+    error: 'Please select a relationship type',
   }),
   open_to_long_distance: z.boolean(),
   preferred_physical_traits: z.string().min(1, 'Please describe preferred physical traits'),
@@ -51,7 +51,7 @@ export const step5Schema = z.object({
     .max(10),
   dream_first_date: z.string().min(1, 'Tell us about your dream first date'),
   disclaimer_agreed: z.literal(true, {
-    errorMap: () => ({ message: 'You must agree to the disclaimer to continue' }),
+    error: 'You must agree to the disclaimer to continue',
   }),
 })
 

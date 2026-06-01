@@ -15,7 +15,7 @@ import Success from './pages/Success'
 
 export default function App() {
   return (
-    <BrowserRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
+    <BrowserRouter>
       <Routes>
         {/* ── Admin (session auth, no invite gate) ─────────────────────
             AuthProvider is scoped here — getMe() is only called when

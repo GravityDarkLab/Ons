@@ -1,4 +1,5 @@
 import { Hono } from "hono";
+import { z } from "zod";
 import { zValidator } from "@hono/zod-validator";
 import { matchingRunSchema } from "../validators/admin.validator.js";
 import {
@@ -22,7 +23,7 @@ matchingRoutes.post(
         {
           success: false,
           error: "Validation failed",
-          details: result.error.flatten().fieldErrors,
+          details: z.flattenError(result.error).fieldErrors,
         },
         422
       );
