@@ -1,0 +1,30 @@
+{
+  "name": "ons-api",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev":      "bun --env-file=.env.dev  run --watch src/server.ts",
+    "dev:test": "bun --env-file=.env.test run --watch src/server.ts",
+    "dev:prod": "bun --env-file=.env.prod run --watch src/server.ts",
+    "start":    "bun --env-file=.env      run         src/server.ts",
+    "seed": "bun run src/seeds/questionnaire.seed.ts",
+    "typecheck": "tsc --noEmit",
+    "test": "bun test --preload ./src/__tests__/setup.ts ./src/__tests__",
+    "test:watch": "bun test --watch --preload ./src/__tests__/setup.ts ./src/__tests__"
+  },
+  "dependencies": {
+    "@hono/swagger-ui": "^0.6.1",
+    "@hono/zod-validator": "^0.4.3",
+    "hono": "^4.7.0",
+    "jose": "^5.10.0",
+    "js-yaml": "^4.1.1",
+    "mongodb": "^6.14.0",
+    "zod": "^3.24.0"
+  },
+  "devDependencies": {
+    "@types/bun": "^1.2.0",
+    "@types/js-yaml": "^4.0.9",
+    "typescript": "^5.8.0"
+  }
+}

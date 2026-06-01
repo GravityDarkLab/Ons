@@ -1,0 +1,198 @@
+{
+  "brand": "Ons",
+
+  "invite": {
+    "title": "Sur invitation uniquement",
+    "subtitle": "C'est une expérience de matchmaking privée. Entrez votre clé d'invitation pour continuer.",
+    "placeholder": "Entrez la clé d'invitation",
+    "unlock": "Déverrouiller",
+    "verifying": "Vérification…",
+    "error": "Clé invalide. Vérifiez votre invitation et réessayez.",
+    "noInvite": "Pas d'invitation ?",
+    "noInviteLink": "Demandez à un ami qui est déjà inscrit."
+  },
+
+  "home": {
+    "badge": "Vie privée d'abord · Sur invitation",
+    "headline": "Trouvez votre\npersonne.",
+    "subline": "Une expérience de matchmaking curatée où votre identité reste privée jusqu'à ce que nous établissions la connexion.",
+    "cta": "Postuler maintenant",
+    "howItWorks": "Comment ça marche",
+    "cards": [
+      { "emoji": "🗒️", "title": "Remplissez le formulaire", "desc": "Répondez à un court questionnaire sur vous et ce que vous recherchez." },
+      { "emoji": "🔒", "title": "Nous protégeons votre identité", "desc": "Votre pseudo Instagram est chiffré. Vous recevez un nom de code." },
+      { "emoji": "💌", "title": "Nous faisons le match", "desc": "Si nous voyons une connexion, nous vous contactons directement. Pas d'algorithme." }
+    ],
+    "footer": "© 2025 Ons · Conçu avec soin"
+  },
+
+  "apply": {
+    "stepOf": "Étape {{current}} sur {{total}}",
+    "back": "Retour",
+    "next": "Continuer",
+    "submit": "Soumettre",
+    "submitting": "Envoi en cours…",
+    "error": "Une erreur s'est produite. Veuillez réessayer."
+  },
+
+  "steps": {
+    "s1": {
+      "title": "Qui êtes-vous ?",
+      "subtitle": "Juste les bases — nous apprendrons à vous connaître dans les prochaines étapes.",
+      "instagram": "Pseudo Instagram",
+      "location": "Lieu de résidence",
+      "locationPlaceholder": "Ville, Pays",
+      "privacy": "Votre pseudo Instagram est chiffré de bout en bout. Personne ne peut le voir sauf les admins vérifiés. Vous recevrez un nom de code."
+    },
+    "s2": {
+      "title": "À propos de vous",
+      "subtitle": "Aidez-nous à vous comprendre.",
+      "age": "Âge",
+      "agePlaceholder": "25",
+      "height": "Taille (cm)",
+      "heightPlaceholder": "175",
+      "heightHint": "Optionnel",
+      "work": "Profession / Métier",
+      "workPlaceholder": "ex. Ingénieur logiciel, Professeur...",
+      "gender": "Identité de genre",
+      "orientation": "Orientation sexuelle",
+      "religion": "Religion",
+      "religionPlaceholder": "ex. Musulman, Chrétien, Athée..."
+    },
+    "s3": {
+      "title": "Votre vibe",
+      "subtitle": "C'est ici que nous apprenons à vous connaître vraiment. Soyez honnête — c'est ainsi que nous trouvons votre match.",
+      "vibe": "Décrivez-vous en 3 mots",
+      "vibePlaceholder": "ex. curieux, calme, drôle",
+      "lifestyle": "Parlez-nous de votre mode de vie",
+      "lifestylePlaceholder": "Buveur occasionnel ? Couche-tard ? Sportif ? Dites-le nous.",
+      "tip": "Pensez à la façon dont vos amis proches vous décriraient. L'authenticité ici mène à de meilleurs matchs."
+    },
+    "s4": {
+      "title": "Ce que vous recherchez",
+      "subtitle": "Soyez précis — plus vous partagez de détails, meilleur sera le match.",
+      "relationshipType": "Type de relation",
+      "longDistance": "Ouvert à la longue distance ?",
+      "longDistanceHint": "Envisageriez-vous une relation entre villes ou pays ?",
+      "physicalTraits": "Traits physiques préférés",
+      "physicalTraitsPlaceholder": "Décrivez ce qui vous attire physiquement...",
+      "characterTraits": "Traits de caractère préférés",
+      "characterTraitsPlaceholder": "Quels traits de personnalité comptent le plus pour vous ?",
+      "dealBreakers": "Éliminatoires",
+      "dealBreakersPlaceholder": "Quels sont vos critères rédhibitoires ?",
+      "oppGenderFriends": "Acceptez-vous que votre partenaire ait beaucoup d'amis du sexe opposé ?",
+      "religionDealBreaker": "La religion du partenaire est-elle éliminatoire ?",
+      "religionDealBreakerHint": "Refuseriez-vous de sortir avec quelqu'un d'une autre confession ?"
+    },
+    "s5": {
+      "title": "Derniers mots",
+      "subtitle": "Presque terminé. Encore quelques points avant de commencer.",
+      "affection": "Quelle importance accordez-vous à l'affection physique ?",
+      "affectionLow": "peu important",
+      "affectionHigh": "très important",
+      "firstDate": "Décrivez votre premier rendez-vous idéal",
+      "firstDatePlaceholder": "Une promenade dans le parc, un dîner sur un rooftop, un road trip spontané...",
+      "disclaimer": "Je comprends que mes informations sont collectées uniquement pour le matchmaking, stockées en toute sécurité et jamais vendues ni partagées avec des tiers.",
+      "disclaimerRequired": "Vous devez accepter pour continuer."
+    }
+  },
+
+  "success": {
+    "title": "C'est parti.",
+    "subtitle": "Nous vous contacterons quand nous aurons trouvé votre match.",
+    "aliasLabel": "Votre alias est",
+    "aliasHint": "Gardez cet alias précieusement — c'est ainsi que nous vous désignerons.",
+    "privacy": "En attendant, votre identité est chiffrée en toute sécurité. Nous ne partagerons jamais vos informations avec des tiers.",
+    "backHome": "Retour à l'accueil"
+  },
+
+  "admin": {
+    "subtitle": "Admin",
+    "login": {
+      "title": "Accès administrateur",
+      "username": "Nom d'utilisateur",
+      "password": "Mot de passe",
+      "submit": "Se connecter",
+      "invalidCredentials": "Identifiants invalides"
+    },
+    "nav": {
+      "dashboard": "Tableau de bord",
+      "applicants": "Candidats",
+      "matching": "Matching",
+      "auditLogs": "Journal d'audit",
+      "signOut": "Se déconnecter"
+    },
+    "dashboard": {
+      "title": "Tableau de bord",
+      "subtitle": "Vue d'ensemble de la plateforme",
+      "total": "Total",
+      "active": "Actifs",
+      "matched": "Matchés",
+      "inactive": "Inactifs",
+      "quickActions": "Actions rapides",
+      "runMatching": "Lancer le matching",
+      "viewApplicants": "Voir les candidats",
+      "auditLogs": "Journal d'audit"
+    },
+    "applicants": {
+      "title": "Candidats",
+      "total": "{{count}} au total",
+      "all": "Tous",
+      "active": "Actifs",
+      "matched": "Matchés",
+      "inactive": "Inactifs",
+      "withdrawn": "Retirés",
+      "colAlias": "Alias",
+      "colStatus": "Statut",
+      "colLocation": "Lieu",
+      "colAge": "Âge",
+      "colSubmitted": "Soumis le",
+      "view": "Voir →",
+      "empty": "Aucun candidat trouvé.",
+      "page": "Page {{current}} sur {{total}}",
+      "prev": "← Préc.",
+      "next": "Suiv. →"
+    },
+    "detail": {
+      "back": "Candidats",
+      "submitted": "Soumis le {{date}}",
+      "withdraw": "Retirer",
+      "withdrawConfirm": "Retirer ce candidat ? Son statut sera défini sur 'retiré'.",
+      "identity": "Identité",
+      "reveal": "Révéler le pseudo Instagram",
+      "auditNote": "Chaque révélation est enregistrée dans l'audit.",
+      "answers": "Réponses",
+      "page": "Page {{current}} sur {{total}}",
+      "prev": "← Préc.",
+      "next": "Suiv. →"
+    },
+    "matching": {
+      "title": "Matching",
+      "subtitle": "Lancer un passage complet sur tous les candidats actifs",
+      "algorithm": "Algorithme",
+      "baseline": "Baseline",
+      "baselineHint": "Scoring basé sur des règles pondérées",
+      "cosine": "Cosinus",
+      "cosineHint": "Similarité cosinus sur vecteurs numériques",
+      "embedding": "Embedding",
+      "embeddingHint": "Similarité sémantique via embeddings textuels",
+      "run": "Lancer le matching",
+      "results": "Résultats",
+      "resultsMeta": "{{count}} candidats · {{algorithm}} · {{duration}}ms",
+      "multilingualWarning": "Les algorithmes Baseline et Cosinus utilisent la correspondance de mots-clés sur les champs de texte libre. Ils peuvent produire de mauvais résultats si les candidats ont rempli le formulaire dans des langues différentes. Utilisez <bold>Embedding</bold> pour une précision multilingue."
+    },
+    "audit": {
+      "title": "Journal d'audit",
+      "events": "{{count}} événements",
+      "colAction": "Action",
+      "colTarget": "Cible",
+      "colAdmin": "Admin",
+      "colIp": "IP",
+      "colTime": "Heure",
+      "empty": "Aucun événement pour l'instant.",
+      "page": "Page {{current}} sur {{total}}",
+      "prev": "← Préc.",
+      "next": "Suiv. →"
+    }
+  }
+}

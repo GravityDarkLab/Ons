@@ -1,0 +1,22 @@
+{
+  "name": "ons",
+  "version": "1.0.0",
+  "private": true,
+  "workspaces": ["api", "frontend"],
+  "scripts": {
+    "dev":           "concurrently -n api,frontend -c cyan,magenta \"cd api && bun run dev\"      \"cd frontend && bun run dev\"",
+    "dev:test":      "concurrently -n api,frontend -c cyan,magenta \"cd api && bun run dev:test\" \"cd frontend && bun run dev\"",
+    "dev:api":       "cd api && bun run dev",
+    "dev:api:test":  "cd api && bun run dev:test",
+    "dev:api:prod":  "cd api && bun run dev:prod",
+    "dev:frontend":  "cd frontend && bun run dev",
+    "seed": "bun run scripts/seed.ts",
+    "build":        "bun run --filter '*' build",
+    "typecheck":    "bunx tsc --noEmit -p tsconfig.json && bun run --filter '*' typecheck",
+    "test":         "bun run --cwd api test"
+  },
+  "devDependencies": {
+    "@types/bun": "^1.2.0",
+    "concurrently": "^9.0.0"
+  }
+}

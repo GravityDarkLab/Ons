@@ -1,0 +1,58 @@
+name: ons-mongo-dev
+
+services:
+  mongo:
+    image: mongo:7
+    container_name: ons-mongo
+    restart: unless-stopped
+    # No explicit `command:` needed — --bind_ip_all and --port 27017 are defaults
+    ports:
+      - "${MONGO_PORT:-27017}:27017"
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: ${MONGO_ROOT_USERNAME:-root}
+      MONGO_INITDB_ROOT_PASSWORD: ${MONGO_ROOT_PASSWORD:-root}
+      MONGO_INITDB_DATABASE: ${MONGO_APP_DB:-ons}
+      # Passed through to the init script (01-init-app-user.sh)
+      MONGO_APP_DB: ${MONGO_APP_DB:-ons}
+      MONGO_APP_USERNAME: ${MONGO_APP_USERNAME:-ons_app}
+      MONGO_APP_PASSWORD: ${MONGO_APP_PASSWORD:-ons_app_dev_password} # gitguardian:ignore — dev default, override via --env-file
+    volumes:
+      - mongo_data_dev:/data/db
+      - ./docker/mongo/init:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          'mongosh --quiet -u "${MONGO_ROOT_USERNAME:-root}" -p "${MONGO_ROOT_PASSWORD:-root}" --authenticationDatabase admin --eval "db.adminCommand(\"ping\").ok" | grep 1',
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 25s
+    networks:
+      - mongo_dev_net
+
+  mongo-express:
+    image: mongo-express:1
+    container_name: ons-mongo-express
+    restart: unless-stopped
+    ports:
+      - "${MONGO_EXPRESS_PORT:-8081}:8081"
+    environment:
+      ME_CONFIG_MONGODB_URL: mongodb://${MONGO_ROOT_USERNAME:-root}:${MONGO_ROOT_PASSWORD:-root}@mongo:27017/admin?authSource=admin
+      ME_CONFIG_BASICAUTH_ENABLED: "true"
+      ME_CONFIG_BASICAUTH_USERNAME: ${MONGO_EXPRESS_USERNAME:-devadmin}
+      ME_CONFIG_BASICAUTH_PASSWORD: ${MONGO_EXPRESS_PASSWORD:-devadmin} # gitguardian:ignore — dev default, override via --env-file
+      ME_CONFIG_OPTIONS_EDITORTHEME: default
+    depends_on:
+      mongo:
+        condition: service_healthy
+    networks:
+      - mongo_dev_net
+
+volumes:
+  mongo_data_dev:
+
+networks:
+  mongo_dev_net:
+    driver: bridge

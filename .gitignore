@@ -1,0 +1,22 @@
+# Dependencies
+node_modules/
+
+# Environment files — .env.example files ARE committed, everything else is not
+.env
+.env.*
+!.env.example
+!.env.mongo.dev.example
+
+# Build output
+dist/
+.next/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Docker
+.docker/
+
+# Claude
+.claude/

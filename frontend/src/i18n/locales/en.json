@@ -1,0 +1,198 @@
+{
+  "brand": "Ons",
+
+  "invite": {
+    "title": "Invite only",
+    "subtitle": "This is a private matchmaking experience. Enter your invite key to continue.",
+    "placeholder": "Enter invite key",
+    "unlock": "Unlock",
+    "verifying": "Verifying…",
+    "error": "Invalid key. Check your invite and try again.",
+    "noInvite": "Don't have an invite?",
+    "noInviteLink": "Ask a friend who's already in."
+  },
+
+  "home": {
+    "badge": "Privacy first · Invite only",
+    "headline": "Find your\nperson.",
+    "subline": "A curated matchmaking experience where your identity stays private until we make the connection.",
+    "cta": "Apply Now",
+    "howItWorks": "How it works",
+    "cards": [
+      { "emoji": "🗒️", "title": "Fill the form", "desc": "Answer a short questionnaire about you and what you're looking for." },
+      { "emoji": "🔒", "title": "We protect your identity", "desc": "Your Instagram handle is encrypted. You get a codename. Only admins know the link." },
+      { "emoji": "💌", "title": "We make the match", "desc": "If we see a connection, we reach out directly. No algorithm swiping." }
+    ],
+    "footer": "© 2025 Ons · Built with care"
+  },
+
+  "apply": {
+    "stepOf": "Step {{current}} of {{total}}",
+    "back": "Back",
+    "next": "Continue",
+    "submit": "Submit",
+    "submitting": "Submitting…",
+    "error": "Something went wrong. Please try again."
+  },
+
+  "steps": {
+    "s1": {
+      "title": "Who are you?",
+      "subtitle": "Just the basics — we'll get to know you better in the next steps.",
+      "instagram": "Instagram handle",
+      "location": "Current location",
+      "locationPlaceholder": "City, Country",
+      "privacy": "Your Instagram handle is encrypted end-to-end. Nobody can see it except verified admins. You'll be assigned a codename."
+    },
+    "s2": {
+      "title": "About you",
+      "subtitle": "Help us understand who you are.",
+      "age": "Age",
+      "agePlaceholder": "25",
+      "height": "Height (cm)",
+      "heightPlaceholder": "175",
+      "heightHint": "Optional",
+      "work": "Work / Occupation",
+      "workPlaceholder": "e.g. Software Engineer, Teacher...",
+      "gender": "Gender identity",
+      "orientation": "Sexual orientation",
+      "religion": "Religion",
+      "religionPlaceholder": "e.g. Muslim, Christian, Atheist..."
+    },
+    "s3": {
+      "title": "Your vibe",
+      "subtitle": "This is where we get to know the real you. Be honest — it's how we find your match.",
+      "vibe": "Describe yourself in 3 words",
+      "vibePlaceholder": "e.g. curious, calm, funny",
+      "lifestyle": "Tell us about your lifestyle",
+      "lifestylePlaceholder": "Social drinker? Night owl? Gym rat? Tell us.",
+      "tip": "Think about how your closest friends would describe you. Authenticity here leads to better matches."
+    },
+    "s4": {
+      "title": "What you're looking for",
+      "subtitle": "Be specific — the more detail you share, the better the match.",
+      "relationshipType": "Type of relationship",
+      "longDistance": "Open to long distance?",
+      "longDistanceHint": "Would you consider a relationship across cities or countries?",
+      "physicalTraits": "Preferred physical traits",
+      "physicalTraitsPlaceholder": "Describe what you're attracted to physically...",
+      "characterTraits": "Preferred character traits",
+      "characterTraitsPlaceholder": "What personality traits matter most to you?",
+      "dealBreakers": "Deal breakers",
+      "dealBreakersPlaceholder": "What are absolute no-gos for you?",
+      "oppGenderFriends": "Okay with partner having many friends of the opposite gender?",
+      "religionDealBreaker": "Is partner's religion a deal breaker?",
+      "religionDealBreakerHint": "Would you not date someone of a different faith?"
+    },
+    "s5": {
+      "title": "Last words",
+      "subtitle": "Almost done. Just a few more things before we get to work.",
+      "affection": "How important is physical affection to you?",
+      "affectionLow": "not important",
+      "affectionHigh": "very important",
+      "firstDate": "Describe your dream first date",
+      "firstDatePlaceholder": "A walk in the park, dinner at a rooftop restaurant, a spontaneous road trip...",
+      "disclaimer": "I understand that my information is collected only for matchmaking, stored securely, and never sold or shared with third parties.",
+      "disclaimerRequired": "You must agree to continue."
+    }
+  },
+
+  "success": {
+    "title": "You're in.",
+    "subtitle": "We'll reach out when we find your match.",
+    "aliasLabel": "Your alias is",
+    "aliasHint": "Keep this alias safe — it's how we'll refer to you when we reach out.",
+    "privacy": "In the meantime, your identity is safely encrypted. We'll never share your information with third parties.",
+    "backHome": "Back to home"
+  },
+
+  "admin": {
+    "subtitle": "Admin",
+    "login": {
+      "title": "Admin access",
+      "username": "Username",
+      "password": "Password",
+      "submit": "Sign in",
+      "invalidCredentials": "Invalid credentials"
+    },
+    "nav": {
+      "dashboard": "Dashboard",
+      "applicants": "Applicants",
+      "matching": "Matching",
+      "auditLogs": "Audit Logs",
+      "signOut": "Sign out"
+    },
+    "dashboard": {
+      "title": "Dashboard",
+      "subtitle": "Platform overview",
+      "total": "Total",
+      "active": "Active",
+      "matched": "Matched",
+      "inactive": "Inactive",
+      "quickActions": "Quick actions",
+      "runMatching": "Run matching",
+      "viewApplicants": "View applicants",
+      "auditLogs": "Audit logs"
+    },
+    "applicants": {
+      "title": "Applicants",
+      "total": "{{count}} total",
+      "all": "All",
+      "active": "Active",
+      "matched": "Matched",
+      "inactive": "Inactive",
+      "withdrawn": "Withdrawn",
+      "colAlias": "Alias",
+      "colStatus": "Status",
+      "colLocation": "Location",
+      "colAge": "Age",
+      "colSubmitted": "Submitted",
+      "view": "View →",
+      "empty": "No applicants found.",
+      "page": "Page {{current}} of {{total}}",
+      "prev": "← Prev",
+      "next": "Next →"
+    },
+    "detail": {
+      "back": "Applicants",
+      "submitted": "Submitted {{date}}",
+      "withdraw": "Withdraw",
+      "withdrawConfirm": "Withdraw this applicant? Their status will be set to withdrawn.",
+      "identity": "Identity",
+      "reveal": "Reveal Instagram handle",
+      "auditNote": "Every reveal is audit-logged.",
+      "answers": "Answers",
+      "page": "Page {{current}} of {{total}}",
+      "prev": "← Prev",
+      "next": "Next →"
+    },
+    "matching": {
+      "title": "Matching",
+      "subtitle": "Run a full pairwise pass over all active applicants",
+      "algorithm": "Algorithm",
+      "baseline": "Baseline",
+      "baselineHint": "Weighted rule-based scoring",
+      "cosine": "Cosine",
+      "cosineHint": "Cosine similarity on numeric vectors",
+      "embedding": "Embedding",
+      "embeddingHint": "Semantic similarity via text embeddings",
+      "run": "Run matching",
+      "results": "Results",
+      "resultsMeta": "{{count}} applicants · {{algorithm}} · {{duration}}ms",
+      "multilingualWarning": "Baseline and cosine algorithms use keyword overlap on free-text fields. They may produce poor results when applicants filled the form in different languages. Use <bold>Embedding</bold> for multilingual accuracy."
+    },
+    "audit": {
+      "title": "Audit Logs",
+      "events": "{{count}} events",
+      "colAction": "Action",
+      "colTarget": "Target",
+      "colAdmin": "Admin",
+      "colIp": "IP",
+      "colTime": "Time",
+      "empty": "No audit events yet.",
+      "page": "Page {{current}} of {{total}}",
+      "prev": "← Prev",
+      "next": "Next →"
+    }
+  }
+}

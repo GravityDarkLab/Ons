@@ -1,0 +1,52 @@
+version: 2
+
+updates:
+  # ── npm (Bun reads package.json / bun.lock) ─────────────────────────────
+  - package-ecosystem: npm
+    directory: "/"
+    schedule:
+      interval: weekly
+      day: sunday
+      time: "06:00"
+      timezone: "Europe/Berlin"
+    # Supply-chain protection: only propose versions that have been
+    # published for at least 15 days. Newly-published malicious packages
+    # (typosquatting, hijacked maintainer accounts) are usually caught and
+    # yanked within days — a cooldown window filters most of that noise.
+    # Major bumps get a longer window (30d) since they carry more risk.
+    cooldown:
+      default-days: 15
+      semver-major-days: 30
+    # Group all deps into a single PR so CI runs once, not N times.
+    groups:
+      all-dependencies:
+        patterns: ["*"]
+    open-pull-requests-limit: 5
+    labels: ["dependencies", "automated"]
+
+  # ── Docker base images ───────────────────────────────────────────────────
+  - package-ecosystem: docker
+    directory: "/api"
+    schedule:
+      interval: weekly
+      day: sunday
+      time: "06:00"
+      timezone: "Europe/Berlin"
+    cooldown:
+      default-days: 15   # semver-major-days not supported for docker
+    labels: ["dependencies", "docker", "automated"]
+
+  # ── GitHub Actions ───────────────────────────────────────────────────────
+  - package-ecosystem: github-actions
+    directory: "/"
+    schedule:
+      interval: weekly
+      day: sunday
+      time: "06:00"
+      timezone: "Europe/Berlin"
+    cooldown:
+      default-days: 15   # semver-major-days not supported for github-actions
+    groups:
+      github-actions:
+        patterns: ["*"]
+    labels: ["dependencies", "github-actions", "automated"]

@@ -1,0 +1,13 @@
+# Gitleaks configuration
+# Docs: https://github.com/gitleaks/gitleaks?tab=readme-ov-file#configuration
+
+title = "Ons gitleaks config"
+
+[allowlist]
+description = "Suppress false positives on documentation files with placeholder values"
+# The OpenAPI spec contains example/placeholder values for fields like
+# submissionKey that trigger generic-api-key rules. These are documentation
+# examples, not real secrets.
+paths = [
+  '''api/docs/openapi\.yaml''',
+]

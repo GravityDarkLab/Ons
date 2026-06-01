@@ -1,0 +1,66 @@
+import { Controller } from 'react-hook-form'
+import { useTranslation } from 'react-i18next'
+import type { Control, FieldErrors } from 'react-hook-form'
+import type { FormValues } from '../types/form'
+import Textarea from '../components/ui/Textarea'
+import RadioCardGroup from '../components/ui/RadioCard'
+import Toggle from '../components/ui/Toggle'
+
+interface Props { control: Control<FormValues>; errors: FieldErrors<FormValues> }
+export const FIELDS: (keyof FormValues)[] = [
+  'relationship_type', 'open_to_long_distance', 'preferred_physical_traits',
+  'preferred_character_traits', 'deal_breakers', 'okay_with_opposite_gender_friends', 'religion_deal_breaker',
+]
+
+// Values stay in English — stored in DB and used by matching engine
+const relationshipOptions = [
+  { value: 'Long Term', label: 'Long Term' },
+  { value: 'Short Term', label: 'Short Term' },
+  { value: 'Open to Both', label: 'Open to Both' },
+  { value: 'Casual', label: 'Casual' },
+  { value: 'Not Sure', label: 'Not Sure' },
+]
+
+export default function Step4Preferences({ control, errors }: Props) {
+  const { t } = useTranslation()
+  return (
+    <div className="flex flex-col gap-6">
+      <div className="flex flex-col gap-1">
+        <h2 className="text-2xl font-semibold text-primary tracking-tight">{t('steps.s4.title')}</h2>
+        <p className="text-sm text-muted leading-relaxed">{t('steps.s4.subtitle')}</p>
+      </div>
+      <div className="flex flex-col gap-5">
+        <Controller name="relationship_type" control={control} render={({ field }) => (
+          <RadioCardGroup label={t('steps.s4.relationshipType')} options={relationshipOptions}
+            value={field.value ?? ''} onChange={field.onChange}
+            error={errors.relationship_type?.message} columns={2} />
+        )} />
+        <Controller name="open_to_long_distance" control={control} render={({ field }) => (
+          <Toggle label={t('steps.s4.longDistance')} hint={t('steps.s4.longDistanceHint')}
+            value={field.value ?? false} onChange={field.onChange} />
+        )} />
+        <Controller name="preferred_physical_traits" control={control} render={({ field }) => (
+          <Textarea label={t('steps.s4.physicalTraits')} placeholder={t('steps.s4.physicalTraitsPlaceholder')}
+            rows={3} error={errors.preferred_physical_traits?.message} required {...field} />
+        )} />
+        <Controller name="preferred_character_traits" control={control} render={({ field }) => (
+          <Textarea label={t('steps.s4.characterTraits')} placeholder={t('steps.s4.characterTraitsPlaceholder')}
+            rows={3} error={errors.preferred_character_traits?.message} required {...field} />
+        )} />
+        <Controller name="deal_breakers" control={control} render={({ field }) => (
+          <Textarea label={t('steps.s4.dealBreakers')} placeholder={t('steps.s4.dealBreakersPlaceholder')}
+            rows={3} error={errors.deal_breakers?.message} required {...field} />
+        )} />
+        <div className="flex flex-col gap-2">
+          <Controller name="okay_with_opposite_gender_friends" control={control} render={({ field }) => (
+            <Toggle label={t('steps.s4.oppGenderFriends')} value={field.value ?? false} onChange={field.onChange} />
+          )} />
+          <Controller name="religion_deal_breaker" control={control} render={({ field }) => (
+            <Toggle label={t('steps.s4.religionDealBreaker')} hint={t('steps.s4.religionDealBreakerHint')}
+              value={field.value ?? false} onChange={field.onChange} />
+          )} />
+        </div>
+      </div>
+    </div>
+  )
+}

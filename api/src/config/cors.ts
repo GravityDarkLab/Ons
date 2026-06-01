@@ -1,0 +1,17 @@
+import { cors } from "hono/cors";
+import { env } from "./env.js";
+
+export function buildCorsMiddleware() {
+  return cors({
+    origin: (origin) => {
+      if (!origin) return null;
+      if (env.allowedOrigins.includes(origin)) return origin;
+      return null;
+    },
+    allowMethods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+    allowHeaders: ["Content-Type", "Authorization"],
+    exposeHeaders: ["X-Request-Id"],
+    maxAge: 600,
+    credentials: true,
+  });
+}

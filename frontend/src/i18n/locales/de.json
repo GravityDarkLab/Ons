@@ -1,0 +1,198 @@
+{
+  "brand": "Ons",
+
+  "invite": {
+    "title": "Nur auf Einladung",
+    "subtitle": "Dies ist ein privates Matchmaking-Erlebnis. Gib deinen Einladungsschlüssel ein.",
+    "placeholder": "Einladungsschlüssel eingeben",
+    "unlock": "Entsperren",
+    "verifying": "Wird geprüft…",
+    "error": "Ungültiger Schlüssel. Überprüfe deine Einladung.",
+    "noInvite": "Keine Einladung?",
+    "noInviteLink": "Frag einen Freund, der bereits dabei ist."
+  },
+
+  "home": {
+    "badge": "Datenschutz zuerst · Nur auf Einladung",
+    "headline": "Finde deinen\nMenschen.",
+    "subline": "Ein kuratiertes Matchmaking-Erlebnis, bei dem deine Identität privat bleibt, bis wir die Verbindung herstellen.",
+    "cta": "Jetzt bewerben",
+    "howItWorks": "So funktioniert es",
+    "cards": [
+      { "emoji": "🗒️", "title": "Formular ausfüllen", "desc": "Beantworte einen kurzen Fragebogen über dich und was du suchst." },
+      { "emoji": "🔒", "title": "Wir schützen deine Identität", "desc": "Dein Instagram-Handle wird verschlüsselt. Du bekommst einen Codenamen." },
+      { "emoji": "💌", "title": "Wir machen das Match", "desc": "Wenn wir eine Verbindung sehen, melden wir uns direkt. Kein Algorithmus." }
+    ],
+    "footer": "© 2025 Ons · Mit Sorgfalt entwickelt"
+  },
+
+  "apply": {
+    "stepOf": "Schritt {{current}} von {{total}}",
+    "back": "Zurück",
+    "next": "Weiter",
+    "submit": "Absenden",
+    "submitting": "Wird gesendet…",
+    "error": "Etwas ist schiefgelaufen. Bitte versuche es erneut."
+  },
+
+  "steps": {
+    "s1": {
+      "title": "Wer bist du?",
+      "subtitle": "Nur die Grundlagen — wir lernen dich in den nächsten Schritten besser kennen.",
+      "instagram": "Instagram-Handle",
+      "location": "Aktueller Wohnort",
+      "locationPlaceholder": "Stadt, Land",
+      "privacy": "Dein Instagram-Handle ist Ende-zu-Ende verschlüsselt. Nur verifizierte Admins können ihn sehen. Du erhältst einen Codenamen."
+    },
+    "s2": {
+      "title": "Über dich",
+      "subtitle": "Hilf uns, dich besser zu verstehen.",
+      "age": "Alter",
+      "agePlaceholder": "25",
+      "height": "Größe (cm)",
+      "heightPlaceholder": "175",
+      "heightHint": "Optional",
+      "work": "Beruf / Tätigkeit",
+      "workPlaceholder": "z.B. Softwareentwickler, Lehrer...",
+      "gender": "Geschlechtsidentität",
+      "orientation": "Sexuelle Orientierung",
+      "religion": "Religion",
+      "religionPlaceholder": "z.B. Muslim, Christ, Atheist..."
+    },
+    "s3": {
+      "title": "Dein Vibe",
+      "subtitle": "Hier lernen wir dich wirklich kennen. Sei ehrlich — so finden wir dein Match.",
+      "vibe": "Beschreibe dich in 3 Wörtern",
+      "vibePlaceholder": "z.B. neugierig, ruhig, lustig",
+      "lifestyle": "Erzähl uns von deinem Lebensstil",
+      "lifestylePlaceholder": "Gelegentlicher Trinker? Nachtmensch? Sportler? Erzähl es uns.",
+      "tip": "Denke daran, wie deine engsten Freunde dich beschreiben würden. Authentizität führt zu besseren Matches."
+    },
+    "s4": {
+      "title": "Was du suchst",
+      "subtitle": "Sei konkret — je mehr Details, desto besser das Match.",
+      "relationshipType": "Art der Beziehung",
+      "longDistance": "Offen für Fernbeziehung?",
+      "longDistanceHint": "Würdest du eine Beziehung über Städte oder Länder hinweg in Betracht ziehen?",
+      "physicalTraits": "Bevorzugte körperliche Eigenschaften",
+      "physicalTraitsPlaceholder": "Beschreibe, was du körperlich ansprechend findest...",
+      "characterTraits": "Bevorzugte Charaktereigenschaften",
+      "characterTraitsPlaceholder": "Welche Persönlichkeitsmerkmale sind dir am wichtigsten?",
+      "dealBreakers": "Ausschlusskriterien",
+      "dealBreakersPlaceholder": "Was sind absolute No-Gos für dich?",
+      "oppGenderFriends": "Okay damit, dass der Partner viele Freunde des anderen Geschlechts hat?",
+      "religionDealBreaker": "Ist die Religion des Partners ein Ausschlusskriterium?",
+      "religionDealBreakerHint": "Würdest du jemanden mit einem anderen Glauben nicht daten?"
+    },
+    "s5": {
+      "title": "Letzte Worte",
+      "subtitle": "Fast fertig. Nur noch ein paar Dinge.",
+      "affection": "Wie wichtig ist dir körperliche Zuneigung?",
+      "affectionLow": "unwichtig",
+      "affectionHigh": "sehr wichtig",
+      "firstDate": "Beschreibe dein Traumerstes Date",
+      "firstDatePlaceholder": "Ein Spaziergang im Park, Abendessen auf einer Dachterrasse...",
+      "disclaimer": "Ich verstehe, dass meine Daten nur für das Matchmaking verwendet, sicher gespeichert und niemals an Dritte verkauft oder weitergegeben werden.",
+      "disclaimerRequired": "Du musst zustimmen, um fortzufahren."
+    }
+  },
+
+  "success": {
+    "title": "Du bist dabei.",
+    "subtitle": "Wir melden uns, wenn wir dein Match gefunden haben.",
+    "aliasLabel": "Dein Aliasname ist",
+    "aliasHint": "Behalte diesen Aliasnamen — so werden wir dich ansprechen, wenn wir uns melden.",
+    "privacy": "In der Zwischenzeit ist deine Identität sicher verschlüsselt. Wir teilen deine Daten niemals mit Dritten.",
+    "backHome": "Zurück zur Startseite"
+  },
+
+  "admin": {
+    "subtitle": "Admin",
+    "login": {
+      "title": "Admin-Zugang",
+      "username": "Benutzername",
+      "password": "Passwort",
+      "submit": "Anmelden",
+      "invalidCredentials": "Ungültige Anmeldedaten"
+    },
+    "nav": {
+      "dashboard": "Dashboard",
+      "applicants": "Bewerber",
+      "matching": "Matching",
+      "auditLogs": "Audit-Protokoll",
+      "signOut": "Abmelden"
+    },
+    "dashboard": {
+      "title": "Dashboard",
+      "subtitle": "Plattformübersicht",
+      "total": "Gesamt",
+      "active": "Aktiv",
+      "matched": "Gematcht",
+      "inactive": "Inaktiv",
+      "quickActions": "Schnellaktionen",
+      "runMatching": "Matching starten",
+      "viewApplicants": "Bewerber anzeigen",
+      "auditLogs": "Audit-Protokoll"
+    },
+    "applicants": {
+      "title": "Bewerber",
+      "total": "{{count}} gesamt",
+      "all": "Alle",
+      "active": "Aktiv",
+      "matched": "Gematcht",
+      "inactive": "Inaktiv",
+      "withdrawn": "Zurückgezogen",
+      "colAlias": "Alias",
+      "colStatus": "Status",
+      "colLocation": "Ort",
+      "colAge": "Alter",
+      "colSubmitted": "Eingereicht",
+      "view": "Ansehen →",
+      "empty": "Keine Bewerber gefunden.",
+      "page": "Seite {{current}} von {{total}}",
+      "prev": "← Zurück",
+      "next": "Weiter →"
+    },
+    "detail": {
+      "back": "Bewerber",
+      "submitted": "Eingereicht am {{date}}",
+      "withdraw": "Zurückziehen",
+      "withdrawConfirm": "Diesen Bewerber zurückziehen? Der Status wird auf 'zurückgezogen' gesetzt.",
+      "identity": "Identität",
+      "reveal": "Instagram-Handle anzeigen",
+      "auditNote": "Jede Anzeige wird protokolliert.",
+      "answers": "Antworten",
+      "page": "Seite {{current}} von {{total}}",
+      "prev": "← Zurück",
+      "next": "Weiter →"
+    },
+    "matching": {
+      "title": "Matching",
+      "subtitle": "Vollständigen paarweisen Durchlauf für alle aktiven Bewerber starten",
+      "algorithm": "Algorithmus",
+      "baseline": "Baseline",
+      "baselineHint": "Gewichtetes regelbasiertes Scoring",
+      "cosine": "Kosinus",
+      "cosineHint": "Kosinus-Ähnlichkeit auf numerischen Vektoren",
+      "embedding": "Embedding",
+      "embeddingHint": "Semantische Ähnlichkeit via Texteinbettungen",
+      "run": "Matching starten",
+      "results": "Ergebnisse",
+      "resultsMeta": "{{count}} Bewerber · {{algorithm}} · {{duration}}ms",
+      "multilingualWarning": "Baseline- und Kosinus-Algorithmen verwenden Stichwortübereinstimmung für Freitextfelder. Sie können schlechte Ergebnisse liefern, wenn Bewerber das Formular in verschiedenen Sprachen ausgefüllt haben. Verwende <bold>Embedding</bold> für mehrsprachige Genauigkeit."
+    },
+    "audit": {
+      "title": "Audit-Protokoll",
+      "events": "{{count}} Ereignisse",
+      "colAction": "Aktion",
+      "colTarget": "Ziel",
+      "colAdmin": "Admin",
+      "colIp": "IP",
+      "colTime": "Zeit",
+      "empty": "Noch keine Ereignisse.",
+      "page": "Seite {{current}} von {{total}}",
+      "prev": "← Zurück",
+      "next": "Weiter →"
+    }
+  }
+}
