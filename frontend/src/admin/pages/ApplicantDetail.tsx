@@ -34,6 +34,8 @@ export function ApplicantDetail() {
 
   useEffect(() => {
     if (!id) return
+    setIdentity(null)
+    setApplicant(null)
     fetchApplicant(id).then(setApplicant)
     fetchMatches(1, 10, undefined, id).then(res => setMatches(res.data))
   }, [id])
