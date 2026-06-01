@@ -54,10 +54,11 @@ export async function listMatches(
   }
 
   if (search) {
+    const safeSearch = search.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
     andClauses.push({
       $or: [
-        { applicantAAlias: { $regex: search, $options: "i" } },
-        { applicantBAlias: { $regex: search, $options: "i" } },
+        { applicantAAlias: { $regex: safeSearch, $options: "i" } },
+        { applicantBAlias: { $regex: safeSearch, $options: "i" } },
       ],
     });
   }

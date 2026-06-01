@@ -55,7 +55,7 @@ export async function listApplicants(
 
   const filter: Record<string, unknown> = {};
   if (status) filter.status = status;
-  if (search)  filter.alias = { $regex: search, $options: "i" };
+  if (search)  filter.alias = { $regex: search.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"), $options: "i" };
   const skip = (page - 1) * limit;
 
   const [docs, total] = await Promise.all([
