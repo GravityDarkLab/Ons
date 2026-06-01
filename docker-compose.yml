@@ -1,8 +1,11 @@
 # ── Ons — production-grade Compose ────────────────────────────────────────────
 #
-# Usage:
-#   Dev   (mongo in Docker): docker compose -f docker-compose.yml -f docker-compose.dev.yml --env-file .env.dev  up --build -d
-#   Prod  (external mongo):  docker compose                                                 --env-file .env.prod up --build -d
+# Usage (single command, any environment):
+#   docker compose --env-file .env.dev  up --build -d
+#   docker compose --env-file .env.prod up --build -d
+#
+# All variables are read from the env file and forwarded explicitly via
+# `environment:` — no separate env_file directive, no path resolution issues.
 #
 # Architecture:
 #   internet → nginx:80 ─┬─ /*       → static SPA  (frontend)
@@ -11,15 +14,13 @@
 # The API is never exposed externally — all traffic enters through nginx.
 # VITE_API_URL must be empty so the browser uses relative paths (same origin).
 #
-# Variables consumed from the env file:
-#   Required : MONGODB_URI  ENCRYPTION_KEY  JWT_SECRET  FORM_SECRET  VITE_INVITE_KEY
-#   Optional : NODE_ENV (production)  PORT (3001)  HTTP_PORT (80)  VITE_API_URL ("")
-#
-# See api/.env.example for the full reference.
+# Required: MONGODB_URI  ENCRYPTION_KEY  JWT_SECRET  FORM_SECRET  VITE_INVITE_KEY
+# See api/.env.example for the full variable reference.
 
 name: ons
 
 services:
+
   # ── API ─────────────────────────────────────────────────────────────────────
   api:
     build:
@@ -31,30 +32,35 @@ services:
     networks:
       - ons-net
     expose:
-      - "${PORT:-3001}" # internal only — nginx proxies, nothing else
-    env_file:
-      - path: .env
-        required: false
+      - "${PORT:-3001}"
     environment:
-      NODE_ENV: ${NODE_ENV:-production}
-      PORT: ${PORT:-3001}
+      NODE_ENV:           ${NODE_ENV:-production}
+      PORT:               ${PORT:-3001}
+      MONGODB_URI:        ${MONGODB_URI:?MONGODB_URI must be set}
+      MONGODB_DB_NAME:    ${MONGODB_DB_NAME:-ons}
+      ENCRYPTION_KEY:     ${ENCRYPTION_KEY:?ENCRYPTION_KEY must be set}
+      FORM_SECRET:        ${FORM_SECRET:?FORM_SECRET must be set}
+      JWT_SECRET:         ${JWT_SECRET:?JWT_SECRET must be set}
+      JWT_EXPIRY:         ${JWT_EXPIRY:-8h}
+      PUBLIC_URL:         ${PUBLIC_URL:-}
+      ALLOWED_ORIGINS:    ${ALLOWED_ORIGINS:-}
+      EMBEDDING_PROVIDER: ${EMBEDDING_PROVIDER:-local}
+      EMBEDDING_MODEL:    ${EMBEDDING_MODEL:-}
+      OPENAI_API_KEY:     ${OPENAI_API_KEY:-}
+      EMBEDDING_BASE_URL: ${EMBEDDING_BASE_URL:-}
     healthcheck:
-      test:
-        [
-          "CMD-SHELL",
-          "wget -qO- http://localhost:${PORT:-3001}/health || exit 1",
-        ]
+      test: ["CMD-SHELL", "wget -qO- http://localhost:${PORT:-3001}/health || exit 1"]
       interval: 30s
-      timeout: 5s
-      retries: 3
+      timeout:  5s
+      retries:  3
       start_period: 15s
     deploy:
       resources:
         limits:
-          cpus: "1.0"
+          cpus:   "1.0"
           memory: 512M
         reservations:
-          cpus: "0.25"
+          cpus:   "0.25"
           memory: 128M
     security_opt:
       - no-new-privileges:true
@@ -73,7 +79,7 @@ services:
       context: ./frontend
       dockerfile: Dockerfile
       args:
-        VITE_API_URL: ${VITE_API_URL:-}
+        VITE_API_URL:    ${VITE_API_URL:-}
         VITE_INVITE_KEY: ${VITE_INVITE_KEY:?VITE_INVITE_KEY must be set}
     image: ons-frontend:latest
     container_name: ons-frontend
@@ -88,16 +94,16 @@ services:
     healthcheck:
       test: ["CMD-SHELL", "wget -qO- http://localhost/ || exit 1"]
       interval: 30s
-      timeout: 5s
-      retries: 3
+      timeout:  5s
+      retries:  3
       start_period: 10s
     deploy:
       resources:
         limits:
-          cpus: "0.5"
+          cpus:   "0.5"
           memory: 64M
         reservations:
-          cpus: "0.1"
+          cpus:   "0.1"
           memory: 32M
     security_opt:
       - no-new-privileges:true
