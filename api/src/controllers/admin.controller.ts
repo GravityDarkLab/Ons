@@ -36,7 +36,7 @@ export async function login(c: Context): Promise<Response> {
     httpOnly: true,
     secure: env.nodeEnv === "production",
     sameSite: "Lax",
-    path: "/api/v1/admin",
+    path: "/api/v1",
     maxAge: COOKIE_MAX_AGE,
   });
 
