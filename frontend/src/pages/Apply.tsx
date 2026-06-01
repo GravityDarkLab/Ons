@@ -1,11 +1,11 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import type { FormValues } from '../types/form'
 import { formSchema } from '../types/form'
-import { submitForm } from '../api/client'
+import { fetchQuestionnaire, submitForm } from '../api/client'
 import ProgressBar from '../components/ui/ProgressBar'
 import Button from '../components/ui/Button'
 
@@ -25,6 +25,19 @@ export default function Apply() {
   const [step, setStep] = useState(1)
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [submitError, setSubmitError] = useState<string | null>(null)
+  const [submissionKey, setSubmissionKey] = useState<string | null>(null)
+  const [questionnaireVersion, setQuestionnaireVersion] = useState('1.0.0')
+
+  // Fetch the active questionnaire on mount to obtain the HMAC submission key.
+  // Without it the API will reject the submission.
+  useEffect(() => {
+    fetchQuestionnaire()
+      .then(q => {
+        setSubmissionKey(q.submissionKey)
+        setQuestionnaireVersion(q.version)
+      })
+      .catch(() => setSubmitError(t('apply.error')))
+  }, [t])
 
   const { control, formState: { errors }, trigger, getValues } = useForm<FormValues>({
     resolver: zodResolver(formSchema),
@@ -55,7 +68,7 @@ export default function Apply() {
     try {
       const values = getValues()
       const result = await submitForm({
-        questionnaireVersion: '1.0.0' as const,
+        questionnaireVersion: questionnaireVersion as '1.0.0',
         answers: {
           instagram_handle: values.instagram_handle,
           location: values.location,
@@ -78,7 +91,7 @@ export default function Apply() {
           dream_first_date: values.dream_first_date,
           disclaimer_agreed: true as const,
         },
-      })
+      }, submissionKey ?? '')
       navigate(`/success?alias=${encodeURIComponent(result.alias)}&id=${result.applicantId}`)
     } catch (err) {
       setSubmitError(err instanceof Error ? err.message : t('apply.error'))
