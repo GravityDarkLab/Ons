@@ -41,17 +41,21 @@ export async function adminLogin(
 }
 
 /**
- * Returns a paginated list of applicants, optionally filtered by status.
+ * Returns a paginated list of applicants, optionally filtered by status
+ * and/or a case-insensitive alias search string.
  */
 export async function listApplicants(
   page: number,
   limit: number,
-  status?: ApplicantStatus
+  status?: ApplicantStatus,
+  search?: string,
 ): Promise<PaginatedResult<Omit<ApplicantDoc, "_id"> & { id: string }>> {
   const db = await getDb();
   const col = getApplicantsCollection(db);
 
-  const filter = status ? { status } : {};
+  const filter: Record<string, unknown> = {};
+  if (status) filter.status = status;
+  if (search)  filter.alias = { $regex: search, $options: "i" };
   const skip = (page - 1) * limit;
 
   const [docs, total] = await Promise.all([

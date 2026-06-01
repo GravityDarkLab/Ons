@@ -50,7 +50,7 @@ export async function login(c: Context): Promise<Response> {
  * POST /api/v1/admin/logout
  */
 export async function logout(c: Context): Promise<Response> {
-  deleteCookie(c, COOKIE_NAME, { path: "/api/v1/admin" });
+  deleteCookie(c, COOKIE_NAME, { path: "/api/v1" });
   return c.json({ success: true });
 }
 
@@ -74,9 +74,10 @@ export async function me(c: Context): Promise<Response> {
  */
 export async function getApplicants(c: Context): Promise<Response> {
   const query = c.req.query();
-  const page = Math.max(1, parseInt(query.page ?? "1", 10));
-  const limit = Math.min(100, Math.max(1, parseInt(query.limit ?? "20", 10)));
+  const page   = Math.max(1, parseInt(query.page  ?? "1",  10));
+  const limit  = Math.min(100, Math.max(1, parseInt(query.limit ?? "20", 10)));
   const status = query.status as ApplicantStatus | undefined;
+  const search = query.search?.trim() || undefined;
 
   const adminId = c.get("adminId") as string;
   const auditCtx = extractAuditContext(adminId, c);
@@ -86,7 +87,7 @@ export async function getApplicants(c: Context): Promise<Response> {
   });
 
   try {
-    const result = await listApplicants(page, limit, status);
+    const result = await listApplicants(page, limit, status, search);
     return c.json({ success: true, ...result });
   } catch (err) {
     const message = err instanceof Error ? err.message : "Failed to list applicants";

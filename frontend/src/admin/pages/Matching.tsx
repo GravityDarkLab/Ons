@@ -1,8 +1,9 @@
 import { useState } from 'react'
+import { Link } from 'react-router-dom'
 import { useTranslation, Trans } from 'react-i18next'
 import { runMatching } from '../api/client'
 import Button from '../../components/ui/Button'
-import type { MatchCandidate, MatchingRun } from '../types'
+import type { MatchingRun } from '../types'
 
 export function Matching() {
   const { t } = useTranslation()
@@ -33,9 +34,9 @@ export function Matching() {
   ]
 
   async function handleRun() {
-    setError(''); setLoading(true)
+    setError(''); setLoading(true); setResult(null)
     try { setResult(await runMatching(algorithm)) }
-    catch (err) { setError(err instanceof Error ? err.message : t('admin.matching.results')) }
+    catch (err) { setError(err instanceof Error ? err.message : t('admin.matching.runError')) }
     finally { setLoading(false) }
   }
 
@@ -48,6 +49,7 @@ export function Matching() {
         <p className="text-sm text-muted mt-0.5">{t('admin.matching.subtitle')}</p>
       </div>
 
+      {/* Algorithm selector */}
       <div className="bg-surface border border-border rounded-2xl p-5 space-y-4">
         <p className="text-sm font-medium text-primary">{t('admin.matching.algorithm')}</p>
         <div className="space-y-2">
@@ -73,7 +75,7 @@ export function Matching() {
                   <p className="text-sm font-medium text-primary">{a.label}</p>
                   {a.recommended && (
                     <span className="inline-flex px-1.5 py-0.5 rounded-md bg-success-light text-success text-xs font-medium">
-                      Recommended
+                      {t('admin.matching.recommended')}
                     </span>
                   )}
                 </div>
@@ -83,7 +85,6 @@ export function Matching() {
           ))}
         </div>
 
-        {/* Multilingual warning for non-embedding algorithms */}
         {isNonEmbedding && (
           <div className="flex items-start gap-3 rounded-xl bg-error-light border border-error/20 px-4 py-3">
             <svg className="w-4 h-4 text-error shrink-0 mt-0.5" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
@@ -92,10 +93,7 @@ export function Matching() {
               <line x1="12" y1="17" x2="12.01" y2="17"/>
             </svg>
             <p className="text-xs text-error leading-relaxed">
-              <Trans
-                i18nKey="admin.matching.multilingualWarning"
-                components={{ bold: <strong /> }}
-              />
+              <Trans i18nKey="admin.matching.multilingualWarning" components={{ bold: <strong /> }} />
             </p>
           </div>
         )}
@@ -105,45 +103,49 @@ export function Matching() {
         <Button onClick={handleRun} loading={loading}>{t('admin.matching.run')}</Button>
       </div>
 
+      {/* Run summary */}
       {result && (
-        <div className="space-y-4">
-          <div className="flex items-center gap-3 flex-wrap">
-            <p className="text-sm font-medium text-primary">{t('admin.matching.results')}</p>
-            <span className="text-xs text-muted">
-              {t('admin.matching.resultsMeta', { count: result.totalApplicants, algorithm: result.algorithm, duration: result.durationMs })}
+        <div className="bg-surface border border-border rounded-2xl p-5 space-y-4">
+          <div className="flex items-center gap-2">
+            {/* green checkmark */}
+            <span className="flex h-6 w-6 items-center justify-center rounded-full bg-success-light">
+              <svg className="h-3.5 w-3.5 text-success" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                <polyline points="20 6 9 17 4 12" />
+              </svg>
             </span>
+            <p className="text-sm font-medium text-primary">{t('admin.matching.runComplete')}</p>
           </div>
-          <div className="space-y-3">
-            {Object.entries(result.results).map(([applicantId, candidates]) => (
-              <ResultCard key={applicantId} applicantId={applicantId} candidates={candidates} />
-            ))}
+
+          <div className="grid grid-cols-3 gap-3">
+            <StatCard label={t('admin.matching.statApplicants')} value={result.totalApplicants} />
+            <StatCard label={t('admin.matching.statCouples')}    value={result.couplesProposed} accent />
+            <StatCard label={t('admin.matching.statDuration')}   value={`${result.durationMs}ms`} />
           </div>
+
+          <p className="text-xs text-muted">
+            {t('admin.matching.algorithmUsed', { algorithm: result.algorithm })}
+          </p>
+
+          <Link
+            to="/admin/matches"
+            className="inline-flex items-center gap-1.5 text-sm font-medium text-accent hover:underline"
+          >
+            {t('admin.matching.viewMatches')}
+            <svg className="h-3.5 w-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+              <path d="M5 12h14M12 5l7 7-7 7" />
+            </svg>
+          </Link>
         </div>
       )}
     </div>
   )
 }
 
-function ResultCard({ applicantId, candidates }: { applicantId: string; candidates: MatchCandidate[] }) {
+function StatCard({ label, value, accent }: { label: string; value: string | number; accent?: boolean }) {
   return (
-    <div className="bg-surface border border-border rounded-2xl p-4">
-      <p className="text-xs font-mono text-muted mb-3 truncate">{applicantId}</p>
-      <div className="space-y-2">
-        {candidates.slice(0, 5).map((c, i) => (
-          <div key={c.applicantId} className="flex items-center justify-between gap-4">
-            <div className="flex items-center gap-3 min-w-0">
-              <span className="text-xs text-muted w-4 shrink-0">{i + 1}</span>
-              <span className="text-sm font-mono text-primary truncate">{c.alias}</span>
-            </div>
-            <div className="flex items-center gap-2 shrink-0">
-              <div className="w-20 h-1.5 bg-border rounded-full overflow-hidden">
-                <div className="h-full bg-accent rounded-full transition-all" style={{ width: `${Math.round(c.score * 100)}%` }} />
-              </div>
-              <span className="text-xs text-muted w-7 text-right">{Math.round(c.score * 100)}%</span>
-            </div>
-          </div>
-        ))}
-      </div>
+    <div className="bg-bg border border-border rounded-xl px-4 py-3">
+      <p className={`text-xl font-semibold ${accent ? 'text-accent' : 'text-primary'}`}>{value}</p>
+      <p className="text-xs text-muted mt-0.5">{label}</p>
     </div>
   )
 }

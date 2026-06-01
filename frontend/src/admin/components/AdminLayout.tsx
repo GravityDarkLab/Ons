@@ -13,7 +13,8 @@ export function AdminLayout({ children }: { children: ReactNode }) {
     { to: '/admin',            label: t('admin.nav.dashboard'),  end: true },
     { to: '/admin/applicants', label: t('admin.nav.applicants'), end: false },
     { to: '/admin/matching',   label: t('admin.nav.matching'),   end: false },
-    { to: '/admin/audit-logs', label: t('admin.nav.auditLogs'), end: false },
+    { to: '/admin/matches',    label: t('admin.nav.matches'),    end: false },
+    { to: '/admin/audit-logs', label: t('admin.nav.auditLogs'),  end: false },
   ]
 
   function handleLogout() { logout(); navigate('/admin/login') }

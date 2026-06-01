@@ -16,6 +16,7 @@ import { ensureIndexes } from "./db/collections.js";
 import { formRoutes } from "./routes/form.routes.js";
 import { adminRoutes } from "./routes/admin.routes.js";
 import { matchingRoutes } from "./routes/matching.routes.js";
+import { matchRoutes } from "./routes/match.routes.js";
 
 const API_PREFIX_V1 = "/api/v1";
 
@@ -49,6 +50,7 @@ app.get("/health", (c) => {
 // API routes
 app.route(API_PREFIX_V1 + "/form", formRoutes);
 app.route(API_PREFIX_V1 + "/admin", adminRoutes);
+app.route(API_PREFIX_V1 + "/admin/matches", matchRoutes);
 app.route(API_PREFIX_V1 + "/matching", matchingRoutes);
 
 // Global 404 handler

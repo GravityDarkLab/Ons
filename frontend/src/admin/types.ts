@@ -41,5 +41,22 @@ export interface MatchingRun {
   algorithm: string
   totalApplicants: number
   durationMs: number
+  couplesProposed: number
   results: Record<string, MatchCandidate[]>
+}
+
+export type MatchStatus = 'proposed' | 'contacted' | 'matched' | 'failed'
+
+export interface Match {
+  id: string
+  applicantAId: string
+  applicantAAlias: string
+  applicantBId: string
+  applicantBAlias: string
+  score: number
+  algorithm: string
+  status: MatchStatus
+  notes?: string
+  createdAt: string
+  updatedAt: string
 }

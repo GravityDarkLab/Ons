@@ -1,9 +1,16 @@
 import { useEffect, useState } from 'react'
 import { useParams, useNavigate, Link } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
-import { fetchApplicant, fetchIdentity, deactivateApplicant } from '../api/client'
+import { fetchApplicant, fetchIdentity, deactivateApplicant, fetchMatches } from '../api/client'
 import Button from '../../components/ui/Button'
-import type { Applicant, ApplicantStatus } from '../types'
+import type { Applicant, ApplicantStatus, Match, MatchStatus } from '../types'
+
+const MATCH_STATUS_BADGE: Record<MatchStatus, string> = {
+  proposed:  'bg-border text-muted',
+  contacted: 'bg-accent-light text-accent',
+  matched:   'bg-success-light text-success',
+  failed:    'bg-error-light text-error',
+}
 
 const STATUS_BADGE: Record<ApplicantStatus, string> = {
   active:    'bg-success-light text-success',
@@ -23,8 +30,13 @@ export function ApplicantDetail() {
   const [revealLoading, setRevealLoading]     = useState(false)
   const [withdrawLoading, setWithdrawLoading] = useState(false)
   const [error, setError]                     = useState('')
+  const [matches, setMatches]                 = useState<Match[]>([])
 
-  useEffect(() => { if (id) fetchApplicant(id).then(setApplicant) }, [id])
+  useEffect(() => {
+    if (!id) return
+    fetchApplicant(id).then(setApplicant)
+    fetchMatches(1, 10, undefined, id).then(res => setMatches(res.data))
+  }, [id])
 
   async function handleReveal() {
     if (!id) return
@@ -95,6 +107,38 @@ export function ApplicantDetail() {
         )}
         <p className="text-xs text-muted mt-2">{t('admin.detail.auditNote')}</p>
       </div>
+
+      {/* Matches for this applicant */}
+      {matches.length > 0 && (
+        <div className="bg-surface border border-border rounded-2xl p-5">
+          <div className="flex items-center justify-between mb-3">
+            <p className="text-sm font-medium text-primary">{t('admin.detail.matches')}</p>
+            <Link to={`/admin/matches?participantId=${id}`} className="text-xs text-accent hover:underline">
+              {t('admin.detail.viewAllMatches')}
+            </Link>
+          </div>
+          <div className="space-y-2">
+            {matches.map(m => {
+              const partnerId    = m.applicantAId === id ? m.applicantBId    : m.applicantAId
+              const partnerAlias = m.applicantAId === id ? m.applicantBAlias : m.applicantAAlias
+              return (
+                <div key={m.id} className="flex items-center justify-between gap-3">
+                  <Link to={`/admin/applicants/${partnerId}`}
+                    className="text-sm font-mono text-accent hover:underline truncate">
+                    {partnerAlias}
+                  </Link>
+                  <div className="flex items-center gap-2 shrink-0">
+                    <span className="text-xs text-muted">{Math.round(m.score * 100)}%</span>
+                    <span className={`inline-flex px-2 py-0.5 rounded-full text-xs font-medium ${MATCH_STATUS_BADGE[m.status]}`}>
+                      {t(`admin.matches.${m.status}`)}
+                    </span>
+                  </div>
+                </div>
+              )
+            })}
+          </div>
+        </div>
+      )}
 
       <div className="bg-surface border border-border rounded-2xl p-5">
         <p className="text-sm font-medium text-primary mb-4">{t('admin.detail.answers')}</p>

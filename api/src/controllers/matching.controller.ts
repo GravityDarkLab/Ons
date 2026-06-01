@@ -1,5 +1,6 @@
 import { Context } from "hono";
-import { getCandidates, runFullMatchingPass } from "../matching/engine.js";
+import { getCandidates, runFullMatchingPass, generateCoupleProposals } from "../matching/engine.js";
+import { saveMatchProposals, loadActiveApplicants } from "../services/match.service.js";
 
 /**
  * GET /api/v1/matching/candidates/:applicantId
@@ -41,11 +42,25 @@ export async function runMatching(c: Context): Promise<Response> {
 
     const totalApplicants = Object.keys(results).length;
 
+    // Generate couple proposals and persist them.
+    // Non-fatal: matching scores are still returned even if persistence fails.
+    let couplesProposed = 0;
+    try {
+      if (totalApplicants >= 2) {
+        const applicants = await loadActiveApplicants();
+        const proposals  = generateCoupleProposals(applicants, results);
+        couplesProposed  = await saveMatchProposals(proposals, algorithm);
+      }
+    } catch (coupleErr) {
+      console.error("[matching] Couple generation/save failed:", coupleErr);
+    }
+
     return c.json({
       success: true,
       algorithm,
       totalApplicants,
       durationMs,
+      couplesProposed,
       results,
     });
   } catch (err) {

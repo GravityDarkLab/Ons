@@ -7,6 +7,7 @@ import { Dashboard } from './admin/pages/Dashboard'
 import { Applicants } from './admin/pages/Applicants'
 import { ApplicantDetail } from './admin/pages/ApplicantDetail'
 import { Matching } from './admin/pages/Matching'
+import { Matches } from './admin/pages/Matches'
 import { AuditLogs } from './admin/pages/AuditLogs'
 import InviteGate from './components/InviteGate'
 import Home from './pages/Home'
@@ -36,6 +37,7 @@ export default function App() {
                           <Route path="applicants" element={<Applicants />} />
                           <Route path="applicants/:id" element={<ApplicantDetail />} />
                           <Route path="matching" element={<Matching />} />
+                          <Route path="matches" element={<Matches />} />
                           <Route path="audit-logs" element={<AuditLogs />} />
                         </Routes>
                       </AdminLayout>

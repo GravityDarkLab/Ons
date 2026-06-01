@@ -1,4 +1,4 @@
-import type { Applicant, AuditLog, MatchCandidate, MatchingRun, Paginated } from '../types'
+import type { Applicant, AuditLog, Match, MatchCandidate, MatchingRun, MatchStatus, Paginated } from '../types'
 
 const BASE = import.meta.env.VITE_API_URL ?? 'http://localhost:3001'
 
@@ -65,9 +65,11 @@ export async function fetchApplicants(
   page: number,
   limit: number,
   status?: string,
+  search?: string,
 ): Promise<Paginated<Applicant>> {
   const params = new URLSearchParams({ page: String(page), limit: String(limit) })
   if (status) params.set('status', status)
+  if (search) params.set('search', search)
   return request<Paginated<Applicant>>(`/api/v1/admin/applicants?${params}`)
 }
 
@@ -97,6 +99,35 @@ export async function fetchAuditLogs(
 ): Promise<Paginated<AuditLog>> {
   const params = new URLSearchParams({ page: String(page), limit: String(limit) })
   return request<Paginated<AuditLog>>(`/api/v1/admin/audit-logs?${params}`)
+}
+
+// ── Matches ───────────────────────────────────────────────────────────────────
+
+export async function fetchMatches(
+  page: number,
+  limit: number,
+  status?: string,
+  participantId?: string,
+): Promise<Paginated<Match>> {
+  const params = new URLSearchParams({ page: String(page), limit: String(limit) })
+  if (status)        params.set('status', status)
+  if (participantId) params.set('participantId', participantId)
+  return request<Paginated<Match>>(`/api/v1/admin/matches?${params}`)
+}
+
+export async function updateMatch(
+  id: string,
+  updates: { status?: MatchStatus; notes?: string },
+): Promise<Match> {
+  const res = await request<{ data: Match }>(`/api/v1/admin/matches/${id}`, {
+    method: 'PATCH',
+    body: JSON.stringify(updates),
+  })
+  return res.data
+}
+
+export async function removeMatch(id: string): Promise<void> {
+  await request(`/api/v1/admin/matches/${id}`, { method: 'DELETE' })
 }
 
 // ── Matching ──────────────────────────────────────────────────────────────────

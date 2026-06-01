@@ -5,6 +5,7 @@ import type { IdentityDoc } from "../models/identity.model.js";
 import type { AuditLogDoc } from "../models/auditLog.model.js";
 import type { EmbeddingDoc } from "../models/embedding.model.js";
 import type { AdminDoc } from "../models/admin.model.js";
+import type { MatchDoc } from "../models/match.model.js";
 
 export const COLLECTION_NAMES = {
   questionnaires: "questionnaires",
@@ -13,6 +14,7 @@ export const COLLECTION_NAMES = {
   auditLogs:      "audit_logs",
   embeddings:     "embeddings",
   admins:         "admins",
+  matches:        "matches",
 } as const;
 
 export function getQuestionnairesCollection(
@@ -39,6 +41,10 @@ export function getEmbeddingsCollection(db: Db): Collection<EmbeddingDoc> {
 
 export function getAdminsCollection(db: Db): Collection<AdminDoc> {
   return db.collection<AdminDoc>(COLLECTION_NAMES.admins);
+}
+
+export function getMatchesCollection(db: Db): Collection<MatchDoc> {
+  return db.collection<MatchDoc>(COLLECTION_NAMES.matches);
 }
 
 /**
@@ -75,6 +81,14 @@ export async function ensureIndexes(db: Db): Promise<void> {
 
   const admins = getAdminsCollection(db);
   await _createIndexIfNotExists(admins, { username: 1 }, { unique: true });
+
+  const matches = getMatchesCollection(db);
+  // Unique compound index prevents duplicate pairs (canonical order enforced in service)
+  await _createIndexIfNotExists(matches, { applicantAId: 1, applicantBId: 1 }, { unique: true });
+  await _createIndexIfNotExists(matches, { status: 1 });
+  await _createIndexIfNotExists(matches, { score: -1 });
+  await _createIndexIfNotExists(matches, { applicantAId: 1 });
+  await _createIndexIfNotExists(matches, { applicantBId: 1 });
 
   console.info("[DB] Indexes verification done");
 
