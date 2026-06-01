@@ -13,8 +13,8 @@
     "seed": "bun run scripts/seed.ts",
     "build":        "bun run --filter '*' build",
     "typecheck":    "bunx tsc --noEmit -p tsconfig.json && bun run --filter '*' typecheck",
-    "test":         "bun run --cwd api test",
-    "test:api":     "bun run --cwd api test",
+    "test":          "concurrently -n api,frontend -c cyan,magenta \"bun run test:api\" \"bun run test:frontend\"",
+    "test:api":      "bun run --cwd api test",
     "test:frontend": "bun run --cwd frontend test"
   },
   "devDependencies": {
