@@ -2,12 +2,15 @@
 #
 # ── How to use ─────────────────────────────────────────────────────────────────
 #
-#   docker compose --env-file .env.dev   up --build   # local / dev
-#   docker compose --env-file .env.prod  up --build   # self-hosted production
-#   docker compose --env-file .env.test  up --build   # CI / smoke tests
+#   docker compose --env-file api/.env.dev   up --build   # local / dev
+#   docker compose --env-file api/.env.prod  up --build   # self-hosted production
 #
-# If no --env-file is given, Docker Compose falls back to a .env file in this
-# directory (or bare shell env vars), so the default can be whatever you set.
+# The env file is read twice:
+#   1. By Compose for variable substitution (${PORT}, ${VITE_INVITE_KEY}, …)
+#   2. Injected into the API container at runtime via env_file
+#
+# Keep VITE_INVITE_KEY and VITE_API_URL in api/.env.* — they are only
+# needed at frontend build time (baked by Vite), not at runtime.
 #
 # ── AWS ECS / cloud deployments ────────────────────────────────────────────────
 # On ECS (or any container orchestrator) you don't need this file at all.
@@ -31,8 +34,8 @@ services:
     ports:
       - "${PORT:-3001}:${PORT:-3001}"
     env_file:
-      - path: .env
-        required: false # override with --env-file; falls back to shell env
+      - path: ./api/.env
+        required: false
     environment:
       NODE_ENV: ${NODE_ENV:-production}
       PORT: ${PORT:-3001}
@@ -46,6 +49,9 @@ services:
       args:
         VITE_API_URL: ${VITE_API_URL:-http://localhost:3001}
         VITE_INVITE_KEY: ${VITE_INVITE_KEY:?VITE_INVITE_KEY must be set}
+    env_file:
+      - path: ./frontend/.env
+        required: false
     restart: unless-stopped
     ports:
       - "80:80"
