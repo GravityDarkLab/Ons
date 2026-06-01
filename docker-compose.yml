@@ -1,59 +1,110 @@
-# Single compose file — behaviour is entirely driven by the env file you provide.
+# ── Ons — production-grade Compose ────────────────────────────────────────────
 #
-# ── How to use ─────────────────────────────────────────────────────────────────
+# Usage:
+#   docker compose --env-file api/.env.dev  up --build -d
+#   docker compose --env-file api/.env.prod up --build -d
 #
-#   docker compose --env-file api/.env.dev   up --build   # local / dev
-#   docker compose --env-file api/.env.prod  up --build   # self-hosted production
+# Architecture:
+#   internet → nginx:80 ─┬─ /*       → static SPA  (frontend)
+#                        └─ /api/*   → api:3001     (internal only)
 #
-# The env file is read twice:
-#   1. By Compose for variable substitution (${PORT}, ${VITE_INVITE_KEY}, …)
-#   2. Injected into the API container at runtime via env_file
+# The API is never exposed externally — all traffic enters through nginx.
+# VITE_API_URL must be empty so the browser uses relative paths (same origin).
 #
-# Keep VITE_INVITE_KEY and VITE_API_URL in api/.env.* — they are only
-# needed at frontend build time (baked by Vite), not at runtime.
+# Variables consumed from the env file:
+#   Required : MONGODB_URI  ENCRYPTION_KEY  JWT_SECRET  FORM_SECRET  VITE_INVITE_KEY
+#   Optional : NODE_ENV (production)  PORT (3001)  HTTP_PORT (80)  VITE_API_URL ("")
 #
-# ── AWS ECS / cloud deployments ────────────────────────────────────────────────
-# On ECS (or any container orchestrator) you don't need this file at all.
-# We Build and Push the images independently and We inject secrets via ECS task-definition environment variables or AWS Secrets
-# Manager — not via a mounted .env file.
-#
-# ── Variables expected in the env file ─────────────────────────────────────────
 # See api/.env.example for the full reference.
-# Required:  ENCRYPTION_KEY  JWT_SECRET  FORM_SECRET  MONGODB_URI
-#            VITE_INVITE_KEY
-# Optional:  NODE_ENV (default: production)  PORT (default: 3001)
-#            VITE_API_URL (default: http://localhost:3001)
+
+name: ons
 
 services:
+
   # ── API ─────────────────────────────────────────────────────────────────────
   api:
     build:
       context: ./api
       dockerfile: Dockerfile
+    image: ons-api:latest
+    container_name: ons-api
     restart: unless-stopped
-    ports:
-      - "${PORT:-3001}:${PORT:-3001}"
+    networks:
+      - ons-net
+    expose:
+      - "${PORT:-3001}"        # internal only — nginx proxies, nothing else
     env_file:
       - path: ./api/.env
         required: false
     environment:
       NODE_ENV: ${NODE_ENV:-production}
-      PORT: ${PORT:-3001}
+      PORT:     ${PORT:-3001}
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:${PORT:-3001}/health || exit 1"]
+      interval: 30s
+      timeout:  5s
+      retries:  3
+      start_period: 15s
+    deploy:
+      resources:
+        limits:
+          cpus:   "1.0"
+          memory: 512M
+        reservations:
+          cpus:   "0.25"
+          memory: 128M
+    security_opt:
+      - no-new-privileges:true
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+    stop_grace_period: 15s
 
-  # ── Frontend ─────────────────────────────────────────────────────────────────
-  # Vite bakes env vars at build time — pass them as --build-arg.
+  # ── Frontend (nginx) ─────────────────────────────────────────────────────────
+  # Serves the static SPA and reverse-proxies /api/* to the api service.
+  # VITE_API_URL is intentionally empty: relative paths hit nginx → api.
   frontend:
     build:
       context: ./frontend
       dockerfile: Dockerfile
       args:
-        VITE_API_URL: ${VITE_API_URL:-http://localhost:3001}
+        VITE_API_URL:    ${VITE_API_URL:-}
         VITE_INVITE_KEY: ${VITE_INVITE_KEY:?VITE_INVITE_KEY must be set}
-    env_file:
-      - path: ./frontend/.env
-        required: false
+    image: ons-frontend:latest
+    container_name: ons-frontend
     restart: unless-stopped
+    networks:
+      - ons-net
     ports:
-      - "80:80"
+      - "${HTTP_PORT:-80}:80"
     depends_on:
-      - api
+      api:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost/ || exit 1"]
+      interval: 30s
+      timeout:  5s
+      retries:  3
+      start_period: 10s
+    deploy:
+      resources:
+        limits:
+          cpus:   "0.5"
+          memory: 64M
+        reservations:
+          cpus:   "0.1"
+          memory: 32M
+    security_opt:
+      - no-new-privileges:true
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+    stop_grace_period: 5s
+
+networks:
+  ons-net:
+    driver: bridge
