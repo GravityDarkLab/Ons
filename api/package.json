@@ -2,6 +2,8 @@
   "name": "ons-api",
   "version": "1.0.0",
   "private": true,
+  "author": "Achraf Labidi <labidiachraf6@gmail.com> (https://github.com/GravityDarkLab)",
+  "license": "SEE LICENSE IN LICENSE",
   "type": "module",
   "scripts": {
     "dev":      "bun --env-file=.env.dev  run --watch src/server.ts",
