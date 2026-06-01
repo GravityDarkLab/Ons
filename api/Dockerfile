@@ -16,8 +16,9 @@ ENV NODE_ENV=production
 
 COPY --from=deps /app/node_modules ./node_modules
 
-# Copy API source only — no tests, seeds, or dev tooling.
+# Copy API source and docs (openapi.yaml is served in non-production).
 COPY src           ./src
+COPY docs          ./docs
 COPY package.json  tsconfig.json ./
 
 EXPOSE 3001
