@@ -13,8 +13,9 @@ vi.mock('react-i18next', () => ({
   useTranslation: () => ({
     t: (key: string, opts?: Record<string, unknown>) =>
       opts ? `${key}:${JSON.stringify(opts)}` : key,
-    i18n: { changeLanguage: vi.fn() },
+    i18n: { changeLanguage: vi.fn(), dir: vi.fn().mockReturnValue('ltr') },
   }),
-  Trans: ({ children }: { children: React.ReactNode }) => children,
+  Trans: ({ i18nKey, children }: { i18nKey?: string; children?: React.ReactNode }) =>
+    i18nKey ? i18nKey : children,
   initReactI18next: { type: '3rdParty', init: vi.fn() },
 }))

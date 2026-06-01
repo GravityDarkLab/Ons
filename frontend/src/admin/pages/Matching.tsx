@@ -67,7 +67,7 @@ export function Matching() {
                 name="algorithm"
                 value={a.value}
                 checked={algorithm === a.value}
-                onChange={() => setAlgorithm(a.value)}
+                onChange={() => { setAlgorithm(a.value); setResult(null) }}
                 className="mt-0.5"
               />
               <div className="flex-1 min-w-0">

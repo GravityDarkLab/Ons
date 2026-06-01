@@ -156,6 +156,40 @@ describe("GET /admin/applicants", () => {
     const res = await get("/admin/applicants", token);
     expect(res.headers.get("X-RateLimit-Limit")).not.toBeNull();
   });
+
+  it("passes search query param to service for alias filtering", async () => {
+    const token = await adminToken();
+    await get("/admin/applicants?search=lunar", token);
+    const [, , , search] = mockListApplicants.mock.calls[0] as any[];
+    expect(search).toBe("lunar");
+  });
+
+  it("search is case-insensitive — service receives raw term, DB does $regex /i/", async () => {
+    mockListApplicants.mockResolvedValue({
+      data: [{ id: "1", alias: "Lunar Ocean", status: "active", answers: {}, questionnaireVersion: "1.0.0", createdAt: new Date(), updatedAt: new Date() }],
+      total: 1, page: 1, limit: 20, totalPages: 1,
+    });
+    const token = await adminToken();
+    const res = await get("/admin/applicants?search=LUNAR", token);
+    expect(res.status).toBe(200);
+    const [, , , search] = mockListApplicants.mock.calls[0] as any[];
+    expect(search).toBe("LUNAR");
+  });
+
+  it("omits search param when not provided", async () => {
+    const token = await adminToken();
+    await get("/admin/applicants", token);
+    const [, , , search] = mockListApplicants.mock.calls[0] as any[];
+    expect(search).toBeUndefined();
+  });
+
+  it("passes status and search together", async () => {
+    const token = await adminToken();
+    await get("/admin/applicants?status=active&search=ocean", token);
+    const [, , status, search] = mockListApplicants.mock.calls[0] as any[];
+    expect(status).toBe("active");
+    expect(search).toBe("ocean");
+  });
 });
 
 // ── GET /admin/applicants/:id ─────────────────────────────────────────────────
