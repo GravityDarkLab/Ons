@@ -24,8 +24,10 @@ info:
     name: Admin
 
 servers:
+  - url: http://localhost
+    description: Docker — nginx reverse proxy (default)
   - url: http://localhost:3001
-    description: Local development
+    description: Local development — direct Bun server (no Docker)
   - url: https://api.yourdomain.com
     description: Production
 
