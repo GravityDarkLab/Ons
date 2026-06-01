@@ -7,6 +7,7 @@ export default defineConfig({
     environment: 'jsdom',
     globals: true,
     setupFiles: ['./src/__tests__/setup.ts'],
+    include: ['src/**/*.{test,vitest}.{ts,tsx}'],
     env: {
       VITE_INVITE_KEY: 'secret-invite-key',
     },
