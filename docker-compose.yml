@@ -1,9 +1,8 @@
 # ── Ons — production-grade Compose ────────────────────────────────────────────
 #
 # Usage:
-#   docker compose --env-file .env.dev  up --build -d
-#   docker compose --env-file .env.test up --build -d
-#   docker compose --env-file .env.prod up --build -d
+#   Dev   (mongo in Docker): docker compose -f docker-compose.yml -f docker-compose.dev.yml --env-file .env.dev  up --build -d
+#   Prod  (external mongo):  docker compose                                                 --env-file .env.prod up --build -d
 #
 # Architecture:
 #   internet → nginx:80 ─┬─ /*       → static SPA  (frontend)

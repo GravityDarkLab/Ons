@@ -1,0 +1,21 @@
+# Development override — merges on top of docker-compose.yml.
+#
+# Joins the api container to the external Mongo dev network so it can reach
+# the ons-mongo container by name (mongodb://ons_app:...@ons-mongo:27017/...).
+#
+# Usage:
+#   docker compose -f docker-compose.yml -f docker-compose.dev.yml \
+#     --env-file .env.dev up --build -d
+#
+# Production does NOT use this file — MONGODB_URI points to an external
+# Atlas/VPS URI and no local Docker network is needed.
+
+services:
+  api:
+    networks:
+      - mongo_dev_net
+
+networks:
+  mongo_dev_net:
+    external: true
+    name: ons-mongo-dev_mongo_dev_net
