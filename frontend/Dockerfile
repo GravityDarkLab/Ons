@@ -1,16 +1,21 @@
+# Build context: repo root
+# docker build -f frontend/Dockerfile .
+
 # ─── Stage 1: build ──────────────────────────────────────────────────────────
 FROM oven/bun:1.3.14-alpine AS builder
-WORKDIR /app
+WORKDIR /workspace
 
-COPY package.json bun.lock ./
-# --frozen enforces the lockfile (bun.lock TOML format, Bun ≥ 1.1)
-RUN bun install --frozen
+# Mirror the workspace structure so the root bun.lock resolves correctly.
+COPY bun.lock package.json ./
+COPY frontend/package.json ./frontend/package.json
+RUN cd frontend && bun install --frozen
 
-COPY . .
+COPY frontend/ ./frontend/
+
+WORKDIR /workspace/frontend
 
 # Vite bakes env vars at build time — pass them as build args.
-# VITE_INVITE_KEY has no default and is required in production.
-ARG VITE_API_URL=http://localhost:3001
+ARG VITE_API_URL=
 ARG VITE_INVITE_KEY
 ENV VITE_API_URL=$VITE_API_URL
 ENV VITE_INVITE_KEY=$VITE_INVITE_KEY
@@ -20,8 +25,8 @@ RUN bun run build
 # ─── Stage 2: serve with nginx ────────────────────────────────────────────────
 FROM nginx:1.27-alpine AS runner
 
-COPY --from=builder /app/dist  /usr/share/nginx/html
-COPY                nginx.conf /etc/nginx/conf.d/default.conf
+COPY --from=builder /workspace/frontend/dist /usr/share/nginx/html
+COPY frontend/nginx.conf /etc/nginx/conf.d/default.conf
 
 EXPOSE 80
 

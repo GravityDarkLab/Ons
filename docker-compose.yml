@@ -1,8 +1,9 @@
 # ── Ons — production-grade Compose ────────────────────────────────────────────
 #
 # Usage:
-#   docker compose --env-file api/.env.dev  up --build -d
-#   docker compose --env-file api/.env.prod up --build -d
+#   docker compose --env-file .env.dev  up --build -d
+#   docker compose --env-file .env.test up --build -d
+#   docker compose --env-file .env.prod up --build -d
 #
 # Architecture:
 #   internet → nginx:80 ─┬─ /*       → static SPA  (frontend)
@@ -20,38 +21,41 @@
 name: ons
 
 services:
-
   # ── API ─────────────────────────────────────────────────────────────────────
   api:
     build:
-      context: ./api
-      dockerfile: Dockerfile
+      context: .
+      dockerfile: api/Dockerfile
     image: ons-api:latest
     container_name: ons-api
     restart: unless-stopped
     networks:
       - ons-net
     expose:
-      - "${PORT:-3001}"        # internal only — nginx proxies, nothing else
+      - "${PORT:-3001}" # internal only — nginx proxies, nothing else
     env_file:
-      - path: ./api/.env
+      - path: .env
         required: false
     environment:
       NODE_ENV: ${NODE_ENV:-production}
-      PORT:     ${PORT:-3001}
+      PORT: ${PORT:-3001}
     healthcheck:
-      test: ["CMD-SHELL", "wget -qO- http://localhost:${PORT:-3001}/health || exit 1"]
+      test:
+        [
+          "CMD-SHELL",
+          "wget -qO- http://localhost:${PORT:-3001}/health || exit 1",
+        ]
       interval: 30s
-      timeout:  5s
-      retries:  3
+      timeout: 5s
+      retries: 3
       start_period: 15s
     deploy:
       resources:
         limits:
-          cpus:   "1.0"
+          cpus: "1.0"
           memory: 512M
         reservations:
-          cpus:   "0.25"
+          cpus: "0.25"
           memory: 128M
     security_opt:
       - no-new-privileges:true
@@ -67,10 +71,10 @@ services:
   # VITE_API_URL is intentionally empty: relative paths hit nginx → api.
   frontend:
     build:
-      context: ./frontend
-      dockerfile: Dockerfile
+      context: .
+      dockerfile: frontend/Dockerfile
       args:
-        VITE_API_URL:    ${VITE_API_URL:-}
+        VITE_API_URL: ${VITE_API_URL:-}
         VITE_INVITE_KEY: ${VITE_INVITE_KEY:?VITE_INVITE_KEY must be set}
     image: ons-frontend:latest
     container_name: ons-frontend
@@ -85,16 +89,16 @@ services:
     healthcheck:
       test: ["CMD-SHELL", "wget -qO- http://localhost/ || exit 1"]
       interval: 30s
-      timeout:  5s
-      retries:  3
+      timeout: 5s
+      retries: 3
       start_period: 10s
     deploy:
       resources:
         limits:
-          cpus:   "0.5"
+          cpus: "0.5"
           memory: 64M
         reservations:
-          cpus:   "0.1"
+          cpus: "0.1"
           memory: 32M
     security_opt:
       - no-new-privileges:true
