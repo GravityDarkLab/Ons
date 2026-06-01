@@ -16,42 +16,51 @@ import Success from './pages/Success'
 export default function App() {
   return (
     <BrowserRouter>
-      <AuthProvider>
-        <Routes>
-          {/* ── Admin (JWT auth, no invite gate) ─────────────────────── */}
-          <Route path="/admin/login" element={<Login />} />
-          <Route
-            path="/admin/*"
-            element={
-              <ProtectedRoute>
-                <AdminLayout>
-                  <Routes>
-                    <Route index element={<Dashboard />} />
-                    <Route path="applicants" element={<Applicants />} />
-                    <Route path="applicants/:id" element={<ApplicantDetail />} />
-                    <Route path="matching" element={<Matching />} />
-                    <Route path="audit-logs" element={<AuditLogs />} />
-                  </Routes>
-                </AdminLayout>
-              </ProtectedRoute>
-            }
-          />
+      <Routes>
+        {/* ── Admin (session auth, no invite gate) ─────────────────────
+            AuthProvider is scoped here — getMe() is only called when
+            the user navigates to /admin/*, not on public pages.        */}
+        <Route
+          path="/admin/*"
+          element={
+            <AuthProvider>
+              <Routes>
+                <Route path="login" element={<Login />} />
+                <Route
+                  path="*"
+                  element={
+                    <ProtectedRoute>
+                      <AdminLayout>
+                        <Routes>
+                          <Route index element={<Dashboard />} />
+                          <Route path="applicants" element={<Applicants />} />
+                          <Route path="applicants/:id" element={<ApplicantDetail />} />
+                          <Route path="matching" element={<Matching />} />
+                          <Route path="audit-logs" element={<AuditLogs />} />
+                        </Routes>
+                      </AdminLayout>
+                    </ProtectedRoute>
+                  }
+                />
+              </Routes>
+            </AuthProvider>
+          }
+        />
 
-          {/* ── Public form (invite gate) ─────────────────────────────── */}
-          <Route
-            path="/*"
-            element={
-              <InviteGate>
-                <Routes>
-                  <Route path="/" element={<Home />} />
-                  <Route path="/apply" element={<Apply />} />
-                  <Route path="/success" element={<Success />} />
-                </Routes>
-              </InviteGate>
-            }
-          />
-        </Routes>
-      </AuthProvider>
+        {/* ── Public form (invite gate) ─────────────────────────────── */}
+        <Route
+          path="/*"
+          element={
+            <InviteGate>
+              <Routes>
+                <Route path="/" element={<Home />} />
+                <Route path="/apply" element={<Apply />} />
+                <Route path="/success" element={<Success />} />
+              </Routes>
+            </InviteGate>
+          }
+        />
+      </Routes>
     </BrowserRouter>
   )
 }
