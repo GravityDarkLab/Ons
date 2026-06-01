@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { Link, useSearchParams } from 'react-router-dom'
+import { useSearchParams, useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { fetchApplicants } from '../api/client'
 import type { Applicant, ApplicantStatus } from '../types'
@@ -15,6 +15,7 @@ const LIMIT = 20
 
 export function Applicants() {
   const { t } = useTranslation()
+  const navigate = useNavigate()
   const [searchParams, setSearchParams] = useSearchParams()
   const status = searchParams.get('status') ?? ''
   const page   = parseInt(searchParams.get('page') ?? '1', 10)
@@ -116,7 +117,11 @@ export function Applicants() {
               <tr><td colSpan={6} className="px-4 py-10 text-center text-sm text-muted">{t('admin.applicants.empty')}</td></tr>
             ) : (
               applicants.map(a => (
-                <tr key={a.id} className="border-b border-border last:border-0 hover:bg-bg transition-colors">
+                <tr
+                  key={a.id}
+                  onClick={() => navigate(`/admin/applicants/${a.id}`)}
+                  className="border-b border-border last:border-0 hover:bg-bg transition-colors cursor-pointer"
+                >
                   <td className="px-4 py-3.5 font-mono text-xs text-primary">{a.alias}</td>
                   <td className="px-4 py-3.5">
                     <span className={`inline-flex px-2 py-0.5 rounded-full text-xs font-medium ${STATUS_BADGE[a.status]}`}>
@@ -126,11 +131,7 @@ export function Applicants() {
                   <td className="px-4 py-3.5 text-muted">{String(a.answers.location ?? '—')}</td>
                   <td className="px-4 py-3.5 text-muted">{String(a.answers.age ?? '—')}</td>
                   <td className="px-4 py-3.5 text-muted">{new Date(a.createdAt).toLocaleDateString()}</td>
-                  <td className="px-4 py-3.5 text-right">
-                    <Link to={`/admin/applicants/${a.id}`} className="text-xs font-medium text-accent hover:underline">
-                      {t('admin.applicants.view')}
-                    </Link>
-                  </td>
+                  <td className="px-4 py-3.5 text-right text-muted">→</td>
                 </tr>
               ))
             )}
