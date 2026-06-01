@@ -13,7 +13,7 @@ import {
   createQuestionnaireHandler,
 } from "../controllers/admin.controller.js";
 import { requireAdmin } from "../middleware/auth.middleware.js";
-import { adminRateLimiter } from "../middleware/rateLimit.middleware.js";
+import { adminLoginRateLimiter, adminRateLimiter } from "../middleware/rateLimit.middleware.js";
 
 const adminRoutes = new Hono();
 
@@ -29,9 +29,10 @@ adminRoutes.get("/me", requireAdmin, me);
 // Applied after /me and /logout so those paths are not matched by use("*").
 adminRoutes.use("*", adminRateLimiter);
 
-// Login (public, rate limited — brute-force protection)
+// Login — strict rate limit (brute-force protection: 10/min)
 adminRoutes.post(
   "/login",
+  adminLoginRateLimiter,
   zValidator("json", adminLoginSchema, (result, c) => {
     if (!result.success) {
       return c.json(

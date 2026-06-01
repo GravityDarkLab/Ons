@@ -105,10 +105,22 @@ export const formSubmitRateLimiter = createRateLimiter({
 });
 
 /**
- * Rate limiter for admin endpoints: 20 requests per minute.
+ * Strict rate limiter for the login endpoint only.
+ * Protects against credential brute-force: 10 attempts per minute per IP.
+ */
+export const adminLoginRateLimiter = createRateLimiter({
+  windowMs: 60 * 1000,
+  maxRequests: 10,
+  message: "Too many login attempts. Please wait before trying again.",
+});
+
+/**
+ * General rate limiter for authenticated admin data endpoints.
+ * 200 requests per minute — enough headroom for normal browsing even
+ * with React StrictMode's double-invocation in development.
  */
 export const adminRateLimiter = createRateLimiter({
   windowMs: 60 * 1000,
-  maxRequests: 20,
+  maxRequests: 200,
   message: "Too many admin requests. Please wait before trying again.",
 });
