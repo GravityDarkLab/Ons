@@ -47,9 +47,16 @@ export async function adminLogout(): Promise<void> {
   })
 }
 
-export async function getMe(): Promise<{ adminId: string; adminRole: string }> {
-  const res = await request<{ data: { adminId: string; adminRole: string } }>('/api/v1/admin/me')
-  return res.data
+/**
+ * Probes the session cookie. Returns user data when authenticated, null when not.
+ * Uses raw fetch intentionally — a 401 here means "not logged in", not "session
+ * expired mid-session", so we must NOT trigger the redirect in request().
+ */
+export async function getMe(): Promise<{ adminId: string; adminRole: string } | null> {
+  const res = await fetch(`${BASE}/api/v1/admin/me`, { credentials: 'include' })
+  if (!res.ok) return null
+  const body = await res.json()
+  return body.success ? body.data : null
 }
 
 // ── Applicants ────────────────────────────────────────────────────────────────

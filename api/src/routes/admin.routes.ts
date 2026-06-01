@@ -17,10 +17,19 @@ import { adminRateLimiter } from "../middleware/rateLimit.middleware.js";
 
 const adminRoutes = new Hono();
 
-// Apply rate limiter to all admin routes
+// ── Session endpoints (no rate limiting) ──────────────────────────────────────
+// /me is called on every page load to probe the cookie — rate limiting it
+// causes 429s during normal browsing and creates a redirect loop on the login
+// page (401 → redirect → mount → /me → 401 → ...).
+// /logout is a one-shot clear; neither is a brute-force surface.
+adminRoutes.post("/logout", logout);
+adminRoutes.get("/me", requireAdmin, me);
+
+// ── Rate-limited routes ───────────────────────────────────────────────────────
+// Applied after /me and /logout so those paths are not matched by use("*").
 adminRoutes.use("*", adminRateLimiter);
 
-// Public admin route — login
+// Login (public, rate limited — brute-force protection)
 adminRoutes.post(
   "/login",
   zValidator("json", adminLoginSchema, (result, c) => {
@@ -37,10 +46,6 @@ adminRoutes.post(
   }),
   login
 );
-
-// Auth utility routes
-adminRoutes.post("/logout", logout);
-adminRoutes.get("/me", requireAdmin, me);
 
 // Protected admin routes
 adminRoutes.get("/applicants", requireAdmin, getApplicants);

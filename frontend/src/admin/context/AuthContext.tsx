@@ -18,7 +18,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   // server returns 200; a 401 means no session (cookie absent or expired).
   useEffect(() => {
     getMe()
-      .then(() => setIsAuthenticated(true))
+      .then(data => setIsAuthenticated(data !== null))
       .catch(() => setIsAuthenticated(false))
       .finally(() => setIsLoading(false))
   }, [])
