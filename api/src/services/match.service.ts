@@ -35,19 +35,34 @@ export async function listMatches(
   limit: number,
   status?: MatchStatus,
   participantId?: string,
+  search?: string,
 ): Promise<PaginatedResult<MatchView>> {
   const db  = await getDb();
   const col = getMatchesCollection(db);
 
   const filter: Record<string, unknown> = {};
   if (status) filter.status = status;
+
+  const andClauses: Record<string, unknown>[] = [];
+
   if (participantId) {
     let oid: ObjectId;
     try { oid = new ObjectId(participantId); } catch {
       return { data: [], total: 0, page, limit, totalPages: 0 };
     }
-    filter.$or = [{ applicantAId: oid }, { applicantBId: oid }];
+    andClauses.push({ $or: [{ applicantAId: oid }, { applicantBId: oid }] });
   }
+
+  if (search) {
+    andClauses.push({
+      $or: [
+        { applicantAAlias: { $regex: search, $options: "i" } },
+        { applicantBAlias: { $regex: search, $options: "i" } },
+      ],
+    });
+  }
+
+  if (andClauses.length > 0) filter.$and = andClauses;
 
   const skip = (page - 1) * limit;
 

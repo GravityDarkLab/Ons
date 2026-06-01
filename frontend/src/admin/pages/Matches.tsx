@@ -34,6 +34,8 @@ export function Matches() {
   const [expandedId, setExpandedId] = useState<string | null>(null)
   const [notesMap, setNotesMap]     = useState<Record<string, string>>({})
   const [savingId, setSavingId]     = useState<string | null>(null)
+  const [search, setSearch]         = useState('')
+  const [debouncedSearch, setDebouncedSearch] = useState('')
 
   const FILTERS = [
     { value: '',          label: t('admin.matches.all') },
@@ -43,9 +45,15 @@ export function Matches() {
     { value: 'failed',    label: t('admin.matches.failed') },
   ]
 
+  // Debounce search input
+  useEffect(() => {
+    const id = setTimeout(() => setDebouncedSearch(search), 300)
+    return () => clearTimeout(id)
+  }, [search])
+
   function load() {
     setLoading(true)
-    fetchMatches(page, LIMIT, status || undefined)
+    fetchMatches(page, LIMIT, status || undefined, undefined, debouncedSearch || undefined)
       .then(res => {
         setMatches(res.data)
         setTotal(res.total)
@@ -54,9 +62,9 @@ export function Matches() {
       .finally(() => setLoading(false))
   }
 
-  useEffect(load, [page, status])
+  useEffect(load, [page, status, debouncedSearch])
 
-  function setFilter(s: string) { setSearchParams(s ? { status: s } : {}) }
+  function setFilter(s: string) { setSearchParams(s ? { status: s } : {}); setSearch('') }
   function setPage(p: number) {
     setSearchParams(prev => { const n = new URLSearchParams(prev); n.set('page', String(p)); return n })
   }
@@ -97,6 +105,27 @@ export function Matches() {
         </p>
       </div>
 
+      {/* Alias search */}
+      <div className="relative">
+        <svg className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted pointer-events-none" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+          <circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/>
+        </svg>
+        <input
+          type="text"
+          value={search}
+          onChange={e => setSearch(e.target.value)}
+          placeholder={t('admin.matches.searchPlaceholder')}
+          className="w-full sm:w-72 rounded-xl border border-border bg-surface pl-9 pr-4 py-2 text-sm text-primary placeholder:text-muted focus:outline-none focus:ring-2 focus:ring-accent/40"
+        />
+        {search && (
+          <button onClick={() => setSearch('')} className="absolute right-3 top-1/2 -translate-y-1/2 text-muted hover:text-primary">
+            <svg className="h-3.5 w-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+              <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
+            </svg>
+          </button>
+        )}
+      </div>
+
       {/* Status filter tabs */}
       <div className="flex gap-1 bg-surface border border-border rounded-xl p-1 w-fit flex-wrap">
         {FILTERS.map(f => (
@@ -110,8 +139,8 @@ export function Matches() {
       </div>
 
       {/* Table */}
-      <div className="bg-surface border border-border rounded-2xl overflow-hidden">
-        <table className="w-full text-sm">
+      <div className="bg-surface border border-border rounded-2xl overflow-x-auto">
+        <table className="w-full min-w-[640px] text-sm">
           <thead>
             <tr className="border-b border-border">
               <Th>{t('admin.matches.colCouple')}</Th>
@@ -212,12 +241,12 @@ function MatchRow({
         <td className="px-4 py-3.5">
           <div className="flex items-center gap-2 flex-wrap">
             <Link to={`/admin/applicants/${match.applicantAId}`}
-              className="text-xs font-mono text-accent hover:underline truncate max-w-[100px]">
+              className="text-xs font-mono text-accent hover:underline truncate max-w-[150px]">
               {match.applicantAAlias}
             </Link>
             <span className="text-muted text-xs">↔</span>
             <Link to={`/admin/applicants/${match.applicantBId}`}
-              className="text-xs font-mono text-accent hover:underline truncate max-w-[100px]">
+              className="text-xs font-mono text-accent hover:underline truncate max-w-[150px]">
               {match.applicantBAlias}
             </Link>
           </div>

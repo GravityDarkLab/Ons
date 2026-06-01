@@ -108,10 +108,12 @@ export async function fetchMatches(
   limit: number,
   status?: string,
   participantId?: string,
+  search?: string,
 ): Promise<Paginated<Match>> {
   const params = new URLSearchParams({ page: String(page), limit: String(limit) })
   if (status)        params.set('status', status)
   if (participantId) params.set('participantId', participantId)
+  if (search)        params.set('search', search)
   return request<Paginated<Match>>(`/api/v1/admin/matches?${params}`)
 }
 

@@ -12,9 +12,10 @@ export async function getMatches(c: Context): Promise<Response> {
   const limit         = Math.min(100, Math.max(1, parseInt(query.limit ?? "20", 10)));
   const status        = query.status       as MatchStatus | undefined;
   const participantId = query.participantId as string     | undefined;
+  const search        = query.search?.trim() || undefined;
 
   try {
-    const result = await listMatches(page, limit, status, participantId);
+    const result = await listMatches(page, limit, status, participantId, search);
     return c.json({ success: true, ...result });
   } catch (err) {
     const message = err instanceof Error ? err.message : "Failed to list matches";

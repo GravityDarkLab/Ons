@@ -205,6 +205,7 @@
       "colAlgorithm": "Algorithmus",
       "colStatus": "Status",
       "colActions": "Aktionen",
+      "searchPlaceholder": "Nach Alias suchen…",
       "empty": "Keine Paare gefunden. Starte das Matching, um Vorschläge zu generieren.",
       "markProposed": "Neu vorschlagen",
       "markContacted": "Kontaktiert",

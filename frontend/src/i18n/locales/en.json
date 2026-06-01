@@ -205,6 +205,7 @@
       "colAlgorithm": "Algorithm",
       "colStatus": "Status",
       "colActions": "Actions",
+      "searchPlaceholder": "Search by alias…",
       "empty": "No matches found. Run the matching algorithm to generate couple proposals.",
       "markProposed": "Re-propose",
       "markContacted": "Contacted",
