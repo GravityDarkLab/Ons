@@ -2,13 +2,24 @@ import { describe, it, expect, mock, beforeEach } from "bun:test";
 
 // ── Mock engine before any imports ────────────────────────────────────────────
 
-const mockGetCandidates       = mock(async () => [] as any[]);
-const mockRunFullMatchingPass = mock(async () => ({} as Record<string, any[]>));
+const mockGetCandidates         = mock(async () => [] as any[]);
+const mockRunFullMatchingPass   = mock(async () => ({} as Record<string, any[]>));
+const mockGenerateCoupleProposals = mock(() => [] as any[]);
+const mockSaveMatchProposals    = mock(async (..._: any[]) => 0);
+const mockLoadActiveApplicants  = mock(async () => [] as any[]);
 
 mock.module("../../matching/engine.js", () => ({
-  getCandidates:        mockGetCandidates,
-  runFullMatchingPass:  mockRunFullMatchingPass,
-  ALGORITHM_REGISTRY:   {},
+  getCandidates:          mockGetCandidates,
+  runFullMatchingPass:    mockRunFullMatchingPass,
+  generateCoupleProposals: mockGenerateCoupleProposals,
+  ALGORITHM_REGISTRY:     {},
+}));
+
+// match.service is used by the matching controller to persist couple proposals.
+// Mock it so tests never attempt a real MongoDB connection.
+mock.module("../../services/match.service.js", () => ({
+  saveMatchProposals:   mockSaveMatchProposals,
+  loadActiveApplicants: mockLoadActiveApplicants,
 }));
 
 import { Hono } from "hono";
@@ -50,10 +61,14 @@ function makeCandidates(n = 3) {
 beforeEach(() => {
   mockGetCandidates.mockReset();
   mockRunFullMatchingPass.mockReset();
+  mockSaveMatchProposals.mockReset();
+  mockLoadActiveApplicants.mockReset();
   mockGetCandidates.mockResolvedValue(makeCandidates());
   mockRunFullMatchingPass.mockResolvedValue({
     "64b1234567890abcdef01234": makeCandidates(2),
   });
+  mockSaveMatchProposals.mockResolvedValue(0);
+  mockLoadActiveApplicants.mockResolvedValue([]);
 });
 
 // ── GET /matching/candidates/:applicantId ─────────────────────────────────────
