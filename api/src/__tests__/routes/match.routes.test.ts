@@ -7,9 +7,9 @@ mock.module("../../middleware/rateLimit.middleware.js", () => {
   return { adminRateLimiter: noop, createRateLimiter: () => noop };
 });
 
-const mockListMatches  = mock(async () => ({ data: [], total: 0, page: 1, limit: 20, totalPages: 0 }));
-const mockUpdateMatch  = mock(async () => null as any);
-const mockDeleteMatch  = mock(async () => true);
+const mockListMatches  = mock(async (..._: any[]) => ({ data: [] as any[], total: 0, page: 1, limit: 20, totalPages: 0 }));
+const mockUpdateMatch  = mock(async (..._: any[]) => null as any);
+const mockDeleteMatch  = mock(async (..._: any[]) => true as boolean);
 
 mock.module("../../services/match.service.js", () => ({
   listMatches:  mockListMatches,
@@ -101,10 +101,10 @@ describe("GET /admin/matches", () => {
   });
 
   it("passes status filter to service — returns only matching results", async () => {
-    mockListMatches.mockImplementation(async (_p, _l, status) =>
+    mockListMatches.mockImplementation(async (_p: number, _l: number, status: string) =>
       status === "proposed"
-        ? { data: [MATCH_FIXTURE], total: 1, page: 1, limit: 20, totalPages: 1 }
-        : { data: [], total: 0, page: 1, limit: 20, totalPages: 0 },
+        ? { data: [MATCH_FIXTURE] as any[], total: 1, page: 1, limit: 20, totalPages: 1 }
+        : { data: [] as any[], total: 0, page: 1, limit: 20, totalPages: 0 },
     );
     const token = await adminToken();
     const res = await get("/admin/matches?status=proposed", token);
@@ -116,10 +116,10 @@ describe("GET /admin/matches", () => {
 
   it("passes participantId filter to service — returns only that participant's matches", async () => {
     const pid = "64b0000000000000000000a1";
-    mockListMatches.mockImplementation(async (_p, _l, _s, participantId) =>
+    mockListMatches.mockImplementation(async (_p: number, _l: number, _s: string, participantId: string) =>
       participantId === pid
-        ? { data: [MATCH_FIXTURE], total: 1, page: 1, limit: 20, totalPages: 1 }
-        : { data: [], total: 0, page: 1, limit: 20, totalPages: 0 },
+        ? { data: [MATCH_FIXTURE] as any[], total: 1, page: 1, limit: 20, totalPages: 1 }
+        : { data: [] as any[], total: 0, page: 1, limit: 20, totalPages: 0 },
     );
     const token = await adminToken();
     const res = await get(`/admin/matches?participantId=${pid}`, token);
@@ -129,10 +129,10 @@ describe("GET /admin/matches", () => {
   });
 
   it("passes alias search param to service — returns matches containing search term", async () => {
-    mockListMatches.mockImplementation(async (_p, _l, _s, _pid, search) =>
+    mockListMatches.mockImplementation(async (_p: number, _l: number, _s: string, _pid: string, search: string) =>
       search === "lunar"
-        ? { data: [MATCH_FIXTURE], total: 1, page: 1, limit: 20, totalPages: 1 }
-        : { data: [], total: 0, page: 1, limit: 20, totalPages: 0 },
+        ? { data: [MATCH_FIXTURE] as any[], total: 1, page: 1, limit: 20, totalPages: 1 }
+        : { data: [] as any[], total: 0, page: 1, limit: 20, totalPages: 0 },
     );
     const token = await adminToken();
     const res = await get("/admin/matches?search=lunar", token);
@@ -258,7 +258,7 @@ describe("DELETE /admin/matches/:id", () => {
 
   it("only deletes the specified match, not others", async () => {
     let deletedId = "";
-    mockDeleteMatch.mockImplementation(async (id) => { deletedId = id; return true; });
+    mockDeleteMatch.mockImplementation(async (id?: string) => { deletedId = id ?? ""; return true; });
     const token = await adminToken();
     await del("/admin/matches/64b1234567890abcdef01234", token);
     expect(deletedId).toBe("64b1234567890abcdef01234");

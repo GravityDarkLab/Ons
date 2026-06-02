@@ -168,7 +168,7 @@ describe("GET /admin/applicants", () => {
     mockListApplicants.mockResolvedValue({
       data: [{ id: "1", alias: "Lunar Ocean", status: "active", answers: {}, questionnaireVersion: "1.0.0", createdAt: new Date(), updatedAt: new Date() }],
       total: 1, page: 1, limit: 20, totalPages: 1,
-    });
+    } as any);
     const token = await adminToken();
     const res = await get("/admin/applicants?search=LUNAR", token);
     expect(res.status).toBe(200);
