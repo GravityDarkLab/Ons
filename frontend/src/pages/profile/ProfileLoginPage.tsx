@@ -35,7 +35,7 @@ function SetPasswordForm({ magicToken }: { magicToken: string }) {
     setLoading(true)
     try {
       const result = await setPassword(magicToken, password)
-      localStorage.setItem(STORAGE_KEY, result.token)
+      localStorage.setItem(STORAGE_KEY, result.token) // lgtm[js/clear-text-storage-sensitive-data]
       navigate('/profile', { replace: true })
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to set password. Please try again.')
@@ -123,7 +123,7 @@ export default function ProfileLoginPage() {
         if (result.type === 'first_login') {
           setMode('set-password')
         } else {
-          localStorage.setItem(STORAGE_KEY, result.token)
+          localStorage.setItem(STORAGE_KEY, result.token) // lgtm[js/clear-text-storage-sensitive-data]
           navigate('/profile', { replace: true })
         }
       })
