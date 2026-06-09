@@ -133,9 +133,13 @@ export async function requestContact(
     "APPLICANT_REVEAL_IDENTITY",
     {
       targetApplicantId: targetId,
-      metadata: { matchId, targetAlias: match.applicantAId.equals(actorId)
-        ? match.applicantBAlias
-        : match.applicantAAlias },
+      metadata: {
+        actorType: "applicant",
+        matchId,
+        targetAlias: match.applicantAId.equals(actorId)
+          ? match.applicantBAlias
+          : match.applicantAAlias,
+      },
     }
   );
 

@@ -413,7 +413,8 @@ components:
           description: |
             64-character hex token used as the login identifier for the applicant portal.
             Append to the portal URL as `?token=<value>` so the login form is pre-filled.
-            ⚠️ **Show this only once** — it is stored hashed on the server.
+            Stored in plaintext on the server (used as a lookup key). Treat it like a
+            username — it is not sufficient to log in without the password.
         plainPassword:
           type: string
           example: "amber-river-silent-fox"
@@ -707,7 +708,11 @@ components:
           example: "64f1a2b3c4d5e6f7a8b9c0d2"
         adminId:
           type: string
-          description: MongoDB `_id` of the admin who performed the action.
+          description: |
+            MongoDB `_id` of the actor who performed the action.
+            For all admin-initiated actions this is the admin's `_id`.
+            For `APPLICANT_REVEAL_IDENTITY` this is the applicant's `_id` —
+            check `metadata.actorType` to distinguish the two cases.
           example: "507f1f77bcf86cd799439011"
         action:
           type: string
@@ -721,8 +726,9 @@ components:
           description: |
             `APPLICANT_REVEAL_IDENTITY` is written when an applicant calls
             `POST /api/v1/profile/matches/:id/contact` to reveal their partner's
-            Instagram handle. In this case `adminId` holds the requesting applicant's
-            alias (not a MongoDB admin ID).
+            Instagram handle. In this case `adminId` holds the applicant's MongoDB `_id`
+            and `metadata.actorType` is `"applicant"` — use that field to distinguish
+            applicant-initiated entries from admin-initiated ones in audit queries.
         targetAlias:
           type: string
           example: "Blue Falcon"
