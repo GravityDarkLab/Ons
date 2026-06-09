@@ -89,7 +89,7 @@ beforeEach(() => {
 // ── POST /profile/login ───────────────────────────────────────────────────────
 
 describe("POST /profile/login", () => {
-  it("returns 200 + JWT on valid credentials", async () => {
+  it("returns 200 + session cookie on valid credentials", async () => {
     mockLoginWithMagicToken.mockResolvedValue({
       status: "ok",
       applicant: { _id: new ObjectId(VALID_APPLICANT_ID), alias: "Blue Falcon" },
@@ -98,8 +98,9 @@ describe("POST /profile/login", () => {
     expect(res.status).toBe(200);
     const body = await res.json() as any;
     expect(body.success).toBe(true);
-    expect(typeof body.token).toBe("string");
+    expect(body.token).toBeUndefined(); // token is in HttpOnly cookie, not response body
     expect(body.firstLogin).toBeUndefined();
+    expect(res.headers.get("set-cookie")).toMatch(/ons_applicant_session=/);
   });
 
   it("returns 200 + firstLogin:true when passwordHash is null", async () => {
@@ -127,7 +128,7 @@ describe("POST /profile/login", () => {
 // ── POST /profile/set-password ────────────────────────────────────────────────
 
 describe("POST /profile/set-password", () => {
-  it("returns 200 + JWT when first-login password is accepted", async () => {
+  it("returns 200 + session cookie when first-login password is accepted", async () => {
     mockSetPassword.mockResolvedValue({
       _id: new ObjectId(VALID_APPLICANT_ID),
       alias: "Blue Falcon",
@@ -139,7 +140,8 @@ describe("POST /profile/set-password", () => {
     expect(res.status).toBe(200);
     const body = await res.json() as any;
     expect(body.success).toBe(true);
-    expect(typeof body.token).toBe("string");
+    expect(body.token).toBeUndefined(); // token is in HttpOnly cookie, not response body
+    expect(res.headers.get("set-cookie")).toMatch(/ons_applicant_session=/);
   });
 
   it("returns 401 when magicToken is not found", async () => {
