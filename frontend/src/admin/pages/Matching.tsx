@@ -5,86 +5,116 @@ import { runMatching } from '../api/client'
 import Button from '../../components/ui/Button'
 import type { MatchingRun } from '../types'
 
+// ── Helpers ────────────────────────────────────────────────────────────────
+
+function timeAgo(ms: number): string {
+  const secs = Math.floor((Date.now() - ms) / 1000)
+  if (secs < 60) return 'just now'
+  const mins = Math.floor(secs / 60)
+  if (mins < 60) return `${mins} minute${mins === 1 ? '' : 's'} ago`
+  const hours = Math.floor(mins / 60)
+  if (hours < 24) return `${hours} hour${hours === 1 ? '' : 's'} ago`
+  const days = Math.floor(hours / 24)
+  return `${days} day${days === 1 ? '' : 's'} ago`
+}
+
+// ── Types ──────────────────────────────────────────────────────────────────
+
+interface LastRun {
+  algorithm: string
+  durationMs: number
+  couplesProposed: number
+  timestamp: number
+}
+
+// ── Component ──────────────────────────────────────────────────────────────
+
 export function Matching() {
   const { t } = useTranslation()
   const [algorithm, setAlgorithm] = useState('embedding-cosine')
   const [loading, setLoading]     = useState(false)
   const [result, setResult]       = useState<MatchingRun | null>(null)
   const [error, setError]         = useState('')
+  const [confirming, setConfirming] = useState(false)
+  const [lastRun, setLastRun]     = useState<LastRun | null>(null)
 
   const ALGORITHMS = [
-    {
-      value: 'embedding-cosine',
-      label: t('admin.matching.embedding'),
-      hint: t('admin.matching.embeddingHint'),
-      recommended: true,
-    },
-    {
-      value: 'baseline',
-      label: t('admin.matching.baseline'),
-      hint: t('admin.matching.baselineHint'),
-      recommended: false,
-    },
-    {
-      value: 'cosine',
-      label: t('admin.matching.cosine'),
-      hint: t('admin.matching.cosineHint'),
-      recommended: false,
-    },
+    { value: 'baseline', label: 'baseline' },
+    { value: 'cosine', label: 'cosine' },
+    { value: 'embedding-cosine', label: 'embedding-cosine' },
   ]
-
-  async function handleRun() {
-    setError(''); setLoading(true); setResult(null)
-    try { setResult(await runMatching(algorithm)) }
-    catch (err) { setError(err instanceof Error ? err.message : t('admin.matching.runError')) }
-    finally { setLoading(false) }
-  }
 
   const isNonEmbedding = algorithm !== 'embedding-cosine'
 
+  function handleAlgorithmChange(value: string) {
+    setAlgorithm(value)
+    setResult(null)
+    setConfirming(false)
+    setError('')
+  }
+
+  async function handleConfirm() {
+    setConfirming(false)
+    setError('')
+    setLoading(true)
+    setResult(null)
+    try {
+      const res = await runMatching(algorithm)
+      setResult(res)
+      setLastRun({
+        algorithm: res.algorithm,
+        durationMs: res.durationMs,
+        couplesProposed: res.couplesProposed,
+        timestamp: Date.now(),
+      })
+    } catch (err) {
+      setError(err instanceof Error ? err.message : t('admin.matching.runError'))
+    } finally {
+      setLoading(false)
+    }
+  }
+
   return (
-    <div className="space-y-8">
+    <div className="max-w-2xl space-y-6">
+      {/* Page header */}
       <div>
         <h1 className="text-xl font-semibold text-primary">{t('admin.matching.title')}</h1>
         <p className="text-sm text-muted mt-0.5">{t('admin.matching.subtitle')}</p>
       </div>
 
-      {/* Algorithm selector */}
-      <div className="bg-surface border border-border rounded-2xl p-5 space-y-4">
-        <p className="text-sm font-medium text-primary">{t('admin.matching.algorithm')}</p>
-        <div className="space-y-2">
-          {ALGORITHMS.map(a => (
-            <label
-              key={a.value}
-              className={`flex items-start gap-3 p-3 rounded-xl border cursor-pointer transition-colors ${
-                algorithm === a.value
-                  ? 'border-accent bg-accent-light'
-                  : 'border-border hover:bg-bg'
-              }`}
-            >
-              <input
-                type="radio"
-                name="algorithm"
-                value={a.value}
-                checked={algorithm === a.value}
-                onChange={() => { setAlgorithm(a.value); setResult(null) }}
-                className="mt-0.5"
-              />
-              <div className="flex-1 min-w-0">
-                <div className="flex items-center gap-2">
-                  <p className="text-sm font-medium text-primary">{a.label}</p>
-                  {a.recommended && (
-                    <span className="inline-flex px-1.5 py-0.5 rounded-md bg-success-light text-success text-xs font-medium">
-                      {t('admin.matching.recommended')}
-                    </span>
-                  )}
-                </div>
-                <p className="text-xs text-muted mt-0.5">{a.hint}</p>
-              </div>
-            </label>
-          ))}
+      {/* Run Matching card */}
+      <div className="bg-surface border border-border rounded-2xl p-8 shadow-sm space-y-6">
+        <h2 className="text-xl font-semibold text-primary mb-6">{t('admin.matching.title')}</h2>
+
+        {/* Algorithm toggle pills */}
+        <div className="space-y-3">
+          <p className="text-sm font-medium text-primary">{t('admin.matching.algorithm')}</p>
+          <div className="flex flex-wrap gap-2" role="group" aria-label={t('admin.matching.algorithm')}>
+            {ALGORITHMS.map(a => (
+              <label key={a.value} className="cursor-pointer">
+                <input
+                  type="radio"
+                  name="algorithm"
+                  value={a.value}
+                  checked={algorithm === a.value}
+                  onChange={() => handleAlgorithmChange(a.value)}
+                  className="sr-only"
+                />
+                <span
+                  className={
+                    algorithm === a.value
+                      ? 'bg-accent text-white rounded-full px-4 py-2 text-sm font-medium inline-block'
+                      : 'bg-surface border border-border text-muted rounded-full px-4 py-2 text-sm hover:text-primary hover:border-accent/40 inline-block'
+                  }
+                >
+                  {a.label}
+                </span>
+              </label>
+            ))}
+          </div>
         </div>
 
+        {/* Multilingual warning */}
         {isNonEmbedding && (
           <div className="flex items-start gap-3 rounded-xl bg-error-light border border-error/20 px-4 py-3">
             <svg className="w-4 h-4 text-error shrink-0 mt-0.5" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
@@ -98,18 +128,53 @@ export function Matching() {
           </div>
         )}
 
+        {/* Last run info */}
+        <p className="text-sm text-muted">
+          {lastRun
+            ? `${t('admin.matching.lastRun', 'Last run')}: ${timeAgo(lastRun.timestamp)} · ${lastRun.couplesProposed} pairs proposed`
+            : t('admin.matching.neverRun', 'Never run')}
+        </p>
+
+        {/* Error message */}
         {error && <p className="text-sm text-error">{error}</p>}
 
-        <Button onClick={handleRun} loading={loading}>{t('admin.matching.run')}</Button>
+        {/* Confirm dialog */}
+        {confirming ? (
+          <div className="bg-surface border border-border rounded-xl p-5 space-y-4">
+            <div>
+              <p className="text-sm font-medium text-primary">
+                {t('admin.matching.confirmTitle', `Run matching with ${algorithm}?`, { algorithm })}
+              </p>
+              <p className="text-xs text-muted mt-1">
+                {t('admin.matching.confirmBody', 'This will create new match proposals.')}
+              </p>
+            </div>
+            <div className="flex items-center gap-3">
+              <button
+                type="button"
+                onClick={() => setConfirming(false)}
+                className="px-4 py-2 text-sm font-medium text-muted border border-border rounded-lg hover:text-primary hover:border-border/80 transition-colors"
+              >
+                {t('admin.matching.cancel', 'Cancel')}
+              </button>
+              <Button onClick={handleConfirm} loading={loading}>
+                {t('admin.matching.confirmRun', 'Yes, run matching')}
+              </Button>
+            </div>
+          </div>
+        ) : (
+          <Button onClick={() => setConfirming(true)} loading={loading}>
+            {t('admin.matching.run')}
+          </Button>
+        )}
       </div>
 
-      {/* Run summary */}
+      {/* Result summary card */}
       {result && (
-        <div className="bg-surface border border-border rounded-2xl p-5 space-y-4">
+        <div className="bg-green-50 border border-green-200 rounded-xl p-4 space-y-4">
           <div className="flex items-center gap-2">
-            {/* green checkmark */}
-            <span className="flex h-6 w-6 items-center justify-center rounded-full bg-success-light">
-              <svg className="h-3.5 w-3.5 text-success" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+            <span className="flex h-6 w-6 items-center justify-center rounded-full bg-green-100">
+              <svg className="h-3.5 w-3.5 text-green-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
                 <polyline points="20 6 9 17 4 12" />
               </svg>
             </span>

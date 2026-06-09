@@ -32,8 +32,14 @@ beforeEach(() => {
   mockRunMatching.mockReset()
 })
 
-// Helpers: radios are ordered [embedding, baseline, cosine] in the DOM
+// Helpers: radios are ordered [baseline, cosine, embedding-cosine] in the DOM
 function getRadios() { return screen.getAllByRole('radio') }
+
+/** Click "Run Matching" then confirm via the inline confirm dialog */
+async function clickRunAndConfirm() {
+  await userEvent.click(screen.getByRole('button', { name: /admin\.matching\.run/i }))
+  await userEvent.click(screen.getByRole('button', { name: /admin\.matching\.confirmRun|yes, run matching/i }))
+}
 
 describe('Matching page — algorithm selector', () => {
   it('renders all three algorithm options', () => {
@@ -43,14 +49,17 @@ describe('Matching page — algorithm selector', () => {
 
   it('selects Embedding by default', () => {
     renderMatching()
-    const [embedding] = getRadios()
-    expect(embedding).toBeChecked()
+    const radios = getRadios()
+    // embedding-cosine is the last radio (alphabetical order: baseline, cosine, embedding-cosine)
+    const embeddingRadio = radios.find(r => (r as HTMLInputElement).value === 'embedding-cosine')
+    expect(embeddingRadio).toBeChecked()
   })
 
   it('shows multilingual warning when non-embedding algorithm is selected', async () => {
     renderMatching()
-    const [, baseline] = getRadios()
-    await userEvent.click(baseline)
+    const radios = getRadios()
+    const baselineRadio = radios.find(r => (r as HTMLInputElement).value === 'baseline')!
+    await userEvent.click(baselineRadio)
     // Trans renders the i18nKey as text when the component is a stub
     expect(screen.getByText(/admin\.matching\.multilingualWarning/i)).toBeInTheDocument()
   })
@@ -65,26 +74,42 @@ describe('Matching page — run button', () => {
   it('calls runMatching with the selected algorithm', async () => {
     mockRunMatching.mockResolvedValue(RUN_RESULT)
     renderMatching()
-    const [, baseline] = screen.getAllByRole('radio')
-    await userEvent.click(baseline)
-    await userEvent.click(screen.getByRole('button', { name: /admin\.matching\.run/i }))
+    const radios = getRadios()
+    const baselineRadio = radios.find(r => (r as HTMLInputElement).value === 'baseline')!
+    await userEvent.click(baselineRadio)
+    await clickRunAndConfirm()
     expect(mockRunMatching).toHaveBeenCalledWith('baseline')
   })
 
   it('defaults to embedding-cosine when no algorithm is changed', async () => {
     mockRunMatching.mockResolvedValue(RUN_RESULT)
     renderMatching()
-    await userEvent.click(screen.getByRole('button', { name: /admin\.matching\.run/i }))
+    await clickRunAndConfirm()
     expect(mockRunMatching).toHaveBeenCalledWith('embedding-cosine')
   })
 
   it('shows error message when run fails', async () => {
     mockRunMatching.mockRejectedValue(new Error('Embedding server unreachable'))
     renderMatching()
-    await userEvent.click(screen.getByRole('button', { name: /admin\.matching\.run/i }))
+    await clickRunAndConfirm()
     await waitFor(() =>
       expect(screen.getByText('Embedding server unreachable')).toBeInTheDocument(),
     )
+  })
+
+  it('shows confirm dialog when Run Matching is clicked', async () => {
+    renderMatching()
+    await userEvent.click(screen.getByRole('button', { name: /admin\.matching\.run/i }))
+    expect(screen.getByRole('button', { name: /admin\.matching\.confirmRun|yes, run matching/i })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /admin\.matching\.cancel|cancel/i })).toBeInTheDocument()
+  })
+
+  it('dismisses confirm dialog on cancel', async () => {
+    renderMatching()
+    await userEvent.click(screen.getByRole('button', { name: /admin\.matching\.run/i }))
+    await userEvent.click(screen.getByRole('button', { name: /admin\.matching\.cancel|cancel/i }))
+    expect(screen.queryByRole('button', { name: /admin\.matching\.confirmRun|yes, run matching/i })).not.toBeInTheDocument()
+    expect(mockRunMatching).not.toHaveBeenCalled()
   })
 })
 
@@ -97,7 +122,7 @@ describe('Matching page — result summary card', () => {
   it('shows the success card after a successful run', async () => {
     mockRunMatching.mockResolvedValue(RUN_RESULT)
     renderMatching()
-    await userEvent.click(screen.getByRole('button', { name: /admin\.matching\.run/i }))
+    await clickRunAndConfirm()
     await waitFor(() =>
       expect(screen.getByText(/admin\.matching\.runComplete/i)).toBeInTheDocument(),
     )
@@ -106,7 +131,7 @@ describe('Matching page — result summary card', () => {
   it('shows applicants scored stat', async () => {
     mockRunMatching.mockResolvedValue(RUN_RESULT)
     renderMatching()
-    await userEvent.click(screen.getByRole('button', { name: /admin\.matching\.run/i }))
+    await clickRunAndConfirm()
     await waitFor(() => screen.getByText(/admin\.matching\.runComplete/i))
     expect(screen.getByText('130')).toBeInTheDocument()
   })
@@ -114,7 +139,7 @@ describe('Matching page — result summary card', () => {
   it('shows couple proposals saved stat', async () => {
     mockRunMatching.mockResolvedValue(RUN_RESULT)
     renderMatching()
-    await userEvent.click(screen.getByRole('button', { name: /admin\.matching\.run/i }))
+    await clickRunAndConfirm()
     await waitFor(() => screen.getByText(/admin\.matching\.runComplete/i))
     expect(screen.getByText('480')).toBeInTheDocument()
   })
@@ -122,7 +147,7 @@ describe('Matching page — result summary card', () => {
   it('shows duration stat', async () => {
     mockRunMatching.mockResolvedValue(RUN_RESULT)
     renderMatching()
-    await userEvent.click(screen.getByRole('button', { name: /admin\.matching\.run/i }))
+    await clickRunAndConfirm()
     await waitFor(() => screen.getByText(/admin\.matching\.runComplete/i))
     expect(screen.getByText('93ms')).toBeInTheDocument()
   })
@@ -130,7 +155,7 @@ describe('Matching page — result summary card', () => {
   it('shows the View Matches link', async () => {
     mockRunMatching.mockResolvedValue(RUN_RESULT)
     renderMatching()
-    await userEvent.click(screen.getByRole('button', { name: /admin\.matching\.run/i }))
+    await clickRunAndConfirm()
     await waitFor(() => screen.getByText(/admin\.matching\.runComplete/i))
     const link = screen.getByRole('link', { name: /admin\.matching\.viewMatches/i })
     expect(link).toHaveAttribute('href', '/admin/matches')
@@ -139,12 +164,13 @@ describe('Matching page — result summary card', () => {
   it('clears previous result when algorithm changes', async () => {
     mockRunMatching.mockResolvedValue(RUN_RESULT)
     renderMatching()
-    await userEvent.click(screen.getByRole('button', { name: /admin\.matching\.run/i }))
+    await clickRunAndConfirm()
     await waitFor(() => screen.getByText(/admin\.matching\.runComplete/i))
 
     // Switch algorithm — result card should disappear
-    const [, baseline] = screen.getAllByRole('radio')
-    await userEvent.click(baseline)
+    const radios = getRadios()
+    const baselineRadio = radios.find(r => (r as HTMLInputElement).value === 'baseline')!
+    await userEvent.click(baselineRadio)
     expect(screen.queryByText(/admin\.matching\.runComplete/i)).not.toBeInTheDocument()
   })
 })
