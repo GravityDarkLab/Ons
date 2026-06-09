@@ -70,7 +70,7 @@ export async function ensureIndexes(db: Db): Promise<void> {
   const identities = getIdentitiesCollection(db);
   await _createIndexIfNotExists(identities, { applicantId: 1 }, { unique: true });
   await _createIndexIfNotExists(identities, { alias: 1 });
-  await _createIndexIfNotExists(identities, { instagramHash: 1 }, { unique: true });
+  await _createIndexIfNotExists(identities, { instagramHash: 1 }, { unique: true, sparse: true });
 
   const auditLogs = getAuditLogsCollection(db);
   await _createIndexIfNotExists(auditLogs, { timestamp: -1 });
