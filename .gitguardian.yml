@@ -3,12 +3,11 @@ version: 2
 # Allowlist for ggshield / GitGuardian GitHub App.
 # All entries below are dev-only defaults or test fixtures — never real credentials.
 
-# Smoke tests use dynamic fixture passwords (template literals) and dummy strings
-# like "wrong-password" / "definitely-wrong" for negative-test cases. They never
-# contain real credentials — all real config is read from tests/smoke/.env.smoke
-# (gitignored). Exclude the entire directory from scanning.
+# Smoke tests contain fixture passwords (e.g. "wrong-password", "definitely-wrong",
+# dynamic template literals) used purely for negative-test cases. Real config is
+# read from tests/smoke/.env.smoke which is gitignored and never committed.
 paths-ignore:
-  - "tests/smoke/"
+  - "tests/smoke/**"
 
 ignore-secrets:
   # ── Docker dev defaults ──────────────────────────────────────────────────────
