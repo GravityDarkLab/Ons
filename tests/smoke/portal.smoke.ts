@@ -3,8 +3,8 @@
  *
  * Requires a running server. Configure with env vars:
  *   SMOKE_BASE_URL   — default: http://localhost:3001
- *   SMOKE_ADMIN_USER — default: your_admin_username
- *   SMOKE_ADMIN_PASS — default: your_admin_password
+ *   SMOKE_ADMIN_USER — admin username (see api/.env.dev)
+ *   SMOKE_ADMIN_PASS — admin password (see api/.env.dev)
  *
  * Run:
  *   bun test tests/smoke/portal.smoke.ts
