@@ -1,6 +1,8 @@
 import { Context } from "hono";
 import {
   loginWithMagicToken,
+  setPassword as setPasswordService,
+  changePassword as changePasswordService,
   getMyProfile,
   getMyMatches,
   requestContact,
@@ -9,20 +11,66 @@ import {
   deactivateMyAccount,
 } from "../services/profile.service.js";
 import { signApplicantToken } from "../middleware/applicant.auth.middleware.js";
+import { generateReadablePassword } from "../privacy/magic-token.js";
 
 export async function login(c: Context): Promise<Response> {
   const { magicToken, password } = c.req.valid("json" as never) as {
     magicToken: string;
-    password: string;
+    password?: string;
   };
 
-  const applicant = await loginWithMagicToken(magicToken, password);
-  if (!applicant) {
+  const result = await loginWithMagicToken(magicToken, password);
+  if (result === null) {
     return c.json({ success: false, error: "Invalid credentials" }, 401);
   }
+  if (result.status === "first_login") {
+    return c.json({ success: true, firstLogin: true });
+  }
 
-  const token = await signApplicantToken(applicant._id.toHexString(), applicant.alias);
+  const token = await signApplicantToken(
+    result.applicant._id.toHexString(),
+    result.applicant.alias
+  );
   return c.json({ success: true, token });
+}
+
+export async function setPassword(c: Context): Promise<Response> {
+  const { magicToken, newPassword } = c.req.valid("json" as never) as {
+    magicToken: string;
+    newPassword: string;
+  };
+
+  try {
+    const applicant = await setPasswordService(magicToken, newPassword);
+    if (!applicant) return c.json({ success: false, error: "Invalid token" }, 401);
+    const token = await signApplicantToken(applicant._id.toHexString(), applicant.alias);
+    return c.json({ success: true, token });
+  } catch (err: unknown) {
+    const e = err as { message?: string; statusCode?: number };
+    const code = (e.statusCode ?? 500) as Parameters<typeof c.json>[1];
+    return c.json({ success: false, error: e.message ?? "Error" }, code);
+  }
+}
+
+export async function changePassword(c: Context): Promise<Response> {
+  const applicantId = c.get("applicantId") as string;
+  const { currentPassword, newPassword } = c.req.valid("json" as never) as {
+    currentPassword: string;
+    newPassword: string;
+  };
+
+  try {
+    await changePasswordService(applicantId, currentPassword, newPassword);
+    return c.json({ success: true });
+  } catch (err: unknown) {
+    const e = err as { message?: string; statusCode?: number };
+    const code = (e.statusCode ?? 500) as Parameters<typeof c.json>[1];
+    return c.json({ success: false, error: e.message ?? "Error" }, code);
+  }
+}
+
+export async function suggestPassword(_c: Context): Promise<Response> {
+  return _c.json({ success: true, suggestion: generateReadablePassword() });
 }
 
 export async function me(c: Context): Promise<Response> {

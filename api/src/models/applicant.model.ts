@@ -13,7 +13,7 @@ export interface ApplicantDoc {
   answers: Record<string, unknown>;
   status: ApplicantStatus;
   magicToken: string;       // 64-char hex, used in ?token= URL
-  passwordHash: string;     // bcrypt of 4-word passphrase
+  passwordHash: string | null; // null until first login; bcrypt hash after set-password
   scoreThreshold: number;   // minimum match score to show (0.6–1.0, default 0.8)
   deletionScheduledAt?: Date;
   createdAt: Date;

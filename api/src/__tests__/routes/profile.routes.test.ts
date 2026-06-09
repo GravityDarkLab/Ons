@@ -13,6 +13,8 @@ mock.module("../../middleware/rateLimit.middleware.js", () => {
 });
 
 const mockLoginWithMagicToken = mock(async () => null as any);
+const mockSetPassword         = mock(async () => null as any);
+const mockChangePassword      = mock(async () => {});
 const mockGetMyProfile        = mock(async () => null as any);
 const mockGetMyMatches        = mock(async () => [] as any[]);
 const mockRequestContact      = mock(async () => ({ targetInstagram: "@partner", iceBreakers: [] as string[], dateIdeas: [] as string[] }));
@@ -22,6 +24,8 @@ const mockDeactivateMyAccount = mock(async () => {});
 
 mock.module("../../services/profile.service.js", () => ({
   loginWithMagicToken: mockLoginWithMagicToken,
+  setPassword:         mockSetPassword,
+  changePassword:      mockChangePassword,
   getMyProfile:        mockGetMyProfile,
   getMyMatches:        mockGetMyMatches,
   requestContact:      mockRequestContact,
@@ -65,6 +69,8 @@ function get(path: string, token?: string) {
 
 beforeEach(() => {
   mockLoginWithMagicToken.mockReset();
+  mockSetPassword.mockReset();
+  mockChangePassword.mockReset();
   mockGetMyProfile.mockReset();
   mockGetMyMatches.mockReset();
   mockRequestContact.mockReset();
@@ -74,6 +80,7 @@ beforeEach(() => {
 
   // Restore defaults
   mockLoginWithMagicToken.mockResolvedValue(null);
+  mockSetPassword.mockResolvedValue(null);
   mockGetMyMatches.mockResolvedValue([]);
   mockRequestContact.mockResolvedValue({ targetInstagram: "@partner", iceBreakers: ["Q1"], dateIdeas: ["D1"] });
 });
@@ -83,18 +90,28 @@ beforeEach(() => {
 describe("POST /profile/login", () => {
   it("returns 200 + JWT on valid credentials", async () => {
     mockLoginWithMagicToken.mockResolvedValue({
-      _id: new ObjectId(VALID_APPLICANT_ID),
-      alias: "Blue Falcon",
-      status: "applied",
+      status: "ok",
+      applicant: { _id: new ObjectId(VALID_APPLICANT_ID), alias: "Blue Falcon" },
     });
     const res = await post("/profile/login", { magicToken: VALID_MAGIC_TOKEN, password: "amber-river-silent-fox" });
     expect(res.status).toBe(200);
     const body = await res.json() as any;
     expect(body.success).toBe(true);
     expect(typeof body.token).toBe("string");
+    expect(body.firstLogin).toBeUndefined();
   });
 
-  it("returns 401 on wrong password", async () => {
+  it("returns 200 + firstLogin:true when passwordHash is null", async () => {
+    mockLoginWithMagicToken.mockResolvedValue({ status: "first_login" });
+    const res = await post("/profile/login", { magicToken: VALID_MAGIC_TOKEN });
+    expect(res.status).toBe(200);
+    const body = await res.json() as any;
+    expect(body.success).toBe(true);
+    expect(body.firstLogin).toBe(true);
+    expect(body.token).toBeUndefined();
+  });
+
+  it("returns 401 on wrong password or unknown token", async () => {
     mockLoginWithMagicToken.mockResolvedValue(null);
     const res = await post("/profile/login", { magicToken: VALID_MAGIC_TOKEN, password: "wrong" });
     expect(res.status).toBe(401);
@@ -104,9 +121,106 @@ describe("POST /profile/login", () => {
     const res = await post("/profile/login", { magicToken: "short", password: "some-pass" });
     expect(res.status).toBe(422);
   });
+});
 
-  it("returns 422 when password is missing", async () => {
-    const res = await post("/profile/login", { magicToken: VALID_MAGIC_TOKEN });
+// ── POST /profile/set-password ────────────────────────────────────────────────
+
+describe("POST /profile/set-password", () => {
+  it("returns 200 + JWT when first-login password is accepted", async () => {
+    mockSetPassword.mockResolvedValue({
+      _id: new ObjectId(VALID_APPLICANT_ID),
+      alias: "Blue Falcon",
+    });
+    const res = await post("/profile/set-password", {
+      magicToken: VALID_MAGIC_TOKEN,
+      newPassword: "my-secure-pass",
+    });
+    expect(res.status).toBe(200);
+    const body = await res.json() as any;
+    expect(body.success).toBe(true);
+    expect(typeof body.token).toBe("string");
+  });
+
+  it("returns 401 when magicToken is not found", async () => {
+    mockSetPassword.mockResolvedValue(null);
+    const res = await post("/profile/set-password", {
+      magicToken: VALID_MAGIC_TOKEN,
+      newPassword: "my-secure-pass",
+    });
+    expect(res.status).toBe(401);
+  });
+
+  it("returns 409 when password is already set", async () => {
+    mockSetPassword.mockRejectedValue(
+      Object.assign(new Error("Password already set."), { statusCode: 409 })
+    );
+    const res = await post("/profile/set-password", {
+      magicToken: VALID_MAGIC_TOKEN,
+      newPassword: "my-secure-pass",
+    });
+    expect(res.status).toBe(409);
+  });
+
+  it("returns 422 when newPassword is too short", async () => {
+    const res = await post("/profile/set-password", {
+      magicToken: VALID_MAGIC_TOKEN,
+      newPassword: "short",
+    });
+    expect(res.status).toBe(422);
+  });
+});
+
+// ── GET /profile/suggest-password ─────────────────────────────────────────────
+
+describe("GET /profile/suggest-password", () => {
+  it("returns a 4-word passphrase without auth", async () => {
+    const res = await get("/profile/suggest-password");
+    expect(res.status).toBe(200);
+    const body = await res.json() as any;
+    expect(body.success).toBe(true);
+    expect(typeof body.suggestion).toBe("string");
+    expect(body.suggestion.split("-")).toHaveLength(4);
+  });
+});
+
+// ── POST /profile/change-password ─────────────────────────────────────────────
+
+describe("POST /profile/change-password", () => {
+  it("returns 401 without token", async () => {
+    const res = await post("/profile/change-password", {
+      currentPassword: "old",
+      newPassword: "new-secure-pass",
+    });
+    expect(res.status).toBe(401);
+  });
+
+  it("returns 200 on successful change", async () => {
+    const token = await applicantToken();
+    const res = await post("/profile/change-password", {
+      currentPassword: "old-pass",
+      newPassword: "new-secure-pass",
+    }, token);
+    expect(res.status).toBe(200);
+  });
+
+  it("returns 401 when current password is wrong", async () => {
+    mockChangePassword.mockRejectedValue(
+      Object.assign(new Error("Current password is incorrect"), { statusCode: 401 })
+    );
+    const token = await applicantToken();
+    const res = await post("/profile/change-password", {
+      currentPassword: "wrong",
+      newPassword: "new-secure-pass",
+    }, token);
+    expect(res.status).toBe(401);
+  });
+
+  it("returns 422 when newPassword is too short", async () => {
+    const token = await applicantToken();
+    const res = await post("/profile/change-password", {
+      currentPassword: "old",
+      newPassword: "short",
+    }, token);
     expect(res.status).toBe(422);
   });
 });

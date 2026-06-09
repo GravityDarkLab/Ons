@@ -391,7 +391,7 @@ components:
 
     FormSubmissionResponse:
       type: object
-      required: [success, alias, applicantId, magicToken, plainPassword, message]
+      required: [success, alias, applicantId, magicToken, message]
       properties:
         success:
           type: boolean
@@ -414,17 +414,12 @@ components:
             64-character hex token used as the login identifier for the applicant portal.
             Append to the portal URL as `?token=<value>` so the login form is pre-filled.
             Stored in plaintext on the server (used as a lookup key). Treat it like a
-            username — it is not sufficient to log in without the password.
-        plainPassword:
-          type: string
-          example: "amber-river-silent-fox"
-          description: |
-            4-word passphrase (e.g. `amber-river-silent-fox`) used alongside `magicToken`
-            to authenticate at `POST /api/v1/profile/login`.
-            ⚠️ **Show this only once** — only the bcrypt hash is stored on the server.
+            username — it is not sufficient to log in without a password.
+            No password is generated at submission time. The applicant sets their own
+            password on first login via `POST /api/v1/profile/set-password`.
         message:
           type: string
-          example: "Your profile has been submitted successfully."
+          example: "Your profile has been submitted successfully. Save your magic link — you will set your password on first login."
 
     # ── Profile (applicant self-service) ─────────────────────────────────────
     ProfileLoginRequest:
@@ -445,15 +440,22 @@ components:
 
     ProfileLoginResponse:
       type: object
-      required: [success, token]
+      required: [success]
       properties:
         success:
           type: boolean
           enum: [true]
         token:
           type: string
-          description: "Applicant JWT (30-day expiry). Pass as `Authorization: Bearer <token>` on all `/api/v1/profile/*` requests."
+          description: "Applicant JWT (30-day expiry). Present only when `firstLogin` is absent."
           example: "eyJhbGciOiJIUzI1NiJ9..."
+        firstLogin:
+          type: boolean
+          enum: [true]
+          description: |
+            Present (and `true`) when the account has no password yet.
+            The caller should redirect to `POST /api/v1/profile/set-password`.
+            Mutually exclusive with `token` — exactly one of the two is present.
 
     ApplicantProfileView:
       type: object
@@ -1082,8 +1084,7 @@ paths:
                 alias: "Blue Falcon"
                 applicantId: "64f1a2b3c4d5e6f7a8b9c0d1"
                 magicToken: "a3f9d2c1e4b7089f4a2c8d1e6f3b9a0c..."
-                plainPassword: "amber-river-silent-fox"
-                message: "Your profile has been submitted successfully."
+                message: "Your profile has been submitted successfully. Save your magic link — you will set your password on first login."
         '409':
           description: Instagram handle already registered
           content:
@@ -1678,35 +1679,53 @@ paths:
       summary: Applicant portal login
       operationId: profileLogin
       description: |
-        Authenticates an applicant using the `magicToken` (64-char hex from form
-        submission) and their 4-word passphrase. Returns a 30-day JWT with
-        `type: "applicant"` in the payload.
+        Identifies an applicant by `magicToken` and verifies their password.
+
+        **Two possible success responses (both 200):**
+        - `{ token }` — password verified, JWT returned, proceed to dashboard
+        - `{ firstLogin: true }` — account has no password yet; redirect to
+          `POST /api/v1/profile/set-password` before issuing a JWT
+
+        `password` is optional — omitting it is the idiomatic way to trigger a
+        first-login check without attempting verification.
 
         **Rate limit:** 10 requests per minute per IP.
-
-        The magic token acts as the username — it should be pre-filled in the portal
-        URL via the `?token=` query parameter shown on the form success page.
       requestBody:
         required: true
         content:
           application/json:
             schema:
               $ref: '#/components/schemas/ProfileLoginRequest'
-            example:
-              magicToken: "a3f9d2c1e4b7089f4a2c8d1e6f3b9a0c..."
-              password: "amber-river-silent-fox"
+            examples:
+              with_password:
+                summary: Returning user with password set
+                value:
+                  magicToken: "a3f9d2c1e4b7089f4a2c8d1e6f3b9a0c..."
+                  password: "amber-river-silent-fox"
+              first_login_check:
+                summary: First-login check (no password yet)
+                value:
+                  magicToken: "a3f9d2c1e4b7089f4a2c8d1e6f3b9a0c..."
       responses:
         '200':
-          description: Login successful — applicant JWT returned
+          description: Token issued or first-login detected
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/ProfileLoginResponse'
-              example:
-                success: true
-                token: "eyJhbGciOiJIUzI1NiJ9..."
+              examples:
+                authenticated:
+                  summary: Password correct — JWT returned
+                  value:
+                    success: true
+                    token: "eyJhbGciOiJIUzI1NiJ9..."
+                first_login:
+                  summary: No password set — redirect to set-password
+                  value:
+                    success: true
+                    firstLogin: true
         '401':
-          description: Invalid magic token or wrong password
+          description: Unknown magic token or wrong password
           content:
             application/json:
               schema:
@@ -1715,7 +1734,7 @@ paths:
                 success: false
                 error: "Invalid credentials"
         '422':
-          description: Validation error (token wrong length, password missing)
+          description: Validation error (token wrong length)
           content:
             application/json:
               schema:
@@ -2057,3 +2076,159 @@ paths:
                 success: true
         '401':
           $ref: '#/components/responses/Unauthorized'
+
+  /api/v1/profile/set-password:
+    post:
+      tags: [Profile]
+      summary: Set password on first login
+      operationId: setPassword
+      description: |
+        Sets the applicant's password for the first time. Only works when
+        `passwordHash` is null (account never had a password set).
+
+        On success the password is stored as a bcrypt hash and a JWT is returned,
+        logging the applicant in immediately.
+
+        Use `GET /api/v1/profile/suggest-password` to offer a generated passphrase.
+
+        **Rate limit:** 10 requests per minute per IP (shared with login).
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [magicToken, newPassword]
+              properties:
+                magicToken:
+                  type: string
+                  format: hex
+                  minLength: 64
+                  maxLength: 64
+                  example: "a3f9d2c1e4b7089f4a2c8d1e6f3b9a0c..."
+                newPassword:
+                  type: string
+                  minLength: 8
+                  example: "amber-river-silent-fox"
+      responses:
+        '200':
+          description: Password set — JWT returned
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [success, token]
+                properties:
+                  success:
+                    type: boolean
+                    enum: [true]
+                  token:
+                    type: string
+                    example: "eyJhbGciOiJIUzI1NiJ9..."
+        '401':
+          description: Unknown magic token
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '409':
+          description: Password already set — use change-password instead
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                success: false
+                error: "Password already set. Use change-password to update it."
+        '422':
+          description: Validation error (token wrong length, password too short)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ValidationErrorResponse'
+
+  /api/v1/profile/suggest-password:
+    get:
+      tags: [Profile]
+      summary: Get a suggested passphrase
+      operationId: suggestPassword
+      description: |
+        Returns a randomly generated 4-word passphrase from a curated word pool.
+        No authentication required.
+
+        Intended as a convenience option in set-password and change-password forms.
+        The suggestion is never stored — call again for a fresh one.
+      responses:
+        '200':
+          description: Suggested passphrase
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [success, suggestion]
+                properties:
+                  success:
+                    type: boolean
+                    enum: [true]
+                  suggestion:
+                    type: string
+                    example: "amber-river-silent-fox"
+
+  /api/v1/profile/change-password:
+    post:
+      tags: [Profile]
+      summary: Change password
+      operationId: changePassword
+      security:
+        - ApplicantBearerAuth: []
+      description: |
+        Changes the authenticated applicant's password. Requires the current
+        password for verification.
+
+        Returns 400 if no password has been set yet (use `POST /set-password` first).
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [currentPassword, newPassword]
+              properties:
+                currentPassword:
+                  type: string
+                  example: "amber-river-silent-fox"
+                newPassword:
+                  type: string
+                  minLength: 8
+                  example: "cascade-stone-swift-oak"
+      responses:
+        '200':
+          description: Password updated
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    enum: [true]
+              example:
+                success: true
+        '400':
+          description: No password set yet — use set-password first
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Not authenticated, or current password is incorrect
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '422':
+          description: Validation error (new password too short)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ValidationErrorResponse'

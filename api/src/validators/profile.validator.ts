@@ -2,10 +2,20 @@ import { z } from "zod";
 
 export const profileLoginSchema = z.object({
   magicToken: z.string().length(64, "magicToken must be exactly 64 characters"),
-  password:   z.string().min(1, "password is required"),
+  password:   z.string().optional(),
 });
 
 export type ProfileLoginInput = z.infer<typeof profileLoginSchema>;
+
+export const setPasswordSchema = z.object({
+  magicToken:  z.string().length(64, "magicToken must be exactly 64 characters"),
+  newPassword: z.string().min(8, "password must be at least 8 characters"),
+});
+
+export const changePasswordSchema = z.object({
+  currentPassword: z.string().min(1, "currentPassword is required"),
+  newPassword:     z.string().min(8, "newPassword must be at least 8 characters"),
+});
 
 export const matchQuerySchema = z.object({
   threshold: z

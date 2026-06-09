@@ -16,9 +16,31 @@ import { generateIceBreakers } from "./icebreaker.service.js";
 
 // ── Auth ──────────────────────────────────────────────────────────────────────
 
+export type LoginAttemptResult =
+  | { status: "ok"; applicant: ApplicantDoc }
+  | { status: "first_login" }
+  | null; // wrong token or wrong password
+
 export async function loginWithMagicToken(
   magicToken: string,
-  password: string
+  password?: string
+): Promise<LoginAttemptResult> {
+  const db  = await getDb();
+  const col = getApplicantsCollection(db);
+
+  const doc = await col.findOne({ magicToken });
+  if (!doc) return null;
+
+  if (doc.passwordHash === null) return { status: "first_login" };
+
+  if (!password) return null;
+  const ok = await Bun.password.verify(password, doc.passwordHash);
+  return ok ? { status: "ok", applicant: doc } : null;
+}
+
+export async function setPassword(
+  magicToken: string,
+  newPassword: string
 ): Promise<ApplicantDoc | null> {
   const db  = await getDb();
   const col = getApplicantsCollection(db);
@@ -26,8 +48,43 @@ export async function loginWithMagicToken(
   const doc = await col.findOne({ magicToken });
   if (!doc) return null;
 
-  const ok = await Bun.password.verify(password, doc.passwordHash);
-  return ok ? doc : null;
+  if (doc.passwordHash !== null) {
+    throw Object.assign(
+      new Error("Password already set. Use change-password to update it."),
+      { statusCode: 409 }
+    );
+  }
+
+  const passwordHash = await Bun.password.hash(newPassword);
+  const now = new Date();
+  await col.updateOne({ _id: doc._id }, { $set: { passwordHash, updatedAt: now } });
+  return { ...doc, passwordHash };
+}
+
+export async function changePassword(
+  applicantId: string,
+  currentPassword: string,
+  newPassword: string
+): Promise<void> {
+  const db  = await getDb();
+  const col = getApplicantsCollection(db);
+
+  const doc = await col.findOne({ _id: new ObjectId(applicantId) });
+  if (!doc) throw Object.assign(new Error("Not found"), { statusCode: 404 });
+
+  if (!doc.passwordHash) {
+    throw Object.assign(
+      new Error("No password set. Use set-password for first-time setup."),
+      { statusCode: 400 }
+    );
+  }
+
+  const ok = await Bun.password.verify(currentPassword, doc.passwordHash);
+  if (!ok) throw Object.assign(new Error("Current password is incorrect"), { statusCode: 401 });
+
+  const passwordHash = await Bun.password.hash(newPassword);
+  const now = new Date();
+  await col.updateOne({ _id: doc._id }, { $set: { passwordHash, updatedAt: now } });
 }
 
 // ── Profile ───────────────────────────────────────────────────────────────────

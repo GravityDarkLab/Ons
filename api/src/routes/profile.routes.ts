@@ -3,12 +3,17 @@ import { z } from "zod";
 import { zValidator } from "@hono/zod-validator";
 import {
   profileLoginSchema,
+  setPasswordSchema,
+  changePasswordSchema,
   matchQuerySchema,
   respondSchema,
   outcomeSchema,
 } from "../validators/profile.validator.js";
 import {
   login,
+  setPassword,
+  changePassword,
+  suggestPassword,
   me,
   matches,
   contact,
@@ -46,6 +51,17 @@ profileRoutes.post(
   login
 );
 
+profileRoutes.post(
+  "/set-password",
+  profileLoginRateLimiter,
+  zValidator("json", setPasswordSchema, (r, c) => {
+    if (!r.success) return validationErr(r as any, c);
+  }),
+  setPassword
+);
+
+profileRoutes.get("/suggest-password", suggestPassword);
+
 // ── Protected ──────────────────────────────────────────────────────────────────
 
 profileRoutes.use("*", profileRateLimiter);
@@ -79,6 +95,15 @@ profileRoutes.post(
     if (!r.success) return validationErr(r as any, c);
   }),
   outcome
+);
+
+profileRoutes.post(
+  "/change-password",
+  requireApplicant,
+  zValidator("json", changePasswordSchema, (r, c) => {
+    if (!r.success) return validationErr(r as any, c);
+  }),
+  changePassword
 );
 
 profileRoutes.post("/deactivate", requireApplicant, deactivate);

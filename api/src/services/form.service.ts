@@ -10,14 +10,13 @@ import {
 import { generateUniqueAlias } from "../privacy/alias.generator.js";
 import { storeIdentity, checkInstagramExists } from "../privacy/identity.service.js";
 import { verifySubmissionKey } from "../privacy/submission-key.js";
-import { generateMagicToken, generateReadablePassword } from "../privacy/magic-token.js";
+import { generateMagicToken } from "../privacy/magic-token.js";
 import { embedApplicant } from "./embedding.service.js";
 
 export interface FormSubmissionResult {
   alias: string;
   applicantId: string;
   magicToken: string;
-  plainPassword: string;
 }
 
 export class DuplicateInstagramError extends Error {
@@ -96,10 +95,8 @@ export async function processFormSubmission(
 
   const alias = generateUniqueAlias(existingAliases);
 
-  // 6. Generate access credentials
-  const magicToken    = generateMagicToken();
-  const plainPassword = generateReadablePassword();
-  const passwordHash  = await Bun.password.hash(plainPassword);
+  // 6. Generate magic token (password set by applicant on first login)
+  const magicToken = generateMagicToken();
 
   // 7. Persist applicant
   const now         = new Date();
@@ -112,7 +109,7 @@ export async function processFormSubmission(
     answers: publicAnswers,
     status: "applied",
     magicToken,
-    passwordHash,
+    passwordHash: null,
     scoreThreshold: 0.8,
     createdAt: now,
     updatedAt: now,
@@ -126,5 +123,5 @@ export async function processFormSubmission(
     console.error(`[form] Background embedding failed for ${alias}:`, err)
   );
 
-  return { alias, applicantId: applicantId.toHexString(), magicToken, plainPassword };
+  return { alias, applicantId: applicantId.toHexString(), magicToken };
 }

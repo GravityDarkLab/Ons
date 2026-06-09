@@ -67,11 +67,10 @@ export async function submitForm(c: Context): Promise<Response> {
     return c.json(
       {
         success: true,
-        alias:         result.alias,
-        applicantId:   result.applicantId,
-        magicToken:    result.magicToken,
-        plainPassword: result.plainPassword,
-        message: "Your profile has been submitted successfully. Save your magic link and password — they will not be shown again.",
+        alias:       result.alias,
+        applicantId: result.applicantId,
+        magicToken:  result.magicToken,
+        message: "Your profile has been submitted successfully. Save your magic link — you will set your password on first login.",
       },
       201
     );
