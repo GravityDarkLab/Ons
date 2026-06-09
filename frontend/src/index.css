@@ -2,6 +2,19 @@
 @config "../tailwind.config.js";
 
 @layer base {
+  :root {
+    --color-surface: #FAF9F7;
+    --color-surface-raised: #FFFFFF;
+    --color-surface-subtle: #F3F2F0;
+    --color-ink: #111111;
+    --color-ink-muted: #6B6B6B;
+    --color-ink-faint: #B0AFAD;
+    --color-accent: #C9A96E;
+    --color-accent-light: #F5ECD7;
+    --color-destructive: #E05252;
+    --color-success: #3D9970;
+  }
+
   html {
     font-family: 'Inter', system-ui, sans-serif;
     -webkit-font-smoothing: antialiased;
@@ -26,4 +39,21 @@
   .scrollbar-hide::-webkit-scrollbar {
     display: none;
   }
+
+  /* Design token utility classes */
+  .bg-surface-raised { background-color: #FFFFFF; }
+  .bg-surface-subtle { background-color: #F3F2F0; }
+  .text-ink { color: #111111; }
+  .text-ink-muted { color: #6B6B6B; }
+  .text-ink-faint { color: #B0AFAD; }
+  .bg-accent-val { background-color: #C9A96E; }
+  .text-destructive { color: #E05252; }
+  .text-success-green { color: #3D9970; }
+  .bg-success-green { background-color: #3D9970; }
+
+  /* Transition utilities */
+  .transition-page { transition: opacity 100ms ease-out, transform 100ms ease-out; }
+  .transition-card { transition: box-shadow 150ms, transform 150ms; }
+  .hover-card:hover { box-shadow: 0 4px 12px rgb(0 0 0 / 0.08); transform: translateY(-1px); }
+  .press:active { transform: scale(0.98); }
 }
