@@ -194,9 +194,9 @@ describe("GET /admin/applicants", () => {
 
   it("passes status and search together", async () => {
     const token = await adminToken();
-    await get("/admin/applicants?status=active&search=ocean", token);
+    await get("/admin/applicants?status=applied&search=ocean", token);
     const [, , status, search] = mockListApplicants.mock.calls[0] as any[];
-    expect(status).toBe("active");
+    expect(status).toBe("applied");
     expect(search).toBe("ocean");
   });
 });

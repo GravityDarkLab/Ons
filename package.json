@@ -21,10 +21,14 @@
     "typecheck": "bunx tsc --noEmit -p tsconfig.json && bun run --filter '*' typecheck",
     "test": "concurrently -n api,frontend -c cyan,magenta \"bun run test:api\" \"bun run test:frontend\"",
     "test:api": "bun run --cwd api test",
-    "test:frontend": "bun run --cwd frontend test"
+    "test:frontend": "bun run --cwd frontend test",
+    "test:smoke": "bun test ./tests/smoke/portal.smoke.ts",
+    "test:smoke:match": "bun test ./tests/smoke/match-flow.smoke.ts",
+    "test:smoke:all": "bun test ./tests/smoke/"
   },
   "devDependencies": {
     "@types/bun": "^1.2.0",
-    "concurrently": "^9.0.0"
+    "concurrently": "^9.0.0",
+    "mongodb": "^7.2.0"
   }
 }
