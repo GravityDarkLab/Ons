@@ -275,6 +275,10 @@ function randomStatus(): SeedApplicantStatus {
 
 // ─── Main ─────────────────────────────────────────────────────────────────────
 
+// All seeded accounts share one login credential for easy local testing.
+// Override with SEED_LOGIN env var; default is intentionally trivial (dev only).
+const seedLogin = process.env.SEED_LOGIN ?? "ons-dev-seed";
+
 async function seed() {
   console.log(`[SEED:applicants] Environment : ${env.nodeEnv}`);
   console.log(`[SEED:applicants] Target count : ${COUNT}`);
@@ -283,6 +287,9 @@ async function seed() {
   const db = await getDb();
   const applicants = getApplicantsCollection(db);
   const identities = getIdentitiesCollection(db);
+
+  // Hash once; reused for every inserted applicant
+  const devPasswordHash = await Bun.password.hash(seedLogin);
 
   if (CLEAR) {
     const { deletedCount: a } = await applicants.deleteMany({});
@@ -345,14 +352,15 @@ async function seed() {
 
     try {
       const rawToken = Buffer.from(crypto.getRandomValues(new Uint8Array(32))).toString("hex");
+      const status = randomStatus();
       await applicants.insertOne({
         _id: applicantId,
         alias,
         questionnaireVersion: QUESTIONNAIRE_VERSION,
         answers,
-        status: randomStatus(),
-        magicToken: hashMagicToken(rawToken), // store hash; raw token discarded (dev seed)
-        passwordHash: "seed-placeholder-not-usable",
+        status,
+        magicToken: hashMagicToken(rawToken),
+        passwordHash: devPasswordHash,
         scoreThreshold: 0.8,
         createdAt,
         updatedAt: createdAt,
@@ -371,7 +379,7 @@ async function seed() {
       });
 
       inserted++;
-      process.stdout.write(`\r[SEED:applicants] Inserted ${inserted}/${COUNT} — ${alias}`);
+      console.log(`[SEED:applicants] ${inserted}/${COUNT}  alias: ${alias}  status: ${status}  token: ${rawToken}`);
     } catch (err: unknown) {
       if (
         typeof err === "object" &&
@@ -386,7 +394,8 @@ async function seed() {
     }
   }
 
-  console.log(`\n\n[SEED:applicants] ✅  Done — ${inserted} inserted, ${skipped} skipped.`);
+  console.log(`\n[SEED:applicants] ✅  Done — ${inserted} inserted, ${skipped} skipped.`);
+  console.log(`[SEED:applicants] Login credential for all accounts: "${seedLogin}"`);
   await closeDb();
 }
 
