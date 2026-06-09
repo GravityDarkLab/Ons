@@ -5,10 +5,11 @@ import { describe, it, expect, mock, beforeEach } from "bun:test";
 mock.module("../../middleware/rateLimit.middleware.js", () => {
   const noop = async (_c: unknown, next: () => Promise<void>) => { await next(); };
   return {
-    formSubmitRateLimiter: noop,
-    adminRateLimiter:      noop,
-    profileRateLimiter:    noop,
-    createRateLimiter:     () => noop,
+    formSubmitRateLimiter:    noop,
+    adminRateLimiter:         noop,
+    profileRateLimiter:       noop,
+    profileLoginRateLimiter:  noop,
+    createRateLimiter:        () => noop,
   };
 });
 

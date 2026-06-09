@@ -158,7 +158,8 @@ export interface ContactResult {
 
 export async function requestContact(
   applicantId: string,
-  matchId: string
+  matchId: string,
+  audit: { ipAddress: string; userAgent: string } = { ipAddress: "unknown", userAgent: "unknown" },
 ): Promise<ContactResult> {
   const db       = await getDb();
   const matchCol = getMatchesCollection(db);
@@ -171,37 +172,17 @@ export async function requestContact(
     throw Object.assign(new Error("Match not found"), { statusCode: 404 });
   }
 
+  // Load match to authorise the actor before the atomic write
   const match = await matchCol.findOne({ _id: matchOid });
   if (!match) throw Object.assign(new Error("Match not found"), { statusCode: 404 });
 
-  assertMatchTransition(match, "contact", actorId); // throws on invalid state/ownership
+  assertMatchTransition(match, "contact", actorId);
 
   const targetId = match.applicantAId.equals(actorId)
     ? match.applicantBId
     : match.applicantAId;
 
-  const targetInstagram = await resolveIdentityById(targetId);
-  if (!targetInstagram) {
-    throw Object.assign(new Error("Target identity not found"), { statusCode: 404 });
-  }
-
-  // Audit the identity reveal
-  await writeAuditLog(
-    { adminId: applicantId, ipAddress: "internal", userAgent: "applicant-portal" },
-    "APPLICANT_REVEAL_IDENTITY",
-    {
-      targetApplicantId: targetId,
-      metadata: {
-        actorType: "applicant",
-        matchId,
-        targetAlias: match.applicantAId.equals(actorId)
-          ? match.applicantBAlias
-          : match.applicantAAlias,
-      },
-    }
-  );
-
-  // Fetch both applicant docs for icebreaker generation
+  // Fetch icebreakers before the atomic claim (no side-effects yet)
   const [actorDoc, targetDoc] = await Promise.all([
     appCol.findOne({ _id: actorId }),
     appCol.findOne({ _id: targetId }),
@@ -212,8 +193,11 @@ export async function requestContact(
     : { questions: [], dateIdeas: [] };
 
   const now = new Date();
-  await matchCol.updateOne(
-    { _id: matchOid },
+
+  // Atomically claim the transition — filter on status:"proposed" prevents double-contact
+  // from concurrent requests both passing assertMatchTransition above
+  const claimed = await matchCol.findOneAndUpdate(
+    { _id: matchOid, status: "proposed" },
     {
       $set: {
         status:             "in_progress",
@@ -222,6 +206,35 @@ export async function requestContact(
         dateIdeas,
         contactRequestedAt: now,
         updatedAt:          now,
+      },
+    },
+    { returnDocument: "after" },
+  );
+
+  if (!claimed) {
+    throw Object.assign(
+      new Error("Match is no longer available for contact — it may have been claimed concurrently"),
+      { statusCode: 409 },
+    );
+  }
+
+  // Reveal identity and log only after winning the race
+  const targetInstagram = await resolveIdentityById(targetId);
+  if (!targetInstagram) {
+    throw Object.assign(new Error("Target identity not found"), { statusCode: 404 });
+  }
+
+  await writeAuditLog(
+    { adminId: applicantId, ipAddress: audit.ipAddress, userAgent: audit.userAgent },
+    "APPLICANT_REVEAL_IDENTITY",
+    {
+      targetApplicantId: targetId,
+      metadata: {
+        actorType: "applicant",
+        matchId,
+        targetAlias: match.applicantAId.equals(actorId)
+          ? match.applicantBAlias
+          : match.applicantAAlias,
       },
     }
   );

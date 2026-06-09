@@ -103,24 +103,24 @@ export function assertMatchTransition(
   }
 
   if (action === "respond") {
-    if (match.status !== "in_progress") {
-      throw new Error(`Cannot respond to a match with status "${match.status}"`);
-    }
     if (!isParticipant) {
-      throw new Error("Not a participant in this match");
+      throw Object.assign(new Error("Not a participant in this match"), { statusCode: 403 });
+    }
+    if (match.status !== "in_progress") {
+      throw Object.assign(new Error(`Match status is "${match.status}" — nothing to respond to`), { statusCode: 409 });
     }
     if (match.initiatorId?.equals(actorId)) {
-      throw new Error("Initiator cannot respond to their own contact request");
+      throw Object.assign(new Error("Initiator cannot respond to their own contact request"), { statusCode: 403 });
     }
     return;
   }
 
   if (action === "outcome") {
-    if (match.status !== "dating" && match.status !== "in_progress") {
-      throw new Error(`Cannot report outcome on a match with status "${match.status}"`);
-    }
     if (!isParticipant) {
-      throw new Error("Not a participant in this match");
+      throw Object.assign(new Error("Not a participant in this match"), { statusCode: 403 });
+    }
+    if (match.status !== "dating" && match.status !== "in_progress") {
+      throw Object.assign(new Error(`Match status is "${match.status}" — outcome cannot be reported`), { statusCode: 409 });
     }
     return;
   }

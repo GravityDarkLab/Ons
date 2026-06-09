@@ -155,18 +155,18 @@ describe("GET /admin/matches", () => {
 
 describe("PATCH /admin/matches/:id", () => {
   it("returns 401 without a token", async () => {
-    const res = await patch("/admin/matches/64b1234567890abcdef01234", { status: "contacted" });
+    const res = await patch("/admin/matches/64b1234567890abcdef01234", { status: "in_progress" });
     expect(res.status).toBe(401);
   });
 
   it("returns 200 with updated match on status change", async () => {
-    mockUpdateMatch.mockResolvedValue({ ...MATCH_FIXTURE, status: "contacted" });
+    mockUpdateMatch.mockResolvedValue({ ...MATCH_FIXTURE, status: "in_progress" });
     const token = await adminToken();
-    const res = await patch("/admin/matches/64b1234567890abcdef01234", { status: "contacted" }, token);
+    const res = await patch("/admin/matches/64b1234567890abcdef01234", { status: "in_progress" }, token);
     expect(res.status).toBe(200);
     const body = await res.json() as any;
     expect(body.success).toBe(true);
-    expect(body.data.status).toBe("contacted");
+    expect(body.data.status).toBe("in_progress");
   });
 
   it("returns 200 when updating notes", async () => {
@@ -179,23 +179,23 @@ describe("PATCH /admin/matches/:id", () => {
   });
 
   it("returns 200 when updating both status and notes together", async () => {
-    mockUpdateMatch.mockResolvedValue({ ...MATCH_FIXTURE, status: "matched", notes: "Success!" });
+    mockUpdateMatch.mockResolvedValue({ ...MATCH_FIXTURE, status: "dating", notes: "Success!" });
     const token = await adminToken();
     const res = await patch(
       "/admin/matches/64b1234567890abcdef01234",
-      { status: "matched", notes: "Success!" },
+      { status: "dating", notes: "Success!" },
       token,
     );
     expect(res.status).toBe(200);
     const body = await res.json() as any;
-    expect(body.data.status).toBe("matched");
+    expect(body.data.status).toBe("dating");
     expect(body.data.notes).toBe("Success!");
   });
 
   it("returns 404 when match is not found", async () => {
     mockUpdateMatch.mockResolvedValue(null);
     const token = await adminToken();
-    const res = await patch("/admin/matches/64b1234567890abcdef09999", { status: "contacted" }, token);
+    const res = await patch("/admin/matches/64b1234567890abcdef09999", { status: "in_progress" }, token);
     expect(res.status).toBe(404);
     const body = await res.json() as any;
     expect(body.success).toBe(false);
@@ -222,7 +222,7 @@ describe("PATCH /admin/matches/:id", () => {
 
   it("accepts all valid status transitions", async () => {
     const token = await adminToken();
-    for (const status of ["proposed", "contacted", "matched", "failed"] as const) {
+    for (const status of ["proposed", "in_progress", "dating", "success", "failed", "declined", "expired"] as const) {
       mockUpdateMatch.mockResolvedValue({ ...MATCH_FIXTURE, status });
       const res = await patch("/admin/matches/64b1234567890abcdef01234", { status }, token);
       expect(res.status).toBe(200);

@@ -45,36 +45,42 @@ async function promoteAppliedToMatched(): Promise<void> {
   const db       = await getDb();
   const matchCol = getMatchesCollection(db);
 
-  // Find all proposed matches and collect unique participant IDs
+  // Collect the best (highest) proposed match score per participant
   const proposed = await matchCol
-    .find({ status: "proposed" }, { projection: { applicantAId: 1, applicantBId: 1 } })
+    .find({ status: "proposed" }, { projection: { applicantAId: 1, applicantBId: 1, score: 1 } })
     .toArray();
 
   if (proposed.length === 0) return;
 
-  const participantIds = new Set<string>();
+  const bestScore = new Map<string, number>();
   for (const m of proposed) {
-    participantIds.add(m.applicantAId.toHexString());
-    participantIds.add(m.applicantBId.toHexString());
+    const a = m.applicantAId.toHexString();
+    const b = m.applicantBId.toHexString();
+    bestScore.set(a, Math.max(bestScore.get(a) ?? 0, m.score));
+    bestScore.set(b, Math.max(bestScore.get(b) ?? 0, m.score));
   }
 
   const { ObjectId } = await import("mongodb");
-  const ids: ObjectId[] = [...participantIds].map((id) => new ObjectId(id));
+  const ids = [...bestScore.keys()].map((id) => new ObjectId(id));
 
-  // Only transition applicants currently in "applied" state
   const { getApplicantsCollection } = await import("../db/collections.js");
   const appCol = getApplicantsCollection(db);
 
-  const appliedWithMatches = await appCol
-    .find({ _id: { $in: ids }, status: "applied" }, { projection: { _id: 1 } })
+  // Only promote "applied" applicants whose best match score meets their threshold
+  const candidates = await appCol
+    .find(
+      { _id: { $in: ids }, status: "applied" },
+      { projection: { _id: 1, scoreThreshold: 1 } },
+    )
     .toArray();
 
-  if (appliedWithMatches.length === 0) return;
+  const toPromote = candidates
+    .filter((a) => (bestScore.get(a._id.toHexString()) ?? 0) >= (a.scoreThreshold ?? 0.8))
+    .map((a) => a._id);
 
-  await transitionApplicantStatus(
-    appliedWithMatches.map((d) => d._id),
-    "matched"
-  );
+  if (toPromote.length === 0) return;
 
-  console.info(`[matching-job] Promoted ${appliedWithMatches.length} applicants: applied → matched.`);
+  await transitionApplicantStatus(toPromote, "matched");
+
+  console.info(`[matching-job] Promoted ${toPromote.length} applicants: applied → matched.`);
 }

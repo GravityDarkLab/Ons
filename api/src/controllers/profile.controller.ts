@@ -90,18 +90,24 @@ export async function matches(c: Context): Promise<Response> {
   return c.json({ success: true, data });
 }
 
+function matchErrorResponse(c: Context, err: unknown): Response {
+  const e = err as { message?: string; statusCode?: number };
+  if (e.statusCode === 404) return c.json({ success: false, error: e.message }, 404);
+  if (e.statusCode === 409) return c.json({ success: false, error: e.message }, 409);
+  return c.json({ success: false, error: e.message ?? "Forbidden" }, 403);
+}
+
 export async function contact(c: Context): Promise<Response> {
   const applicantId = c.get("applicantId") as string;
   const matchId     = c.req.param("id") as string;
+  const ipAddress   = c.req.header("X-Forwarded-For") ?? c.req.header("X-Real-IP") ?? "unknown";
+  const userAgent   = c.req.header("User-Agent") ?? "unknown";
 
   try {
-    const result = await requestContact(applicantId, matchId);
+    const result = await requestContact(applicantId, matchId, { ipAddress, userAgent });
     return c.json({ success: true, data: result });
   } catch (err: unknown) {
-    const e = err as { message?: string; statusCode?: number };
-    if (e.statusCode === 404) return c.json({ success: false, error: e.message }, 404);
-    if (e.statusCode === 409) return c.json({ success: false, error: e.message }, 409);
-    return c.json({ success: false, error: e.message ?? "Forbidden" }, 403);
+    return matchErrorResponse(c, err);
   }
 }
 
@@ -114,9 +120,7 @@ export async function respond(c: Context): Promise<Response> {
     await respondToContact(applicantId, matchId, accept);
     return c.json({ success: true });
   } catch (err: unknown) {
-    const e = err as { message?: string; statusCode?: number };
-    if (e.statusCode === 404) return c.json({ success: false, error: e.message }, 404);
-    return c.json({ success: false, error: e.message ?? "Forbidden" }, 403);
+    return matchErrorResponse(c, err);
   }
 }
 
@@ -131,9 +135,7 @@ export async function outcome(c: Context): Promise<Response> {
     await reportOutcome(applicantId, matchId, out);
     return c.json({ success: true });
   } catch (err: unknown) {
-    const e = err as { message?: string; statusCode?: number };
-    if (e.statusCode === 404) return c.json({ success: false, error: e.message }, 404);
-    return c.json({ success: false, error: e.message ?? "Forbidden" }, 403);
+    return matchErrorResponse(c, err);
   }
 }
 
