@@ -6,17 +6,20 @@ import Button from '../../components/ui/Button'
 import type { Applicant, ApplicantStatus, Match, MatchStatus } from '../types'
 
 const MATCH_STATUS_BADGE: Record<MatchStatus, string> = {
-  proposed:  'bg-border text-muted',
-  contacted: 'bg-accent-light text-accent',
-  matched:   'bg-success-light text-success',
-  failed:    'bg-error-light text-error',
+  proposed:    'bg-border text-muted',
+  in_progress: 'bg-accent-light text-accent',
+  dating:      'bg-success-light text-success',
+  success:     'bg-success-light text-success',
+  failed:      'bg-error-light text-error',
+  declined:    'bg-error-light text-error',
+  expired:     'bg-border text-muted',
 }
 
 const STATUS_BADGE: Record<ApplicantStatus, string> = {
-  active:    'bg-success-light text-success',
-  matched:   'bg-accent-light text-accent',
-  inactive:  'bg-border text-muted',
-  withdrawn: 'bg-error-light text-error',
+  applied:  'bg-success-light text-success',
+  matched:  'bg-accent-light text-accent',
+  dating:   'bg-success-light text-success',
+  inactive: 'bg-border text-muted',
 }
 
 export function ApplicantDetail() {
@@ -88,7 +91,7 @@ export function ApplicantDetail() {
               {t('admin.detail.submitted', { date: new Date(applicant.createdAt).toLocaleString() })}
             </p>
           </div>
-          {applicant.status !== 'withdrawn' && (
+          {applicant.status !== 'inactive' && (
             <Button variant="secondary" onClick={handleWithdraw} loading={withdrawLoading}>
               {t('admin.detail.withdraw')}
             </Button>

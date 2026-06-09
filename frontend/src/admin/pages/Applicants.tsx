@@ -5,10 +5,10 @@ import { fetchApplicants } from '../api/client'
 import type { Applicant, ApplicantStatus } from '../types'
 
 const STATUS_BADGE: Record<ApplicantStatus, string> = {
-  active:    'bg-success-light text-success',
-  matched:   'bg-accent-light text-accent',
-  inactive:  'bg-border text-muted',
-  withdrawn: 'bg-error-light text-error',
+  applied:  'bg-success-light text-success',
+  matched:  'bg-accent-light text-accent',
+  dating:   'bg-success-light text-success',
+  inactive: 'bg-border text-muted',
 }
 
 const LIMIT = 20
@@ -34,11 +34,11 @@ export function Applicants() {
   }, [search])
 
   const FILTERS = [
-    { value: '',          label: t('admin.applicants.all') },
-    { value: 'active',    label: t('admin.applicants.active') },
-    { value: 'matched',   label: t('admin.applicants.matched') },
-    { value: 'inactive',  label: t('admin.applicants.inactive') },
-    { value: 'withdrawn', label: t('admin.applicants.withdrawn') },
+    { value: '',         label: t('admin.applicants.all') },
+    { value: 'applied',  label: t('admin.applicants.applied') },
+    { value: 'matched',  label: t('admin.applicants.matched') },
+    { value: 'dating',   label: t('admin.applicants.dating') },
+    { value: 'inactive', label: t('admin.applicants.inactive') },
   ]
 
   useEffect(() => {

@@ -1,4 +1,4 @@
-export type ApplicantStatus = 'active' | 'inactive' | 'matched' | 'withdrawn'
+export type ApplicantStatus = 'applied' | 'matched' | 'dating' | 'inactive'
 
 export interface Applicant {
   id: string
@@ -45,7 +45,7 @@ export interface MatchingRun {
   results: Record<string, MatchCandidate[]>
 }
 
-export type MatchStatus = 'proposed' | 'contacted' | 'matched' | 'failed'
+export type MatchStatus = 'proposed' | 'in_progress' | 'dating' | 'success' | 'failed' | 'declined' | 'expired'
 
 export interface Match {
   id: string

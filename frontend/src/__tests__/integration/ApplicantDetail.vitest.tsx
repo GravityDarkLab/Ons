@@ -21,7 +21,7 @@ const mockFetchMatches        = vi.mocked(client.fetchMatches)
 const APPLICANT_A = {
   id: 'id-a',
   alias: 'Lunar Ocean',
-  status: 'active' as const,
+  status: 'applied' as const,
   questionnaireVersion: '1.0.0',
   answers: { location: 'Berlin, Germany', age: 25 },
   createdAt: new Date().toISOString(),
@@ -31,7 +31,7 @@ const APPLICANT_A = {
 const APPLICANT_B = {
   id: 'id-b',
   alias: 'Pearl Lantern',
-  status: 'active' as const,
+  status: 'applied' as const,
   questionnaireVersion: '1.0.0',
   answers: { location: 'Paris, France', age: 28 },
   createdAt: new Date().toISOString(),

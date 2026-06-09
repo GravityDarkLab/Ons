@@ -4,6 +4,7 @@ import { getMe, adminLogout } from '../api/client'
 interface AuthState {
   isAuthenticated: boolean
   isLoading: boolean
+  role: 'admin' | 'super_admin' | null
   login: () => void
   logout: () => Promise<void>
 }
@@ -13,12 +14,16 @@ const AuthContext = createContext<AuthState | null>(null)
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [isAuthenticated, setIsAuthenticated] = useState(false)
   const [isLoading, setIsLoading] = useState(true)
+  const [role, setRole] = useState<'admin' | 'super_admin' | null>(null)
 
   // On mount, probe the /me endpoint — if the HttpOnly cookie is valid the
   // server returns 200; a 401 means no session (cookie absent or expired).
   useEffect(() => {
     getMe()
-      .then(data => setIsAuthenticated(data !== null))
+      .then(data => {
+        setIsAuthenticated(data !== null)
+        setRole(data?.adminRole as 'admin' | 'super_admin' | null ?? null)
+      })
       .catch(() => setIsAuthenticated(false))
       .finally(() => setIsLoading(false))
   }, [])
@@ -28,10 +33,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const logout = useCallback(async () => {
     await adminLogout()
     setIsAuthenticated(false)
+    setRole(null)
   }, [])
 
   return (
-    <AuthContext.Provider value={{ isAuthenticated, isLoading, login, logout }}>
+    <AuthContext.Provider value={{ isAuthenticated, isLoading, role, login, logout }}>
       {children}
     </AuthContext.Provider>
   )

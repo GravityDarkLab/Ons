@@ -8,17 +8,22 @@ import type { Match, MatchStatus } from '../types'
 const LIMIT = 20
 
 const STATUS_BADGE: Record<MatchStatus, string> = {
-  proposed:  'bg-border text-muted',
-  contacted: 'bg-accent-light text-accent',
-  matched:   'bg-success-light text-success',
-  failed:    'bg-error-light text-error',
+  proposed:    'bg-border text-muted',
+  in_progress: 'bg-accent-light text-accent',
+  dating:      'bg-success-light text-success',
+  success:     'bg-success-light text-success',
+  failed:      'bg-error-light text-error',
+  declined:    'bg-error-light text-error',
+  expired:     'bg-border text-muted',
 }
 
 const STATUS_NEXT: Partial<Record<MatchStatus, MatchStatus[]>> = {
-  proposed:  ['contacted', 'failed'],
-  contacted: ['matched', 'failed'],
-  matched:   [],
-  failed:    ['proposed'],
+  proposed:    ['in_progress', 'declined', 'failed'],
+  in_progress: ['dating', 'declined', 'failed'],
+  dating:      ['success', 'failed'],
+  failed:      ['proposed'],
+  declined:    ['proposed'],
+  expired:     ['proposed'],
 }
 
 export function Matches() {
@@ -38,11 +43,14 @@ export function Matches() {
   const [debouncedSearch, setDebouncedSearch] = useState('')
 
   const FILTERS = [
-    { value: '',          label: t('admin.matches.all') },
-    { value: 'proposed',  label: t('admin.matches.proposed') },
-    { value: 'contacted', label: t('admin.matches.contacted') },
-    { value: 'matched',   label: t('admin.matches.matched') },
-    { value: 'failed',    label: t('admin.matches.failed') },
+    { value: '',            label: t('admin.matches.all') },
+    { value: 'proposed',    label: t('admin.matches.proposed') },
+    { value: 'in_progress', label: t('admin.matches.in_progress') },
+    { value: 'dating',      label: t('admin.matches.dating') },
+    { value: 'success',     label: t('admin.matches.success') },
+    { value: 'failed',      label: t('admin.matches.failed') },
+    { value: 'declined',    label: t('admin.matches.declined') },
+    { value: 'expired',     label: t('admin.matches.expired') },
   ]
 
   // Debounce search input
@@ -221,17 +229,23 @@ function MatchRow({
   const nextStatuses = STATUS_NEXT[match.status] ?? []
 
   const STATUS_LABEL: Record<MatchStatus, string> = {
-    proposed:  t('admin.matches.proposed'),
-    contacted: t('admin.matches.contacted'),
-    matched:   t('admin.matches.matched'),
-    failed:    t('admin.matches.failed'),
+    proposed:    t('admin.matches.proposed'),
+    in_progress: t('admin.matches.in_progress'),
+    dating:      t('admin.matches.dating'),
+    success:     t('admin.matches.success'),
+    failed:      t('admin.matches.failed'),
+    declined:    t('admin.matches.declined'),
+    expired:     t('admin.matches.expired'),
   }
 
   const ACTION_LABEL: Record<MatchStatus, string> = {
-    proposed:  t('admin.matches.markProposed'),
-    contacted: t('admin.matches.markContacted'),
-    matched:   t('admin.matches.markMatched'),
-    failed:    t('admin.matches.markFailed'),
+    proposed:    t('admin.matches.markProposed'),
+    in_progress: t('admin.matches.markInProgress'),
+    dating:      t('admin.matches.markDating'),
+    success:     t('admin.matches.markSuccess'),
+    failed:      t('admin.matches.markFailed'),
+    declined:    t('admin.matches.markDeclined'),
+    expired:     t('admin.matches.markExpired'),
   }
 
   return (

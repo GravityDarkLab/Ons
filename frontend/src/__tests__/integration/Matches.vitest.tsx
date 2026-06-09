@@ -37,7 +37,7 @@ const MATCH_B = {
   applicantBAlias: 'Zenith Blazing',
   score: 0.72,
   algorithm: 'baseline',
-  status: 'contacted' as const,
+  status: 'in_progress' as const,
   createdAt: new Date().toISOString(),
   updatedAt: new Date().toISOString(),
 }
@@ -104,9 +104,12 @@ describe('Matches page — status filter tabs', () => {
     renderMatches()
     await waitFor(() => screen.getByText('admin.matches.all'))
     expect(screen.getByText('admin.matches.proposed')).toBeInTheDocument()
-    expect(screen.getByText('admin.matches.contacted')).toBeInTheDocument()
-    expect(screen.getByText('admin.matches.matched')).toBeInTheDocument()
+    expect(screen.getByText('admin.matches.in_progress')).toBeInTheDocument()
+    expect(screen.getByText('admin.matches.dating')).toBeInTheDocument()
+    expect(screen.getByText('admin.matches.success')).toBeInTheDocument()
     expect(screen.getByText('admin.matches.failed')).toBeInTheDocument()
+    expect(screen.getByText('admin.matches.declined')).toBeInTheDocument()
+    expect(screen.getByText('admin.matches.expired')).toBeInTheDocument()
   })
 
   it('fetches with status filter when a tab is clicked', async () => {
@@ -163,46 +166,46 @@ describe('Matches page — search', () => {
 })
 
 describe('Matches page — status transitions', () => {
-  it('shows Contacted and Failed action buttons for a proposed match', async () => {
+  it('shows InProgress and Failed action buttons for a proposed match', async () => {
     mockFetchMatches.mockResolvedValue({ data: [MATCH_A], total: 1, page: 1, limit: 20, totalPages: 1 })
     renderMatches()
     await waitFor(() => screen.getByText('Lunar Ocean'))
-    expect(screen.getByRole('button', { name: 'admin.matches.markContacted' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'admin.matches.markInProgress' })).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'admin.matches.markFailed' })).toBeInTheDocument()
   })
 
   it('calls updateMatch with new status when action button is clicked', async () => {
     mockFetchMatches.mockResolvedValue({ data: [MATCH_A], total: 1, page: 1, limit: 20, totalPages: 1 })
-    mockUpdateMatch.mockResolvedValue({ ...MATCH_A, status: 'contacted' })
+    mockUpdateMatch.mockResolvedValue({ ...MATCH_A, status: 'in_progress' as const })
     renderMatches()
-    await waitFor(() => screen.getByRole('button', { name: 'admin.matches.markContacted' }))
+    await waitFor(() => screen.getByRole('button', { name: 'admin.matches.markInProgress' }))
 
-    await userEvent.click(screen.getByRole('button', { name: 'admin.matches.markContacted' }))
+    await userEvent.click(screen.getByRole('button', { name: 'admin.matches.markInProgress' }))
     await waitFor(() =>
-      expect(mockUpdateMatch).toHaveBeenCalledWith('match-001', { status: 'contacted' }),
+      expect(mockUpdateMatch).toHaveBeenCalledWith('match-001', { status: 'in_progress' }),
     )
   })
 
   it('updates available actions after a successful status change', async () => {
     mockFetchMatches.mockResolvedValue({ data: [MATCH_A], total: 1, page: 1, limit: 20, totalPages: 1 })
-    mockUpdateMatch.mockResolvedValue({ ...MATCH_A, status: 'contacted' })
+    mockUpdateMatch.mockResolvedValue({ ...MATCH_A, status: 'in_progress' as const })
     renderMatches()
-    await waitFor(() => screen.getByRole('button', { name: 'admin.matches.markContacted' }))
+    await waitFor(() => screen.getByRole('button', { name: 'admin.matches.markInProgress' }))
 
-    await userEvent.click(screen.getByRole('button', { name: 'admin.matches.markContacted' }))
+    await userEvent.click(screen.getByRole('button', { name: 'admin.matches.markInProgress' }))
 
-    // After proposed→contacted, actions change: "Contacted" disappears, "Matched" appears
+    // After proposed→in_progress, actions change: "InProgress" disappears, "Dating" appears
     await waitFor(() => {
-      expect(screen.queryByRole('button', { name: 'admin.matches.markContacted' })).not.toBeInTheDocument()
-      expect(screen.getByRole('button', { name: 'admin.matches.markMatched' })).toBeInTheDocument()
+      expect(screen.queryByRole('button', { name: 'admin.matches.markInProgress' })).not.toBeInTheDocument()
+      expect(screen.getByRole('button', { name: 'admin.matches.markDating' })).toBeInTheDocument()
     })
   })
 
-  it('shows Matched and Failed buttons for a contacted match', async () => {
+  it('shows Dating and Failed buttons for an in_progress match', async () => {
     mockFetchMatches.mockResolvedValue({ data: [MATCH_B], total: 1, page: 1, limit: 20, totalPages: 1 })
     renderMatches()
     await waitFor(() => screen.getByText('Echo Blue'))
-    expect(screen.getByRole('button', { name: 'admin.matches.markMatched' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'admin.matches.markDating' })).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'admin.matches.markFailed' })).toBeInTheDocument()
   })
 })
