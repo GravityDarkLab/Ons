@@ -192,6 +192,12 @@ export async function requestContact(
     ? await generateIceBreakers(actorDoc, targetDoc)
     : { questions: [], dateIdeas: [] };
 
+  // Pre-flight identity check before any mutation — prevents stuck state if identity is missing
+  const targetInstagram = await resolveIdentityById(targetId);
+  if (!targetInstagram) {
+    throw Object.assign(new Error("Target identity not found"), { statusCode: 404 });
+  }
+
   const now = new Date();
 
   // Atomically claim the transition — filter on status:"proposed" prevents double-contact
@@ -218,12 +224,7 @@ export async function requestContact(
     );
   }
 
-  // Reveal identity and log only after winning the race
-  const targetInstagram = await resolveIdentityById(targetId);
-  if (!targetInstagram) {
-    throw Object.assign(new Error("Target identity not found"), { statusCode: 404 });
-  }
-
+  // Write audit log after winning the race (identity was pre-fetched without side-effects)
   await writeAuditLog(
     { adminId: applicantId, ipAddress: audit.ipAddress, userAgent: audit.userAgent },
     "APPLICANT_REVEAL_IDENTITY",

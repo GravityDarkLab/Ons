@@ -131,7 +131,7 @@ export const adminRateLimiter = createRateLimiter({
  */
 export const profileLoginRateLimiter = createRateLimiter({
   windowMs: 60 * 1000,
-  maxRequests: 20,
+  maxRequests: 10,
   message: "Too many login attempts. Please wait before trying again.",
 });
 

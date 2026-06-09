@@ -268,7 +268,7 @@ export async function saveMatchProposals(
     const existing = await col.findOne({
       applicantAId: p.applicantAId,
       applicantBId: p.applicantBId,
-      status: { $nin: ["expired", "declined"] },
+      status: { $nin: ["failed", "success", "expired", "declined"] },
     });
     if (existing) continue;
 
