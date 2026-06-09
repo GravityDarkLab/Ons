@@ -5,7 +5,7 @@ import { requireAdmin } from "../middleware/auth.middleware.js";
 import { getMatches, patchMatch, removeMatch } from "../controllers/match.controller.js";
 
 const patchMatchSchema = z.object({
-  status: z.enum(["proposed", "contacted", "matched", "failed"]).optional(),
+  status: z.enum(["proposed", "in_progress", "dating", "success", "failed", "declined", "expired"]).optional(),
   notes:  z.string().max(1000).optional(),
 });
 

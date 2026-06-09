@@ -18,9 +18,12 @@ import { getDb, closeDb } from "../db/connection.js";
 import {
   getApplicantsCollection,
   getIdentitiesCollection,
+  getMatchesCollection,
 } from "../db/collections.js";
 import { generateUniqueAlias } from "../privacy/alias.generator.js";
 import { encrypt } from "../privacy/encryption.js";
+import { hashInstagram, normalizeInstagram } from "../privacy/hash.js";
+import { hashMagicToken } from "../privacy/magic-token.js";
 import { env } from "../config/env.js";
 
 // ─── Safety guard ─────────────────────────────────────────────────────────────
@@ -38,7 +41,7 @@ const COUNT = countArg ? parseInt(countArg.split("=")[1], 10) : 50;
 const CLEAR = args.includes("--clear");
 
 // ─── Data pools ───────────────────────────────────────────────────────────────
-const QUESTIONNAIRE_VERSION = "1.0.0"; // for potential future use if we add multiple versions
+const QUESTIONNAIRE_VERSION = "1.0.0";
 
 const LOCATIONS = [
   "Paris, France",
@@ -156,7 +159,7 @@ const LIFESTYLES = [
 const REL_TYPES = [
   "Long Term",
   "Long Term",
-  "Long Term", // weighted toward long term
+  "Long Term",
   "Open to Both",
   "Open to Both",
   "Short Term",
@@ -219,7 +222,7 @@ const FIRST_DATES = [
 
 const INSTAGRAM_PREFIXES = [
   "its", "the", "just", "hey", "hi", "iam", "im", "real", "official",
-  "only", "not", "", "", "", "", // empty = just the name
+  "only", "not", "", "", "", "",
 ];
 
 const FIRST_NAMES = [
@@ -231,8 +234,6 @@ const FIRST_NAMES = [
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
-// Use crypto.getRandomValues() for all randomness — avoids CodeQL's
-// "insecure randomness" finding and is good practice even for seed data.
 function randomFloat(): number {
   const buf = new Uint32Array(1);
   crypto.getRandomValues(buf);
@@ -263,17 +264,21 @@ function randomCreatedAt(): Date {
   return new Date(Date.now() - msAgo);
 }
 
-type ApplicantStatus = "active" | "inactive" | "matched" | "withdrawn";
+type SeedApplicantStatus = "applied" | "matched" | "dating" | "inactive";
 
-function randomStatus(): ApplicantStatus {
+function randomStatus(): SeedApplicantStatus {
   const r = randomFloat();
-  if (r < 0.70) return "active";
+  if (r < 0.70) return "applied";
   if (r < 0.85) return "matched";
-  if (r < 0.93) return "inactive";
-  return "withdrawn";
+  if (r < 0.93) return "dating";
+  return "inactive";
 }
 
 // ─── Main ─────────────────────────────────────────────────────────────────────
+
+// All seeded accounts share one login credential for easy local testing.
+// Override with SEED_LOGIN env var; default is intentionally trivial (dev only).
+const seedLogin = process.env.SEED_LOGIN ?? "ons-dev-seed";
 
 async function seed() {
   console.log(`[SEED:applicants] Environment : ${env.nodeEnv}`);
@@ -283,18 +288,25 @@ async function seed() {
   const db = await getDb();
   const applicants = getApplicantsCollection(db);
   const identities = getIdentitiesCollection(db);
+  const matches    = getMatchesCollection(db);
+
+  // Hash once; reused for every inserted applicant
+  const devPasswordHash = await Bun.password.hash(seedLogin);
 
   if (CLEAR) {
     const { deletedCount: a } = await applicants.deleteMany({});
     const { deletedCount: i } = await identities.deleteMany({});
-    console.log(`[SEED:applicants] Cleared ${a} applicants, ${i} identities.\n`);
+    const { deletedCount: m } = await matches.deleteMany({});
+    console.log(`[SEED:applicants] Cleared ${a} applicants, ${i} identities, ${m} matches.\n`);
   }
 
-  // Collect existing aliases to avoid collisions
   const existingAliases = await applicants
     .find({}, { projection: { alias: 1 } })
     .map((d) => d.alias)
     .toArray();
+
+  // Track used instagram hashes to avoid duplicate key errors within this seed run
+  const usedHashes = new Set<string>();
 
   let inserted = 0;
   let skipped = 0;
@@ -305,7 +317,17 @@ async function seed() {
 
     const gender = pick(GENDERS);
     const createdAt = randomCreatedAt();
-    const handle = fakeInstagram();
+
+    // Generate a unique-enough handle for seed data
+    let handle: string;
+    let instagramHash: string;
+    let attempts = 0;
+    do {
+      handle = fakeInstagram() + (attempts > 0 ? String(randInt(100, 999)) : "");
+      instagramHash = hashInstagram(handle);
+      attempts++;
+    } while (usedHashes.has(instagramHash) && attempts < 20);
+    usedHashes.add(instagramHash);
 
     const answers: Record<string, unknown> = {
       location: pick(LOCATIONS),
@@ -332,18 +354,22 @@ async function seed() {
     const applicantId = new ObjectId();
 
     try {
+      const rawToken = Buffer.from(crypto.getRandomValues(new Uint8Array(32))).toString("hex");
+      const status = randomStatus();
       await applicants.insertOne({
         _id: applicantId,
         alias,
         questionnaireVersion: QUESTIONNAIRE_VERSION,
         answers,
-        status: randomStatus(),
+        status,
+        magicToken: hashMagicToken(rawToken),
+        passwordHash: devPasswordHash,
+        scoreThreshold: 0.8,
         createdAt,
         updatedAt: createdAt,
       });
 
-      // Store encrypted Instagram handle in the identities collection
-      const { encrypted, iv, tag } = encrypt(handle);
+      const { encrypted, iv, tag } = encrypt(normalizeInstagram(handle));
       await identities.insertOne({
         _id: new ObjectId(),
         applicantId,
@@ -351,13 +377,13 @@ async function seed() {
         encryptedInstagram: encrypted,
         encryptionIv: iv,
         encryptionTag: tag,
+        instagramHash,
         createdAt,
       });
 
       inserted++;
-      process.stdout.write(`\r[SEED:applicants] Inserted ${inserted}/${COUNT} — ${alias}`);
+      console.log(`[SEED:applicants] ${inserted}/${COUNT}  alias: ${alias}  status: ${status}  token: ${rawToken}`);
     } catch (err: unknown) {
-      // Alias collision on insert (shouldn't happen, but be safe)
       if (
         typeof err === "object" &&
         err !== null &&
@@ -371,7 +397,8 @@ async function seed() {
     }
   }
 
-  console.log(`\n\n[SEED:applicants] ✅  Done — ${inserted} inserted, ${skipped} skipped.`);
+  console.log(`\n[SEED:applicants] ✅  Done — ${inserted} inserted, ${skipped} skipped.`);
+  console.log(`[SEED:applicants] Login credential for all accounts: "${seedLogin}"`);
   await closeDb();
 }
 
