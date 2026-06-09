@@ -1,4 +1,5 @@
 import { Context } from "hono";
+import { setCookie, deleteCookie } from "hono/cookie";
 import {
   loginWithMagicToken,
   setPassword as setPasswordService,
@@ -10,8 +11,21 @@ import {
   reportOutcome,
   deactivateMyAccount,
 } from "../services/profile.service.js";
-import { signApplicantToken } from "../middleware/applicant.auth.middleware.js";
+import { signApplicantToken, APPLICANT_COOKIE } from "../middleware/applicant.auth.middleware.js";
 import { generateReadablePassword } from "../privacy/magic-token.js";
+import { env } from "../config/env.js";
+
+const COOKIE_MAX_AGE = 60 * 60 * 24 * 30; // 30 days — matches JWT EXPIRY
+
+function setSessionCookie(c: Context, token: string): void {
+  setCookie(c, APPLICANT_COOKIE, token, {
+    httpOnly: true,
+    secure: env.nodeEnv === "production",
+    sameSite: "Lax",
+    maxAge: COOKIE_MAX_AGE,
+    path: "/",
+  });
+}
 
 export async function login(c: Context): Promise<Response> {
   const { magicToken, password } = c.req.valid("json" as never) as {
@@ -31,7 +45,8 @@ export async function login(c: Context): Promise<Response> {
     result.applicant._id.toHexString(),
     result.applicant.alias
   );
-  return c.json({ success: true, token });
+  setSessionCookie(c, token);
+  return c.json({ success: true });
 }
 
 export async function setPassword(c: Context): Promise<Response> {
@@ -44,7 +59,8 @@ export async function setPassword(c: Context): Promise<Response> {
     const applicant = await setPasswordService(magicToken, newPassword);
     if (!applicant) return c.json({ success: false, error: "Invalid token" }, 401);
     const token = await signApplicantToken(applicant._id.toHexString(), applicant.alias);
-    return c.json({ success: true, token });
+    setSessionCookie(c, token);
+    return c.json({ success: true });
   } catch (err: unknown) {
     const e = err as { message?: string; statusCode?: number };
     const code = (e.statusCode ?? 500) as Parameters<typeof c.json>[1];
@@ -143,5 +159,6 @@ export async function outcome(c: Context): Promise<Response> {
 export async function deactivate(c: Context): Promise<Response> {
   const applicantId = c.get("applicantId") as string;
   await deactivateMyAccount(applicantId);
+  deleteCookie(c, APPLICANT_COOKIE, { path: "/" });
   return c.json({ success: true });
 }

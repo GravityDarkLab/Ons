@@ -34,7 +34,6 @@ describe('ProfileDashboard', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     mockNavigate.mockReset()
-    localStorage.setItem('ons_applicant_jwt', 'fake-jwt-token')
     mockGetMyMatches.mockResolvedValue([])
   })
 

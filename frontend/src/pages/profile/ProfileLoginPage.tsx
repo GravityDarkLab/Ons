@@ -2,8 +2,6 @@ import { useState, useEffect, type FormEvent } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { profileLogin, setPassword, suggestPassword } from '../../api/profile.client'
 
-const STORAGE_KEY = 'ons_applicant_jwt'
-
 // ── Sub-components ────────────────────────────────────────────────────────────
 
 function SetPasswordForm({ magicToken }: { magicToken: string }) {
@@ -34,8 +32,7 @@ function SetPasswordForm({ magicToken }: { magicToken: string }) {
     setError(null)
     setLoading(true)
     try {
-      const result = await setPassword(magicToken, password)
-      localStorage.setItem(STORAGE_KEY, result.token) // lgtm[js/clear-text-storage-sensitive-data]
+      await setPassword(magicToken, password) // server sets HttpOnly session cookie
       navigate('/profile', { replace: true })
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to set password. Please try again.')
@@ -104,26 +101,18 @@ export default function ProfileLoginPage() {
   const [errorMessage, setErrorMessage] = useState<string | null>(null)
 
   useEffect(() => {
-    // Already logged in — send straight to profile
-    const existingJwt = localStorage.getItem(STORAGE_KEY)
-    if (existingJwt && !token) {
-      navigate('/profile', { replace: true })
-      return
-    }
-
     if (!token) {
       setMode('no-token')
       return
     }
 
-    // Auto-probe the magic token
+    // Auto-probe the magic token; server sets HttpOnly session cookie on success
     setMode('probing')
     profileLogin(token)
       .then(result => {
         if (result.type === 'first_login') {
           setMode('set-password')
         } else {
-          localStorage.setItem(STORAGE_KEY, result.token) // lgtm[js/clear-text-storage-sensitive-data]
           navigate('/profile', { replace: true })
         }
       })

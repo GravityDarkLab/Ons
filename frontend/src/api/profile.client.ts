@@ -1,7 +1,5 @@
 const BASE = (import.meta.env.VITE_API_URL ?? 'http://localhost:3001') + '/api/v1'
 
-const STORAGE_KEY = 'ons_applicant_jwt'
-
 // ── Types ────────────────────────────────────────────────────────────────────
 
 export type ApplicantStatus = 'applied' | 'matched' | 'dating' | 'inactive'
@@ -35,7 +33,7 @@ export interface ProfileView {
   createdAt: string
 }
 
-export type LoginResult = { type: 'first_login' } | { type: 'ok'; token: string }
+export type LoginResult = { type: 'first_login' } | { type: 'ok' }
 
 export interface ContactResult {
   targetInstagram: string
@@ -43,30 +41,21 @@ export interface ContactResult {
   dateIdeas: string[]
 }
 
-// ── Auth helpers ─────────────────────────────────────────────────────────────
-
-function getToken(): string | null {
-  return localStorage.getItem(STORAGE_KEY)
-}
-
-function authHeaders(): Record<string, string> {
-  const token = getToken()
-  return token ? { Authorization: `Bearer ${token}` } : {}
-}
-
 // ── Core request helper ──────────────────────────────────────────────────────
 
-async function profileRequest<T>(path: string, opts: RequestInit = {}, auth = true): Promise<T> {
+async function profileRequest<T>(path: string, opts: RequestInit = {}): Promise<T> {
   const headers: Record<string, string> = {
     'Content-Type': 'application/json',
-    ...(auth ? authHeaders() : {}),
     ...(opts.headers as Record<string, string> | undefined),
   }
 
-  const res = await fetch(`${BASE}${path}`, { ...opts, headers })
+  const res = await fetch(`${BASE}${path}`, {
+    ...opts,
+    headers,
+    credentials: 'include', // Send HttpOnly session cookie automatically
+  })
 
   if (res.status === 401) {
-    localStorage.removeItem(STORAGE_KEY)
     throw new Error('Session expired')
   }
 
@@ -79,40 +68,32 @@ async function profileRequest<T>(path: string, opts: RequestInit = {}, auth = tr
   return body.data as T
 }
 
-// ── Public endpoints (no auth) ────────────────────────────────────────────────
+// ── Public endpoints ──────────────────────────────────────────────────────────
 
 export async function profileLogin(magicToken: string, password?: string): Promise<LoginResult> {
   const payload: { magicToken: string; password?: string } = { magicToken }
   if (password !== undefined) payload.password = password
 
-  const data = await profileRequest<{ firstLogin?: boolean; token?: string }>(
+  const data = await profileRequest<{ firstLogin?: boolean }>(
     '/profile/login',
     { method: 'POST', body: JSON.stringify(payload) },
-    false,
   )
 
-  if (data.firstLogin) {
-    return { type: 'first_login' }
-  }
-  return { type: 'ok', token: data.token! }
+  return data.firstLogin ? { type: 'first_login' } : { type: 'ok' }
 }
 
-export async function setPassword(
-  magicToken: string,
-  newPassword: string,
-): Promise<{ token: string }> {
-  return profileRequest<{ token: string }>(
+export async function setPassword(magicToken: string, newPassword: string): Promise<void> {
+  await profileRequest<unknown>(
     '/profile/set-password',
     { method: 'POST', body: JSON.stringify({ magicToken, newPassword }) },
-    false,
   )
 }
 
 export async function suggestPassword(): Promise<{ suggestion: string }> {
-  return profileRequest<{ suggestion: string }>('/profile/suggest-password', { method: 'GET' }, false)
+  return profileRequest<{ suggestion: string }>('/profile/suggest-password', { method: 'GET' })
 }
 
-// ── Authenticated endpoints ───────────────────────────────────────────────────
+// ── Authenticated endpoints (cookie sent automatically) ───────────────────────
 
 export async function changePassword(
   currentPassword: string,
@@ -121,12 +102,11 @@ export async function changePassword(
   await profileRequest<unknown>(
     '/profile/change-password',
     { method: 'POST', body: JSON.stringify({ currentPassword, newPassword }) },
-    true,
   )
 }
 
 export async function getMyProfile(): Promise<ProfileView> {
-  return profileRequest<ProfileView>('/profile/me', { method: 'GET' }, true)
+  return profileRequest<ProfileView>('/profile/me', { method: 'GET' })
 }
 
 export async function getMyMatches(threshold?: number, limit?: number): Promise<MatchView[]> {
@@ -134,14 +114,13 @@ export async function getMyMatches(threshold?: number, limit?: number): Promise<
   if (threshold !== undefined) params.set('threshold', String(threshold))
   if (limit !== undefined) params.set('limit', String(limit))
   const qs = params.toString() ? `?${params.toString()}` : ''
-  return profileRequest<MatchView[]>(`/profile/matches${qs}`, { method: 'GET' }, true)
+  return profileRequest<MatchView[]>(`/profile/matches${qs}`, { method: 'GET' })
 }
 
 export async function requestContact(matchId: string): Promise<ContactResult> {
   return profileRequest<ContactResult>(
     `/profile/matches/${matchId}/contact`,
     { method: 'POST' },
-    true,
   )
 }
 
@@ -149,7 +128,6 @@ export async function respondToContact(matchId: string, accept: boolean): Promis
   await profileRequest<unknown>(
     `/profile/matches/${matchId}/respond`,
     { method: 'POST', body: JSON.stringify({ accept }) },
-    true,
   )
 }
 
@@ -160,10 +138,9 @@ export async function reportOutcome(
   await profileRequest<unknown>(
     `/profile/matches/${matchId}/outcome`,
     { method: 'POST', body: JSON.stringify({ outcome }) },
-    true,
   )
 }
 
 export async function deactivateAccount(): Promise<void> {
-  await profileRequest<unknown>('/profile/deactivate', { method: 'POST' }, true)
+  await profileRequest<unknown>('/profile/deactivate', { method: 'POST' })
 }

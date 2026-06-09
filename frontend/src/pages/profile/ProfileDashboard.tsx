@@ -5,12 +5,6 @@ import { getMyProfile, getMyMatches } from '../../api/profile.client'
 import MatchList from './MatchList'
 import ProfileSettingsDrawer from './ProfileSettingsDrawer'
 
-// ── Helpers ───────────────────────────────────────────────────────────────────
-
-function getJwt(): string | null {
-  return localStorage.getItem('ons_applicant_jwt')
-}
-
 // ── Sub-components ────────────────────────────────────────────────────────────
 
 function StatusBadge({ status }: { status: ApplicantStatus | undefined }) {
@@ -41,11 +35,6 @@ export default function ProfileDashboard() {
   const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
-    if (!getJwt()) {
-      navigate('/profile/login', { replace: true })
-      return
-    }
-
     async function load() {
       try {
         const [prof, matchList] = await Promise.all([
@@ -58,7 +47,6 @@ export default function ProfileDashboard() {
       } catch (err) {
         const message = err instanceof Error ? err.message : 'Failed to load profile'
         if (message === 'Session expired') {
-          localStorage.removeItem('ons_applicant_jwt')
           navigate('/profile/login', { replace: true })
           return
         }
