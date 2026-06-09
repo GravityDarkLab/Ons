@@ -1,60 +1,165 @@
+import { useState } from 'react'
 import { NavLink, useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { useAuth } from '../context/AuthContext'
 import LanguageSwitcher from '../../components/LanguageSwitcher'
 import type { ReactNode } from 'react'
 
+function MenuIcon() {
+  return (
+    <svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" xmlns="http://www.w3.org/2000/svg">
+      <line x1="3" y1="5" x2="17" y2="5" />
+      <line x1="3" y1="10" x2="17" y2="10" />
+      <line x1="3" y1="15" x2="17" y2="15" />
+    </svg>
+  )
+}
+
+function HomeIcon() {
+  return (
+    <svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" xmlns="http://www.w3.org/2000/svg">
+      <path d="M3 9.5L10 3l7 6.5V17a1 1 0 01-1 1H4a1 1 0 01-1-1V9.5z" />
+      <path d="M7.5 18V12h5v6" />
+    </svg>
+  )
+}
+
+function UsersIcon() {
+  return (
+    <svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" xmlns="http://www.w3.org/2000/svg">
+      <circle cx="8" cy="6" r="3" />
+      <path d="M2 18c0-3.314 2.686-6 6-6s6 2.686 6 6" />
+      <circle cx="15" cy="6" r="2.5" />
+      <path d="M18 18c0-2.761-1.567-5-3.5-5" />
+    </svg>
+  )
+}
+
+function HeartIcon() {
+  return (
+    <svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" xmlns="http://www.w3.org/2000/svg">
+      <path d="M10 17s-7-4.5-7-9a4 4 0 018 0 4 4 0 018 0c0 4.5-7 9-7 9z" />
+    </svg>
+  )
+}
+
+function SparklesIcon() {
+  return (
+    <svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" xmlns="http://www.w3.org/2000/svg">
+      <path d="M10 2v2M10 16v2M4.22 4.22l1.42 1.42M14.36 14.36l1.42 1.42M2 10h2M16 10h2M4.22 15.78l1.42-1.42M14.36 5.64l1.42-1.42" />
+      <circle cx="10" cy="10" r="3" />
+    </svg>
+  )
+}
+
+function ClipboardIcon() {
+  return (
+    <svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" xmlns="http://www.w3.org/2000/svg">
+      <rect x="5" y="4" width="10" height="14" rx="1.5" />
+      <path d="M8 4a2 2 0 014 0" />
+      <line x1="8" y1="9" x2="12" y2="9" />
+      <line x1="8" y1="12" x2="12" y2="12" />
+    </svg>
+  )
+}
+
+function LogOutIcon() {
+  return (
+    <svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" xmlns="http://www.w3.org/2000/svg">
+      <path d="M13 15l4-5-4-5" />
+      <path d="M17 10H7" />
+      <path d="M7 3H4a1 1 0 00-1 1v12a1 1 0 001 1h3" />
+    </svg>
+  )
+}
+
 export function AdminLayout({ children }: { children: ReactNode }) {
   const { t } = useTranslation()
-  const { logout } = useAuth()
+  const { logout, role } = useAuth()
   const navigate = useNavigate()
+  const [collapsed, setCollapsed] = useState(false)
 
   const NAV = [
-    { to: '/admin',            label: t('admin.nav.dashboard'),  end: true },
-    { to: '/admin/applicants', label: t('admin.nav.applicants'), end: false },
-    { to: '/admin/matching',   label: t('admin.nav.matching'),   end: false },
-    { to: '/admin/matches',    label: t('admin.nav.matches'),    end: false },
-    { to: '/admin/audit-logs', label: t('admin.nav.auditLogs'),  end: false },
+    { to: '/admin',            icon: HomeIcon,      label: t('admin.nav.dashboard'),  end: true  },
+    { to: '/admin/applicants', icon: UsersIcon,     label: t('admin.nav.applicants'), end: false },
+    { to: '/admin/matches',    icon: HeartIcon,     label: t('admin.nav.matches'),    end: false },
+    { to: '/admin/matching',   icon: SparklesIcon,  label: t('admin.nav.matching'),   end: false },
+    { to: '/admin/audit-logs', icon: ClipboardIcon, label: t('admin.nav.auditLogs'),  end: false },
   ]
 
   function handleLogout() { logout(); navigate('/admin/login') }
 
   return (
-    <div className="flex min-h-screen bg-bg">
-      <aside className="w-52 shrink-0 flex flex-col bg-surface border-r border-border">
-        <div className="px-5 py-5 border-b border-border">
-          <p className="text-base font-semibold text-primary tracking-tight">{t('brand')}</p>
-          <p className="text-xs text-muted mt-0.5">{t('admin.subtitle')}</p>
+    <div className="flex flex-col min-h-screen bg-bg">
+      {/* Topbar */}
+      <header className="h-14 flex items-center justify-between px-4 bg-surface border-b border-border shrink-0 z-10">
+        {/* Left: toggle + brand */}
+        <div className="flex items-center gap-3">
+          <button
+            onClick={() => setCollapsed(c => !c)}
+            className="flex items-center justify-center p-2 rounded-xl text-muted hover:text-primary hover:bg-bg transition-colors"
+            aria-label="Toggle sidebar"
+          >
+            <MenuIcon />
+          </button>
+          <span className="font-semibold text-primary">Ons</span>
+          <span className="text-xs text-muted ml-1">Admin</span>
         </div>
 
-        <nav className="flex-1 px-2 py-3 space-y-0.5">
-          {NAV.map(({ to, label, end }) => (
-            <NavLink key={to} to={to} end={end}
-              className={({ isActive }) =>
-                `block px-3 py-2 rounded-xl text-sm transition-colors ${
-                  isActive ? 'bg-accent-light text-accent font-medium' : 'text-muted hover:text-primary hover:bg-bg'
-                }`
-              }
-            >
-              {label}
-            </NavLink>
-          ))}
-        </nav>
-
-        <div className="px-2 pb-4">
-          <button onClick={handleLogout} className="w-full text-left px-3 py-2 rounded-xl text-sm text-muted hover:text-primary hover:bg-bg transition-colors">
-            {t('admin.nav.signOut')}
+        {/* Right: language switcher + role badge + logout */}
+        <div className="flex items-center gap-3">
+          <LanguageSwitcher />
+          <span className="bg-accent-light text-accent text-xs rounded-full px-2 py-0.5">
+            {role ?? 'admin'}
+          </span>
+          <button
+            onClick={handleLogout}
+            title="Sign out"
+            className="flex items-center justify-center p-2 rounded-xl text-muted hover:text-primary hover:bg-bg transition-colors"
+            aria-label="Sign out"
+          >
+            <LogOutIcon />
           </button>
         </div>
-      </aside>
+      </header>
 
-      <main className="flex-1 min-w-0 overflow-y-auto">
-        {/* Top bar */}
-        <div className="flex justify-end px-8 py-4 border-b border-border">
-          <LanguageSwitcher />
-        </div>
-        <div className="max-w-5xl mx-auto px-8 py-8">{children}</div>
-      </main>
+      {/* Body */}
+      <div className="flex flex-1 min-h-0">
+        {/* Sidebar */}
+        <aside
+          className={`shrink-0 flex flex-col bg-surface border-r border-border transition-all duration-200 ${collapsed ? 'w-14' : 'w-56'}`}
+        >
+          <nav className="flex-1 px-2 py-3 space-y-0.5">
+            {NAV.map(({ to, icon: Icon, label, end }) => (
+              <NavLink
+                key={to}
+                to={to}
+                end={end}
+                title={collapsed ? label : undefined}
+                className={({ isActive }) =>
+                  `flex transition-colors ${
+                    collapsed
+                      ? 'items-center justify-center p-3 rounded-xl'
+                      : 'items-center gap-3 px-4 py-2.5 rounded-xl text-sm'
+                  } ${
+                    isActive
+                      ? 'bg-accent-light text-accent font-medium border-l-2 border-accent'
+                      : 'text-muted hover:text-primary hover:bg-bg'
+                  }`
+                }
+              >
+                <Icon />
+                {!collapsed && <span>{label}</span>}
+              </NavLink>
+            ))}
+          </nav>
+        </aside>
+
+        {/* Main content */}
+        <main className="flex-1 overflow-y-auto">
+          <div className="max-w-5xl mx-auto px-8 py-8">{children}</div>
+        </main>
+      </div>
     </div>
   )
 }
