@@ -100,6 +100,7 @@ export function Applicants() {
         </svg>
         <input
           type="text"
+          name="search"
           value={search}
           onChange={e => setSearch(e.target.value)}
           placeholder={t('admin.applicants.searchPlaceholder')}

@@ -164,7 +164,7 @@ function IdentityCard({ id, identity, setIdentity }: IdentityCardProps) {
         className="border border-border rounded-xl p-4 flex items-center gap-3 text-muted"
       >
         <LockIcon />
-        <span className="text-sm">Identity reveal requires super admin access</span>
+        <span className="text-sm">{t('admin.detail.superAdminRequired')}</span>
       </div>
     </div>
   )
@@ -189,15 +189,17 @@ function MatchHistory({ matches, applicantId }: MatchHistoryProps) {
   return (
     <div className="space-y-3">
       {matches.map(m => {
-        const partnerId    = m.applicantAId === applicantId ? m.applicantBId    : m.applicantAId
-        const partnerAlias = m.applicantAId === applicantId ? m.applicantBAlias : m.applicantAAlias
+        const isA          = m.applicantAId === applicantId
+        const ownAlias     = isA ? m.applicantAAlias : m.applicantBAlias
+        const partnerId    = isA ? m.applicantBId    : m.applicantAId
+        const partnerAlias = isA ? m.applicantBAlias : m.applicantAAlias
         const scorePercent = Math.round(m.score * 100)
 
         return (
           <div key={m.id} className="flex items-center justify-between gap-3">
             <div className="min-w-0">
               <div className="flex items-center gap-1.5 text-sm font-mono text-primary">
-                <span className="text-muted shrink-0">{m.applicantAAlias}</span>
+                <span className="text-muted shrink-0">{ownAlias}</span>
                 <span className="text-muted shrink-0">↔</span>
                 <Link
                   to={`/admin/applicants/${partnerId}`}
@@ -310,7 +312,7 @@ export function ApplicantDetail() {
                 </dd>
               </div>
               <div className="flex justify-between gap-3">
-                <dt className="text-muted">Version</dt>
+                <dt className="text-muted">{t('admin.detail.version')}</dt>
                 <dd className="text-primary font-mono text-right">{applicant.questionnaireVersion}</dd>
               </div>
             </dl>
@@ -338,7 +340,7 @@ export function ApplicantDetail() {
                   <div key={key} className="flex justify-between gap-3 text-sm">
                     <span className="text-muted capitalize">{key.replace(/_/g, ' ')}</span>
                     <span className="text-primary text-right break-words max-w-[60%]">
-                      {typeof value === 'boolean' ? (value ? 'Yes' : 'No') : String(value ?? '—')}
+                      {typeof value === 'boolean' ? (value ? t('common.yes') : t('common.no')) : String(value ?? '—')}
                     </span>
                   </div>
                 ))}
@@ -362,7 +364,7 @@ export function ApplicantDetail() {
           {/* Status stepper card */}
           <div className="bg-surface border border-border rounded-2xl p-6 shadow-sm">
             <p className="text-xs font-semibold text-muted uppercase tracking-wider mb-4">
-              Status
+              {t('admin.detail.status')}
             </p>
             <StatusStepper status={applicant.status} />
           </div>

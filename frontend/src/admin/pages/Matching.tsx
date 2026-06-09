@@ -3,20 +3,8 @@ import { Link } from 'react-router-dom'
 import { useTranslation, Trans } from 'react-i18next'
 import { runMatching } from '../api/client'
 import Button from '../../components/ui/Button'
+import { useTimeAgo } from '../utils/timeAgo'
 import type { MatchingRun } from '../types'
-
-// ── Helpers ────────────────────────────────────────────────────────────────
-
-function timeAgo(ms: number): string {
-  const secs = Math.floor((Date.now() - ms) / 1000)
-  if (secs < 60) return 'just now'
-  const mins = Math.floor(secs / 60)
-  if (mins < 60) return `${mins} minute${mins === 1 ? '' : 's'} ago`
-  const hours = Math.floor(mins / 60)
-  if (hours < 24) return `${hours} hour${hours === 1 ? '' : 's'} ago`
-  const days = Math.floor(hours / 24)
-  return `${days} day${days === 1 ? '' : 's'} ago`
-}
 
 // ── Types ──────────────────────────────────────────────────────────────────
 
@@ -31,6 +19,7 @@ interface LastRun {
 
 export function Matching() {
   const { t } = useTranslation()
+  const timeAgo = useTimeAgo()
   const [algorithm, setAlgorithm] = useState('embedding-cosine')
   const [loading, setLoading]     = useState(false)
   const [result, setResult]       = useState<MatchingRun | null>(null)
@@ -39,10 +28,12 @@ export function Matching() {
   const [lastRun, setLastRun]     = useState<LastRun | null>(null)
 
   const ALGORITHMS = [
-    { value: 'baseline', label: 'baseline' },
-    { value: 'cosine', label: 'cosine' },
-    { value: 'embedding-cosine', label: 'embedding-cosine' },
+    { value: 'baseline', label: t('admin.matching.baseline'), hint: t('admin.matching.baselineHint') },
+    { value: 'cosine', label: t('admin.matching.cosine'), hint: t('admin.matching.cosineHint') },
+    { value: 'embedding-cosine', label: t('admin.matching.embedding'), hint: t('admin.matching.embeddingHint'), recommended: true },
   ]
+
+  const selectedAlgorithm = ALGORITHMS.find(a => a.value === algorithm)
 
   const isNonEmbedding = algorithm !== 'embedding-cosine'
 
@@ -103,15 +94,27 @@ export function Matching() {
                 <span
                   className={
                     algorithm === a.value
-                      ? 'bg-accent text-white rounded-full px-4 py-2 text-sm font-medium inline-block'
-                      : 'bg-surface border border-border text-muted rounded-full px-4 py-2 text-sm hover:text-primary hover:border-accent/40 inline-block'
+                      ? 'bg-accent text-white rounded-full px-4 py-2 text-sm font-medium inline-flex items-center gap-1.5'
+                      : 'bg-surface border border-border text-muted rounded-full px-4 py-2 text-sm hover:text-primary hover:border-accent/40 inline-flex items-center gap-1.5'
                   }
                 >
                   {a.label}
+                  {a.recommended && (
+                    <span className={
+                      algorithm === a.value
+                        ? 'text-[10px] uppercase tracking-wide opacity-80'
+                        : 'text-[10px] uppercase tracking-wide text-accent'
+                    }>
+                      {t('admin.matching.recommended')}
+                    </span>
+                  )}
                 </span>
               </label>
             ))}
           </div>
+          {selectedAlgorithm?.hint && (
+            <p className="text-xs text-muted">{selectedAlgorithm.hint}</p>
+          )}
         </div>
 
         {/* Multilingual warning */}
@@ -131,8 +134,8 @@ export function Matching() {
         {/* Last run info */}
         <p className="text-sm text-muted">
           {lastRun
-            ? `${t('admin.matching.lastRun', 'Last run')}: ${timeAgo(lastRun.timestamp)} · ${lastRun.couplesProposed} pairs proposed`
-            : t('admin.matching.neverRun', 'Never run')}
+            ? t('admin.matching.lastRunSummary', { time: timeAgo(lastRun.timestamp), count: lastRun.couplesProposed })
+            : t('admin.matching.neverRun')}
         </p>
 
         {/* Error message */}
@@ -143,10 +146,10 @@ export function Matching() {
           <div className="bg-surface border border-border rounded-xl p-5 space-y-4">
             <div>
               <p className="text-sm font-medium text-primary">
-                {t('admin.matching.confirmTitle', `Run matching with ${algorithm}?`, { algorithm })}
+                {t('admin.matching.confirmTitle', { algorithm: selectedAlgorithm?.label ?? algorithm })}
               </p>
               <p className="text-xs text-muted mt-1">
-                {t('admin.matching.confirmBody', 'This will create new match proposals.')}
+                {t('admin.matching.confirmBody')}
               </p>
             </div>
             <div className="flex items-center gap-3">
@@ -155,10 +158,10 @@ export function Matching() {
                 onClick={() => setConfirming(false)}
                 className="px-4 py-2 text-sm font-medium text-muted border border-border rounded-lg hover:text-primary hover:border-border/80 transition-colors"
               >
-                {t('admin.matching.cancel', 'Cancel')}
+                {t('admin.matching.cancel')}
               </button>
               <Button onClick={handleConfirm} loading={loading}>
-                {t('admin.matching.confirmRun', 'Yes, run matching')}
+                {t('admin.matching.confirmRun')}
               </Button>
             </div>
           </div>

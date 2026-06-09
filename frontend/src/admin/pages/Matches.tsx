@@ -146,6 +146,7 @@ export function Matches() {
         </svg>
         <input
           type="text"
+          name="search"
           value={search}
           onChange={e => setSearch(e.target.value)}
           placeholder={t('admin.matches.searchPlaceholder')}

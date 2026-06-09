@@ -133,7 +133,7 @@ describe('ApplicantDetail — identity clears on navigation (bug fix)', () => {
     await userEvent.click(partnerLink)
 
     // Identity must not be shown on the new applicant page
-    await waitFor(() => expect(screen.getByText('Pearl Lantern')).toBeInTheDocument())
+    await waitFor(() => expect(screen.getByRole('heading', { name: 'Pearl Lantern' })).toBeInTheDocument())
     expect(screen.queryByText('@lunar_real')).not.toBeInTheDocument()
     expect(screen.getByRole('button', { name: /admin\.detail\.reveal/i })).toBeInTheDocument()
   })

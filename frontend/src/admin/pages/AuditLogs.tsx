@@ -1,19 +1,10 @@
 import { useEffect, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { fetchAuditLogs } from '../api/client'
+import { useTimeAgo } from '../utils/timeAgo'
 import type { AuditLog } from '../types'
 
 const LIMIT = 20
-
-function timeAgo(iso: string): string {
-  const diff = Date.now() - new Date(iso).getTime()
-  const s = Math.floor(diff / 1000)
-  if (s < 60) return 'just now'
-  const m = Math.floor(s / 60)
-  if (m < 60) return `${m}m ago`
-  const h = Math.floor(m / 60)
-  if (h < 24) return `${h}h ago`
-  return `${Math.floor(h / 24)}d ago`
-}
 
 function dotColor(action: string): string {
   if (action === 'RESOLVE_IDENTITY' || action === 'APPLICANT_REVEAL_IDENTITY') return 'bg-amber-400'
@@ -29,6 +20,8 @@ function actionColor(action: string): string {
 }
 
 export function AuditLogs() {
+  const { t } = useTranslation()
+  const timeAgo = useTimeAgo()
   const [page, setPage]             = useState(1)
   const [logs, setLogs]             = useState<AuditLog[]>([])
   const [totalPages, setTotalPages] = useState(1)
@@ -44,8 +37,8 @@ export function AuditLogs() {
   return (
     <div className="space-y-6">
       <div className="mb-6">
-        <h1 className="text-xl font-semibold text-primary">Audit Logs</h1>
-        <p className="text-sm text-muted mt-0.5">All administrative and applicant actions</p>
+        <h1 className="text-xl font-semibold text-primary">{t('admin.audit.title')}</h1>
+        <p className="text-sm text-muted mt-0.5">{t('admin.audit.subtitle')}</p>
       </div>
 
       <div className="bg-surface border border-border rounded-2xl shadow-sm overflow-hidden">
@@ -62,7 +55,7 @@ export function AuditLogs() {
             ))}
           </ul>
         ) : logs.length === 0 ? (
-          <div className="px-6 py-10 text-center text-sm text-muted">No audit log entries found.</div>
+          <div className="px-6 py-10 text-center text-sm text-muted">{t('admin.audit.empty')}</div>
         ) : (
           <ul className="divide-y divide-border">
             {logs.map(log => (
@@ -72,16 +65,16 @@ export function AuditLogs() {
                   <div className="flex items-center gap-1.5 flex-wrap">
                     <span className={`font-medium text-sm ${actionColor(log.action)}`}>{log.action}</span>
                     <span className="text-muted text-xs">·</span>
-                    <span className="text-muted text-xs">by {log.adminId.slice(0, 8)}</span>
+                    <span className="text-muted text-xs">{t('admin.audit.by', { id: log.adminId.slice(0, 8) })}</span>
                   </div>
                   <div className="flex items-center gap-1.5 mt-0.5 text-xs text-muted flex-wrap">
                     {log.targetAlias && (
                       <>
-                        <span>Alias: {log.targetAlias}</span>
+                        <span>{t('admin.audit.targetAlias', { alias: log.targetAlias })}</span>
                         <span>·</span>
                       </>
                     )}
-                    <span>{timeAgo(log.timestamp)}</span>
+                    <span>{timeAgo(new Date(log.timestamp).getTime())}</span>
                   </div>
                   {log.ipAddress && (
                     <div className="mt-0.5 text-xs" style={{ color: '#B0AFAD' }}>{log.ipAddress}</div>
@@ -99,15 +92,15 @@ export function AuditLogs() {
           disabled={page <= 1}
           className="rounded-full px-4 py-1.5 text-sm border border-border text-muted hover:text-primary hover:bg-bg disabled:opacity-40 transition-colors"
         >
-          Prev
+          {t('admin.audit.prev')}
         </button>
-        <span className="text-muted">Page {page} of {totalPages}</span>
+        <span className="text-muted">{t('admin.audit.page', { current: page, total: totalPages })}</span>
         <button
           onClick={() => setPage(p => p + 1)}
           disabled={page >= totalPages}
           className="rounded-full px-4 py-1.5 text-sm border border-border text-muted hover:text-primary hover:bg-bg disabled:opacity-40 transition-colors"
         >
-          Next
+          {t('admin.audit.next')}
         </button>
       </div>
     </div>
