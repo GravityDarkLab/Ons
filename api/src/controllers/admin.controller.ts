@@ -162,7 +162,7 @@ export async function getApplicantIdentityHandler(c: Context): Promise<Response>
 
 /**
  * DELETE /api/v1/admin/applicants/:id
- * Soft-deletes by setting status to "withdrawn".
+ * Soft-deletes by setting status to "inactive".
  */
 export async function deleteApplicant(c: Context): Promise<Response> {
   const id = c.req.param("id") ?? "";
@@ -187,7 +187,7 @@ export async function deleteApplicant(c: Context): Promise<Response> {
       targetApplicantId: new ObjectId(id),
     });
 
-    return c.json({ success: true, message: "Applicant withdrawn" });
+    return c.json({ success: true, message: "Applicant deactivated" });
   } catch (err) {
     const message = err instanceof Error ? err.message : "Failed to deactivate applicant";
     return c.json({ success: false, error: message }, 500);

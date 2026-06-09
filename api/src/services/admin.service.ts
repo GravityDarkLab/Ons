@@ -129,7 +129,7 @@ export async function getApplicantIdentity(
 }
 
 /**
- * Sets an applicant's status to "withdrawn" (soft delete).
+ * Sets an applicant's status to "inactive" (soft delete).
  */
 export async function deactivateApplicant(id: string): Promise<boolean> {
   const db = await getDb();
