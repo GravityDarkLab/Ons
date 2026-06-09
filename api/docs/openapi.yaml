@@ -413,7 +413,8 @@ components:
           description: |
             64-character hex token used as the login identifier for the applicant portal.
             Append to the portal URL as `?token=<value>` so the login form is pre-filled.
-            Stored in plaintext on the server (used as a lookup key). Treat it like a
+            Stored as a SHA-256 hash on the server — the raw token is given to the applicant
+            only at form submission and is never persisted in plaintext. Treat it like a
             username — it is not sufficient to log in without a password.
             No password is generated at submission time. The applicant sets their own
             password on first login via `POST /api/v1/profile/set-password`.

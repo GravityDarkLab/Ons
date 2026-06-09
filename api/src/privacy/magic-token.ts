@@ -1,4 +1,4 @@
-import { randomBytes, randomInt } from "crypto";
+import { createHash, randomBytes, randomInt } from "crypto";
 
 const WORDS: readonly string[] = [
   "amber", "anchor", "apple", "arch", "arrow", "aspen", "atlas", "autumn",
@@ -28,6 +28,11 @@ const WORDS: readonly string[] = [
 
 export function generateMagicToken(): string {
   return randomBytes(32).toString("hex");
+}
+
+/** SHA-256 of the raw token — stored in the DB so plaintext never persists. */
+export function hashMagicToken(token: string): string {
+  return createHash("sha256").update(token).digest("hex");
 }
 
 export function generateReadablePassword(): string {

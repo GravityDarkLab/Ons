@@ -17,6 +17,7 @@ import { getDb, closeDb } from "../db/connection.js";
 import { getApplicantsCollection, getIdentitiesCollection } from "../db/collections.js";
 import { decrypt } from "../privacy/encryption.js";
 import { hashInstagram } from "../privacy/hash.js";
+import { hashMagicToken } from "../privacy/magic-token.js";
 import { env } from "../config/env.js";
 
 if (env.nodeEnv === "production") {
@@ -73,10 +74,17 @@ async function migrate() {
     // Insert a stub — these users cannot log in until they re-submit or are reset
     const result = await appCol.updateMany(
       { magicToken: { $exists: false } },
-      { $set: { magicToken: "", passwordHash: "", scoreThreshold: 0.8 } }
+      { $set: { magicToken: hashMagicToken(""), passwordHash: "", scoreThreshold: 0.8 } }
     );
     console.log(`[migrate] applicants: backfilled magicToken stub on ${result.modifiedCount} rows`);
   }
+
+  // ── 4. NOTE: plaintext magicToken migration ───────────────────────────────
+  // If there are applicants whose magicToken was stored in plaintext (before the
+  // hash-on-write change), those tokens cannot be re-hashed here (SHA-256 is
+  // one-way). Affected users would need to re-submit the form.
+  // This project was not deployed with plaintext tokens in production, so no
+  // action is needed. Add logic here if rolling out to a live dataset.
 
   console.log("[migrate] ✅  Migration complete.");
   await closeDb();

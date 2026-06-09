@@ -10,7 +10,7 @@ import {
 import { generateUniqueAlias } from "../privacy/alias.generator.js";
 import { storeIdentity, checkInstagramExists } from "../privacy/identity.service.js";
 import { verifySubmissionKey } from "../privacy/submission-key.js";
-import { generateMagicToken } from "../privacy/magic-token.js";
+import { generateMagicToken, hashMagicToken } from "../privacy/magic-token.js";
 import { embedApplicant } from "./embedding.service.js";
 
 export interface FormSubmissionResult {
@@ -108,7 +108,7 @@ export async function processFormSubmission(
     questionnaireVersion: input.questionnaireVersion,
     answers: publicAnswers,
     status: "applied",
-    magicToken,
+    magicToken: hashMagicToken(magicToken), // store hash; raw token returned to user only
     passwordHash: null,
     scoreThreshold: 0.8,
     createdAt: now,

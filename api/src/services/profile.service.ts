@@ -11,6 +11,7 @@ import {
   type ApplicantMatchView,
 } from "./match.service.js";
 import { resolveIdentityById } from "../privacy/identity.service.js";
+import { hashMagicToken } from "../privacy/magic-token.js";
 import { writeAuditLog } from "../middleware/audit.middleware.js";
 import { generateIceBreakers } from "./icebreaker.service.js";
 
@@ -28,7 +29,7 @@ export async function loginWithMagicToken(
   const db  = await getDb();
   const col = getApplicantsCollection(db);
 
-  const doc = await col.findOne({ magicToken });
+  const doc = await col.findOne({ magicToken: hashMagicToken(magicToken) });
   if (!doc) return null;
 
   if (doc.passwordHash === null) return { status: "first_login" };
@@ -45,7 +46,7 @@ export async function setPassword(
   const db  = await getDb();
   const col = getApplicantsCollection(db);
 
-  const doc = await col.findOne({ magicToken });
+  const doc = await col.findOne({ magicToken: hashMagicToken(magicToken) });
   if (!doc) return null;
 
   if (doc.passwordHash !== null) {

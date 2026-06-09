@@ -34,6 +34,7 @@ export interface ApplicantMatchView {
   score: number;
   status: MatchStatus;
   perspective: MatchPerspective;
+  contactRequestedAt?: Date; // when the initiator clicked "contact" — shown to target
   iceBreakers?: string[];
   dateIdeas?: string[];
 }
@@ -59,9 +60,12 @@ export function toMatchView(doc: MatchDoc, actorId: ObjectId): ApplicantMatchVie
     perspective,
   };
 
-  if (perspective === "initiator" && doc.status === "in_progress") {
-    if (doc.iceBreakers) view.iceBreakers = doc.iceBreakers;
-    if (doc.dateIdeas)   view.dateIdeas   = doc.dateIdeas;
+  if (doc.status === "in_progress") {
+    if (doc.contactRequestedAt) view.contactRequestedAt = doc.contactRequestedAt;
+    if (perspective === "initiator") {
+      if (doc.iceBreakers) view.iceBreakers = doc.iceBreakers;
+      if (doc.dateIdeas)   view.dateIdeas   = doc.dateIdeas;
+    }
   }
 
   return view;
@@ -259,7 +263,7 @@ export async function saveMatchProposals(
     const existing = await col.findOne({
       applicantAId: p.applicantAId,
       applicantBId: p.applicantBId,
-      status: { $nin: ["failed", "expired", "declined"] },
+      status: { $nin: ["expired", "declined"] },
     });
     if (existing) continue;
 

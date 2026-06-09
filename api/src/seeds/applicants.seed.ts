@@ -22,6 +22,7 @@ import {
 import { generateUniqueAlias } from "../privacy/alias.generator.js";
 import { encrypt } from "../privacy/encryption.js";
 import { hashInstagram, normalizeInstagram } from "../privacy/hash.js";
+import { hashMagicToken } from "../privacy/magic-token.js";
 import { env } from "../config/env.js";
 
 // ─── Safety guard ─────────────────────────────────────────────────────────────
@@ -343,13 +344,14 @@ async function seed() {
     const applicantId = new ObjectId();
 
     try {
+      const rawToken = Buffer.from(crypto.getRandomValues(new Uint8Array(32))).toString("hex");
       await applicants.insertOne({
         _id: applicantId,
         alias,
         questionnaireVersion: QUESTIONNAIRE_VERSION,
         answers,
         status: randomStatus(),
-        magicToken: Buffer.from(crypto.getRandomValues(new Uint8Array(32))).toString("hex"),
+        magicToken: hashMagicToken(rawToken), // store hash; raw token discarded (dev seed)
         passwordHash: "seed-placeholder-not-usable",
         scoreThreshold: 0.8,
         createdAt,
