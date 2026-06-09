@@ -92,7 +92,8 @@ export default function Apply() {
           disclaimer_agreed: true as const,
         },
       }, submissionKey ?? '')
-      navigate(`/success?alias=${encodeURIComponent(result.alias)}&id=${result.applicantId}`)
+      const tokenParam = result.magicToken ? `&token=${encodeURIComponent(result.magicToken)}` : ''
+      navigate(`/success?alias=${encodeURIComponent(result.alias)}&id=${result.applicantId}${tokenParam}`)
     } catch (err) {
       setSubmitError(err instanceof Error ? err.message : t('apply.error'))
       setIsSubmitting(false)

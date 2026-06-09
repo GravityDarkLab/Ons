@@ -99,10 +99,16 @@
 
   "success": {
     "title": "Du bist dabei.",
-    "subtitle": "Wir melden uns, wenn wir dein Match gefunden haben.",
+    "subtitle": "Speichere diesen Link — er ist der einzige Weg zu deinem Profil.",
     "aliasLabel": "Dein Aliasname ist",
-    "aliasHint": "Behalte diesen Aliasnamen — so werden wir dich ansprechen, wenn wir uns melden.",
-    "privacy": "In der Zwischenzeit ist deine Identität sicher verschlüsselt. Wir teilen deine Daten niemals mit Dritten.",
+    "aliasHint": "Das ist dein Codename. Wir verwenden ihn, wenn wir uns bei dir melden.",
+    "warning": "Das ist der einzige Weg zu deinem Profil. Sobald du diese Seite verlässt, können wir ihn dir nicht mehr zeigen.",
+    "linkLabel": "Dein Profillink",
+    "copyLink": "Link kopieren",
+    "copied": "Kopiert!",
+    "download": ".txt herunterladen",
+    "done": "Fertig →",
+    "laterHint": "Du kannst später auch über /profile/login mit deinem Magic-Link auf dein Profil zugreifen.",
     "backHome": "Zurück zur Startseite"
   },
 

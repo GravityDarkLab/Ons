@@ -99,10 +99,16 @@
 
   "success": {
     "title": "You're in.",
-    "subtitle": "We'll reach out when we find your match.",
+    "subtitle": "Save this link — it's the only way to access your profile.",
     "aliasLabel": "Your alias is",
-    "aliasHint": "Keep this alias safe — it's how we'll refer to you when we reach out.",
-    "privacy": "In the meantime, your identity is safely encrypted. We'll never share your information with third parties.",
+    "aliasHint": "This is your codename. We'll use it when we reach out.",
+    "warning": "This is the only way to access your profile. Once you leave this page, we cannot show it to you again.",
+    "linkLabel": "Your profile link",
+    "copyLink": "Copy link",
+    "copied": "Copied!",
+    "download": "Download .txt",
+    "done": "Done →",
+    "laterHint": "You can also access your profile later at /profile/login with your magic link.",
     "backHome": "Back to home"
   },
 

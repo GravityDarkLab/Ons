@@ -99,10 +99,16 @@
 
   "success": {
     "title": "C'est parti.",
-    "subtitle": "Nous vous contacterons quand nous aurons trouvé votre match.",
+    "subtitle": "Sauvegardez ce lien — c'est le seul moyen d'accéder à votre profil.",
     "aliasLabel": "Votre alias est",
-    "aliasHint": "Gardez cet alias précieusement — c'est ainsi que nous vous désignerons.",
-    "privacy": "En attendant, votre identité est chiffrée en toute sécurité. Nous ne partagerons jamais vos informations avec des tiers.",
+    "aliasHint": "C'est votre nom de code. Nous l'utiliserons lorsque nous vous contacterons.",
+    "warning": "C'est le seul moyen d'accéder à votre profil. Une fois que vous quittez cette page, nous ne pourrons plus vous le montrer.",
+    "linkLabel": "Votre lien de profil",
+    "copyLink": "Copier le lien",
+    "copied": "Copié !",
+    "download": "Télécharger .txt",
+    "done": "Terminé →",
+    "laterHint": "Vous pouvez également accéder à votre profil plus tard sur /profile/login avec votre lien magique.",
     "backHome": "Retour à l'accueil"
   },
 
