@@ -7,5 +7,7 @@ export interface IdentityDoc {
   encryptedInstagram: string;
   encryptionIv: string;
   encryptionTag: string;
+  /** HMAC-SHA256 of normalized handle — enables O(1) duplicate detection without decryption */
+  instagramHash: string;
   createdAt: Date;
 }

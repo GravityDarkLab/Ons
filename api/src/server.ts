@@ -17,6 +17,8 @@ import { formRoutes } from "./routes/form.routes.js";
 import { adminRoutes } from "./routes/admin.routes.js";
 import { matchingRoutes } from "./routes/matching.routes.js";
 import { matchRoutes } from "./routes/match.routes.js";
+import { profileRoutes } from "./routes/profile.routes.js";
+import { runScheduledMatchingJob } from "./jobs/matching.job.js";
 
 const API_PREFIX_V1 = "/api/v1";
 
@@ -52,6 +54,7 @@ app.route(API_PREFIX_V1 + "/form", formRoutes);
 app.route(API_PREFIX_V1 + "/admin", adminRoutes);
 app.route(API_PREFIX_V1 + "/admin/matches", matchRoutes);
 app.route(API_PREFIX_V1 + "/matching", matchingRoutes);
+app.route(API_PREFIX_V1 + "/profile", profileRoutes);
 
 // Global 404 handler
 app.notFound((c) => {
@@ -73,6 +76,13 @@ async function bootstrap() {
     const db = await getDb();
     await ensureIndexes(db);
     console.log(`[SERVER] Starting on port ${env.port}...`);
+    // Scheduled matching job (optional)
+    const intervalHours = parseFloat(process.env.MATCHING_JOB_INTERVAL_HOURS ?? "");
+    if (!isNaN(intervalHours) && intervalHours > 0) {
+      const ms = intervalHours * 3_600_000;
+      setInterval(runScheduledMatchingJob, ms);
+      console.info(`[SERVER] Matching job scheduled every ${intervalHours}h`);
+    }
   } catch (err) {
     console.error("[SERVER] Fatal startup error:", err);
     process.exit(1);

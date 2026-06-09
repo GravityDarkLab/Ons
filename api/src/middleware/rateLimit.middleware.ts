@@ -124,3 +124,22 @@ export const adminRateLimiter = createRateLimiter({
   maxRequests: 200,
   message: "Too many admin requests. Please wait before trying again.",
 });
+
+/**
+ * Rate limiter for the applicant profile login endpoint.
+ * 10 attempts per minute per IP — mirrors admin login protection.
+ */
+export const profileLoginRateLimiter = createRateLimiter({
+  windowMs: 60 * 1000,
+  maxRequests: 10,
+  message: "Too many login attempts. Please wait before trying again.",
+});
+
+/**
+ * General rate limiter for authenticated applicant profile endpoints.
+ */
+export const profileRateLimiter = createRateLimiter({
+  windowMs: 60 * 1000,
+  maxRequests: 100,
+  message: "Too many requests. Please wait before trying again.",
+});

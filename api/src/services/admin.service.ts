@@ -142,7 +142,7 @@ export async function deactivateApplicant(id: string): Promise<boolean> {
 
   const result = await col.updateOne(
     { _id: objectId },
-    { $set: { status: "withdrawn", updatedAt: new Date() } }
+    { $set: { status: "inactive", updatedAt: new Date() } }
   );
 
   return result.matchedCount > 0;

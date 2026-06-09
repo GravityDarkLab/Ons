@@ -2,11 +2,11 @@ import { ObjectId } from "mongodb";
 import { getDb } from "../db/connection.js";
 import { getMatchesCollection, getApplicantsCollection } from "../db/collections.js";
 import type { MatchDoc, MatchStatus } from "../models/match.model.js";
-import type { ApplicantDoc } from "../models/applicant.model.js";
+import type { ApplicantDoc, ApplicantStatus } from "../models/applicant.model.js";
 import type { CoupleProposal } from "../matching/engine.js";
 import type { PaginatedResult } from "./admin.service.js";
 
-// ── View type (ObjectIds serialised to strings) ───────────────────────────────
+// ── Admin view (ObjectIds serialised to strings) ──────────────────────────────
 
 export type MatchView = Omit<MatchDoc, "_id" | "applicantAId" | "applicantBId"> & {
   id: string;
@@ -24,12 +24,142 @@ function toView(doc: MatchDoc): MatchView {
   };
 }
 
-// ── CRUD ──────────────────────────────────────────────────────────────────────
+// ── Applicant-facing view (privacy-preserving, perspective-aware) ─────────────
+
+export type MatchPerspective = "initiator" | "target" | "none";
+
+export interface ApplicantMatchView {
+  matchId: string;
+  partnerAlias: string;
+  score: number;
+  status: MatchStatus;
+  perspective: MatchPerspective;
+  iceBreakers?: string[];
+  dateIdeas?: string[];
+}
 
 /**
- * Returns a paginated list of matches.
- * Optionally filtered by status or by a participant's applicant ID.
+ * Pure function — no DB calls. Projects a MatchDoc into the applicant-facing view
+ * from the perspective of `actorId`. Instagram handles are never included.
  */
+export function toMatchView(doc: MatchDoc, actorId: ObjectId): ApplicantMatchView {
+  const isA       = doc.applicantAId.equals(actorId);
+  const partnerAlias = isA ? doc.applicantBAlias : doc.applicantAAlias;
+
+  let perspective: MatchPerspective = "none";
+  if (doc.status === "in_progress" && doc.initiatorId) {
+    perspective = doc.initiatorId.equals(actorId) ? "initiator" : "target";
+  }
+
+  const view: ApplicantMatchView = {
+    matchId: doc._id.toHexString(),
+    partnerAlias,
+    score: doc.score,
+    status: doc.status,
+    perspective,
+  };
+
+  if (perspective === "initiator" && doc.status === "in_progress") {
+    if (doc.iceBreakers) view.iceBreakers = doc.iceBreakers;
+    if (doc.dateIdeas)   view.dateIdeas   = doc.dateIdeas;
+  }
+
+  return view;
+}
+
+// ── State-machine guard ────────────────────────────────────────────────────────
+
+type MatchAction = "contact" | "respond" | "outcome";
+
+/**
+ * Asserts that `actorId` may perform `action` on `match`.
+ * Throws a descriptive Error on any violation — callers map to 403/409.
+ */
+export function assertMatchTransition(
+  match: MatchDoc,
+  action: MatchAction,
+  actorId: ObjectId
+): void {
+  const isParticipant =
+    match.applicantAId.equals(actorId) || match.applicantBId.equals(actorId);
+
+  if (action === "contact") {
+    if (match.status !== "proposed") {
+      throw new Error(`Cannot request contact on a match with status "${match.status}"`);
+    }
+    if (!isParticipant) {
+      throw new Error("Not a participant in this match");
+    }
+    return;
+  }
+
+  if (action === "respond") {
+    if (match.status !== "in_progress") {
+      throw new Error(`Cannot respond to a match with status "${match.status}"`);
+    }
+    if (!isParticipant) {
+      throw new Error("Not a participant in this match");
+    }
+    if (match.initiatorId?.equals(actorId)) {
+      throw new Error("Initiator cannot respond to their own contact request");
+    }
+    return;
+  }
+
+  if (action === "outcome") {
+    if (match.status !== "dating" && match.status !== "in_progress") {
+      throw new Error(`Cannot report outcome on a match with status "${match.status}"`);
+    }
+    if (!isParticipant) {
+      throw new Error("Not a participant in this match");
+    }
+    return;
+  }
+}
+
+// ── Shared helpers ─────────────────────────────────────────────────────────────
+
+/**
+ * Expires all proposed/in_progress matches for the given applicant IDs.
+ * Called when someone accepts contact (other proposed matches expire) or deactivates.
+ */
+export async function expireConflictingMatches(applicantIds: ObjectId[]): Promise<void> {
+  const db  = await getDb();
+  const col = getMatchesCollection(db);
+  const now = new Date();
+
+  await col.updateMany(
+    {
+      $or: [
+        { applicantAId: { $in: applicantIds } },
+        { applicantBId: { $in: applicantIds } },
+      ],
+      status: { $in: ["proposed", "in_progress"] },
+    },
+    { $set: { status: "expired", updatedAt: now } }
+  );
+}
+
+/**
+ * Transitions multiple applicants to a new status in a single updateMany.
+ */
+export async function transitionApplicantStatus(
+  ids: ObjectId[],
+  newStatus: ApplicantStatus,
+  extra?: Partial<Pick<ApplicantDoc, "deletionScheduledAt">>
+): Promise<void> {
+  const db  = await getDb();
+  const col = getApplicantsCollection(db);
+  const now = new Date();
+
+  await col.updateMany(
+    { _id: { $in: ids } },
+    { $set: { status: newStatus, updatedAt: now, ...extra } }
+  );
+}
+
+// ── CRUD ──────────────────────────────────────────────────────────────────────
+
 export async function listMatches(
   page: number,
   limit: number,
@@ -81,10 +211,6 @@ export async function listMatches(
   };
 }
 
-/**
- * Partially updates a match (status and/or notes).
- * Returns the updated view, or null if not found.
- */
 export async function updateMatch(
   id: string,
   updates: { status?: MatchStatus; notes?: string },
@@ -104,9 +230,6 @@ export async function updateMatch(
   return result ? toView(result) : null;
 }
 
-/**
- * Hard-deletes a match. Returns true if a document was removed.
- */
 export async function deleteMatch(id: string): Promise<boolean> {
   const db  = await getDb();
   const col = getMatchesCollection(db);
@@ -120,14 +243,6 @@ export async function deleteMatch(id: string): Promise<boolean> {
 
 // ── Proposal persistence ──────────────────────────────────────────────────────
 
-/**
- * Persists couple proposals generated by the matching engine.
- *
- * Skips a pair if an active (non-failed) match already exists for it.
- * Handles MongoDB duplicate-key errors (11000) for concurrent saves.
- *
- * Returns the count of newly inserted documents.
- */
 export async function saveMatchProposals(
   proposals: CoupleProposal[],
   algorithm: string,
@@ -141,11 +256,10 @@ export async function saveMatchProposals(
   let saved = 0;
 
   for (const p of proposals) {
-    // Skip if an active match already exists for this canonical pair
     const existing = await col.findOne({
       applicantAId: p.applicantAId,
       applicantBId: p.applicantBId,
-      status: { $ne: "failed" },
+      status: { $nin: ["failed", "expired", "declined"] },
     });
     if (existing) continue;
 
@@ -164,7 +278,6 @@ export async function saveMatchProposals(
       });
       saved++;
     } catch (err: unknown) {
-      // Race condition duplicate — skip silently
       if ((err as { code?: number })?.code !== 11000) throw err;
     }
   }
@@ -172,12 +285,8 @@ export async function saveMatchProposals(
   return saved;
 }
 
-/**
- * Loads all active applicants from the DB.
- * Used by the matching controller to generate couple proposals.
- */
 export async function loadActiveApplicants(): Promise<ApplicantDoc[]> {
   const db  = await getDb();
   const col = getApplicantsCollection(db);
-  return col.find({ status: "active" }).toArray();
+  return col.find({ status: { $in: ["applied", "matched"] } }).toArray();
 }

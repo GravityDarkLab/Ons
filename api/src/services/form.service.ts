@@ -8,39 +8,37 @@ import {
   getSensitiveQuestionIds,
 } from "./questionnaire.service.js";
 import { generateUniqueAlias } from "../privacy/alias.generator.js";
-import { storeIdentity } from "../privacy/identity.service.js";
+import { storeIdentity, checkInstagramExists } from "../privacy/identity.service.js";
 import { verifySubmissionKey } from "../privacy/submission-key.js";
+import { generateMagicToken, generateReadablePassword } from "../privacy/magic-token.js";
 import { embedApplicant } from "./embedding.service.js";
 
 export interface FormSubmissionResult {
   alias: string;
   applicantId: string;
+  magicToken: string;
+  plainPassword: string;
 }
 
-/**
- * Processes a new applicant form submission.
- *
- * Steps:
- * 1. Validate the questionnaire version exists and is active
- * 2. Cross-check answer keys against known question IDs
- * 3. Separate sensitive answers from public answers
- * 4. Generate a unique alias
- * 5. Persist applicant (non-sensitive answers)
- * 6. Persist encrypted identity
- */
+export class DuplicateInstagramError extends Error {
+  readonly statusCode = 409;
+  constructor() {
+    super(
+      "An account already exists for this handle. " +
+      "Check your saved access link and password. If you need help, contact support."
+    );
+  }
+}
+
 export async function processFormSubmission(
   input: FormSubmissionInput,
   submissionKey: string
 ): Promise<FormSubmissionResult> {
   // 1. Load questionnaire
-  const questionnaire = await getQuestionnaireByVersion(
-    input.questionnaireVersion
-  );
+  const questionnaire = await getQuestionnaireByVersion(input.questionnaireVersion);
 
   if (!questionnaire) {
-    throw new Error(
-      `Questionnaire not found`
-    );
+    throw new Error("Questionnaire not found");
   }
 
   if (!questionnaire.isActive) {
@@ -49,24 +47,20 @@ export async function processFormSubmission(
     );
   }
 
-  // Verify the submission key — proves the client obtained the version from
-  // GET /questionnaire rather than guessing semver strings.
+  // Verify the submission key
   if (!verifySubmissionKey(input.questionnaireVersion, submissionKey)) {
     throw new Error("Invalid submission key.");
   }
 
-  // 2. Cross-check answer keys against questionnaire question IDs
-  const questionMap = buildQuestionMap(questionnaire);
+  // 2. Cross-check answer keys
+  const questionMap  = buildQuestionMap(questionnaire);
   const sensitiveIds = getSensitiveQuestionIds(questionnaire);
 
-  const unknownKeys = Object.keys(input.answers).filter(
-    (key) => !questionMap.has(key)
-  );
+  const unknownKeys = Object.keys(input.answers).filter((key) => !questionMap.has(key));
   if (unknownKeys.length > 0) {
     throw new Error(`Unknown answer keys: ${unknownKeys.join(", ")}`);
   }
 
-  // Check all required questions are answered
   for (const [id, question] of questionMap) {
     if (question.required && !(id in input.answers)) {
       throw new Error(`Required field missing: ${id}`);
@@ -74,7 +68,7 @@ export async function processFormSubmission(
   }
 
   // 3. Separate sensitive and public answers
-  const publicAnswers: Record<string, unknown> = {};
+  const publicAnswers:    Record<string, unknown> = {};
   const sensitiveAnswers: Record<string, unknown> = {};
 
   for (const [key, value] of Object.entries(input.answers)) {
@@ -85,8 +79,15 @@ export async function processFormSubmission(
     }
   }
 
-  // 4. Generate unique alias
-  const db = await getDb();
+  const instagramHandle = sensitiveAnswers["instagram_handle"] as string;
+
+  // 4. Duplicate detection — O(1) hash lookup, no decryption
+  if (await checkInstagramExists(instagramHandle)) {
+    throw new DuplicateInstagramError();
+  }
+
+  // 5. Generate unique alias
+  const db         = await getDb();
   const applicants = getApplicantsCollection(db);
   const existingAliases = await applicants
     .find({}, { projection: { alias: 1 } })
@@ -95,8 +96,13 @@ export async function processFormSubmission(
 
   const alias = generateUniqueAlias(existingAliases);
 
-  // 5. Persist applicant (non-sensitive answers, no instagram handle)
-  const now = new Date();
+  // 6. Generate access credentials
+  const magicToken    = generateMagicToken();
+  const plainPassword = generateReadablePassword();
+  const passwordHash  = await Bun.password.hash(plainPassword);
+
+  // 7. Persist applicant
+  const now         = new Date();
   const applicantId = new ObjectId();
 
   await applicants.insertOne({
@@ -104,22 +110,21 @@ export async function processFormSubmission(
     alias,
     questionnaireVersion: input.questionnaireVersion,
     answers: publicAnswers,
-    status: "active",
+    status: "applied",
+    magicToken,
+    passwordHash,
+    scoreThreshold: 0.8,
     createdAt: now,
     updatedAt: now,
   });
 
-  // 6. Store encrypted identity
-  const instagramHandle = sensitiveAnswers["instagram_handle"] as string;
+  // 8. Store encrypted identity with hash
   await storeIdentity(applicantId, alias, instagramHandle);
 
-  // 7. Pre-compute embeddings for the embedding-cosine algorithm.
-  // Fire-and-forget — never blocks or fails the form submission.
-  // If the embedding provider is unavailable, prepare() will compute
-  // missing embeddings on the next matching run.
+  // 9. Pre-compute embeddings (fire-and-forget)
   embedApplicant(applicantId, publicAnswers).catch((err) =>
     console.error(`[form] Background embedding failed for ${alias}:`, err)
   );
 
-  return { alias, applicantId: applicantId.toHexString() };
+  return { alias, applicantId: applicantId.toHexString(), magicToken, plainPassword };
 }

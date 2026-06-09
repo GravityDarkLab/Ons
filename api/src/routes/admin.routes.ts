@@ -13,7 +13,7 @@ import {
   getAuditLogs,
   createQuestionnaireHandler,
 } from "../controllers/admin.controller.js";
-import { requireAdmin } from "../middleware/auth.middleware.js";
+import { requireAdmin, requireRole } from "../middleware/auth.middleware.js";
 import { adminLoginRateLimiter, adminRateLimiter } from "../middleware/rateLimit.middleware.js";
 
 const adminRoutes = new Hono();
@@ -55,6 +55,7 @@ adminRoutes.get("/applicants/:id", requireAdmin, getApplicant);
 adminRoutes.get(
   "/applicants/:id/identity",
   requireAdmin,
+  requireRole("super_admin"),
   getApplicantIdentityHandler
 );
 adminRoutes.delete("/applicants/:id", requireAdmin, deleteApplicant);

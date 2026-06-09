@@ -63,12 +63,14 @@ export async function ensureIndexes(db: Db): Promise<void> {
 
   const applicants = getApplicantsCollection(db);
   await _createIndexIfNotExists(applicants, { alias: 1 }, { unique: true });
+  await _createIndexIfNotExists(applicants, { magicToken: 1 }, { unique: true, sparse: true });
   await _createIndexIfNotExists(applicants, { status: 1 });
   await _createIndexIfNotExists(applicants, { createdAt: -1 });
 
   const identities = getIdentitiesCollection(db);
   await _createIndexIfNotExists(identities, { applicantId: 1 }, { unique: true });
   await _createIndexIfNotExists(identities, { alias: 1 });
+  await _createIndexIfNotExists(identities, { instagramHash: 1 }, { unique: true });
 
   const auditLogs = getAuditLogsCollection(db);
   await _createIndexIfNotExists(auditLogs, { timestamp: -1 });
@@ -89,6 +91,7 @@ export async function ensureIndexes(db: Db): Promise<void> {
   await _createIndexIfNotExists(matches, { score: -1 });
   await _createIndexIfNotExists(matches, { applicantAId: 1 });
   await _createIndexIfNotExists(matches, { applicantBId: 1 });
+  await _createIndexIfNotExists(matches, { initiatorId: 1 }, { sparse: true });
 
   console.info("[DB] Indexes verification done");
 
