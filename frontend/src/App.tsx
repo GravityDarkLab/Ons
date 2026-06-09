@@ -13,6 +13,8 @@ import InviteGate from './components/InviteGate'
 import Home from './pages/Home'
 import Apply from './pages/Apply'
 import Success from './pages/Success'
+import ProfileLoginPage from './pages/profile/ProfileLoginPage'
+import ProfileDashboard from './pages/profile/ProfileDashboard'
 
 export default function App() {
   return (
@@ -48,6 +50,10 @@ export default function App() {
             </AuthProvider>
           }
         />
+
+        {/* ── Applicant portal (Bearer JWT auth) ─────────────────────── */}
+        <Route path="/profile/login" element={<ProfileLoginPage />} />
+        <Route path="/profile" element={<ProfileDashboard />} />
 
         {/* ── Public form (invite gate) ─────────────────────────────── */}
         <Route
