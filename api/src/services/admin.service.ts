@@ -44,12 +44,14 @@ export async function adminLogin(
  * Returns a paginated list of applicants, optionally filtered by status
  * and/or a case-insensitive alias search string.
  */
+export type ApplicantView = Omit<ApplicantDoc, "_id" | "magicToken" | "passwordHash"> & { id: string };
+
 export async function listApplicants(
   page: number,
   limit: number,
   status?: ApplicantStatus,
   search?: string,
-): Promise<PaginatedResult<Omit<ApplicantDoc, "_id"> & { id: string }>> {
+): Promise<PaginatedResult<ApplicantView>> {
   const db = await getDb();
   const col = getApplicantsCollection(db);
 
@@ -82,7 +84,7 @@ export async function listApplicants(
  */
 export async function getApplicantById(
   id: string
-): Promise<(Omit<ApplicantDoc, "_id"> & { id: string }) | null> {
+): Promise<ApplicantView | null> {
   const db = await getDb();
   const col = getApplicantsCollection(db);
 
