@@ -31,14 +31,23 @@ export async function checkServerAvailable(): Promise<boolean> {
 
 // ── HTTP helpers ──────────────────────────────────────────────────────────────
 
+// Each smoke test run gets a unique IP block so rate limiters (per-IP) don't
+// aggregate requests across unrelated test cases.
+let _ipSeq = 0;
+function nextIp() { return `10.${Math.floor(_ipSeq / 256)}.${_ipSeq++ % 256}.1`; }
+
 export interface Opts {
   cookie?: string;
   bearer?: string;
   submissionKey?: string;
+  ip?: string;
 }
 
 export async function post(path: string, body: unknown, opts: Opts = {}) {
-  const h: Record<string, string> = { "Content-Type": "application/json" };
+  const h: Record<string, string> = {
+    "Content-Type":    "application/json",
+    "X-Forwarded-For": opts.ip ?? nextIp(),
+  };
   if (opts.cookie)        h["Cookie"]           = opts.cookie;
   if (opts.bearer)        h["Authorization"]    = `Bearer ${opts.bearer}`;
   if (opts.submissionKey) h["X-Submission-Key"] = opts.submissionKey;
@@ -59,7 +68,10 @@ export async function post(path: string, body: unknown, opts: Opts = {}) {
 }
 
 export async function del(path: string, body: unknown, opts: Opts = {}) {
-  const h: Record<string, string> = { "Content-Type": "application/json" };
+  const h: Record<string, string> = {
+    "Content-Type":    "application/json",
+    "X-Forwarded-For": opts.ip ?? nextIp(),
+  };
   if (opts.cookie)     h["Cookie"]        = opts.cookie;
   if (opts.bearer)     h["Authorization"] = `Bearer ${opts.bearer}`;
 
@@ -75,7 +87,9 @@ export async function del(path: string, body: unknown, opts: Opts = {}) {
 }
 
 export async function get(path: string, opts: Opts = {}) {
-  const h: Record<string, string> = {};
+  const h: Record<string, string> = {
+    "X-Forwarded-For": opts.ip ?? nextIp(),
+  };
   if (opts.cookie)  h["Cookie"]        = opts.cookie;
   if (opts.bearer)  h["Authorization"] = `Bearer ${opts.bearer}`;
 
