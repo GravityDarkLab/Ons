@@ -3,7 +3,31 @@ import { useParams, useNavigate, Link } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { fetchApplicant, fetchIdentity, deactivateApplicant, fetchMatches } from '../api/client'
 import Button from '../../components/ui/Button'
+import { useOptionalAuth } from '../context/AuthContext'
 import type { Applicant, ApplicantStatus, Match, MatchStatus } from '../types'
+
+// ── Icons ──────────────────────────────────────────────────────────────────────
+
+function LockIcon() {
+  return (
+    <svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor"
+      strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <rect x="4" y="9" width="12" height="10" rx="2" />
+      <path d="M7 9V6a3 3 0 0 1 6 0v3" />
+    </svg>
+  )
+}
+
+function ChevronLeftIcon() {
+  return (
+    <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor"
+      strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <path d="M10 3L5 8l5 5" />
+    </svg>
+  )
+}
+
+// ── Badge maps ─────────────────────────────────────────────────────────────────
 
 const MATCH_STATUS_BADGE: Record<MatchStatus, string> = {
   proposed:    'bg-border text-muted',
@@ -22,6 +46,190 @@ const STATUS_BADGE: Record<ApplicantStatus, string> = {
   inactive: 'bg-border text-muted',
 }
 
+// ── Status stepper ─────────────────────────────────────────────────────────────
+
+const STEPS: ApplicantStatus[] = ['applied', 'matched', 'dating', 'inactive']
+
+function StatusStepper({ status }: { status: ApplicantStatus }) {
+  const { t } = useTranslation()
+  // Map status to step index
+  const currentIdx = STEPS.indexOf(status)
+
+  return (
+    <div className="flex items-center gap-0">
+      {STEPS.map((step, idx) => {
+        const isCompleted = idx < currentIdx
+        const isCurrent   = idx === currentIdx
+
+        let circleClass: string
+        let labelClass: string
+        if (isCompleted) {
+          circleClass = 'bg-success text-white'
+          labelClass  = 'text-success'
+        } else if (isCurrent) {
+          circleClass = 'bg-accent text-white'
+          labelClass  = 'text-accent font-medium'
+        } else {
+          circleClass = 'border-2 border-border text-muted bg-surface'
+          labelClass  = 'text-muted'
+        }
+
+        return (
+          <div key={step} className="flex items-center">
+            <div className="flex flex-col items-center gap-1.5">
+              <div className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-semibold ${circleClass}`}>
+                {isCompleted ? (
+                  <svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                    <path d="M2 6l3 3 5-5" />
+                  </svg>
+                ) : (
+                  <span>{idx + 1}</span>
+                )}
+              </div>
+              <span className={`text-xs whitespace-nowrap ${labelClass}`}>
+                {t(`admin.applicants.${step}`)}
+              </span>
+            </div>
+            {idx < STEPS.length - 1 && (
+              <div className={`h-0.5 w-8 mx-1 mb-5 rounded-full ${idx < currentIdx ? 'bg-success' : 'bg-border'}`} />
+            )}
+          </div>
+        )
+      })}
+    </div>
+  )
+}
+
+// ── Identity card ──────────────────────────────────────────────────────────────
+
+interface IdentityCardProps {
+  id: string
+  identity: string | null
+  setIdentity: (v: string) => void
+}
+
+function IdentityCard({ id, identity, setIdentity }: IdentityCardProps) {
+  const { t } = useTranslation()
+  const auth = useOptionalAuth()
+  const role = auth?.role ?? null
+
+  const [revealLoading, setRevealLoading] = useState(false)
+  const [error, setError]                 = useState('')
+
+  async function handleReveal() {
+    setRevealLoading(true); setError('')
+    try {
+      const res = await fetchIdentity(id)
+      setIdentity(res.instagramHandle)
+    } catch (err) {
+      setError(err instanceof Error ? err.message : t('admin.detail.auditNote'))
+    } finally {
+      setRevealLoading(false)
+    }
+  }
+
+  // super_admin or no auth context (fallback for tests / unauthenticated views)
+  if (role !== 'admin') {
+    return (
+      <div>
+        <p className="text-xs font-semibold text-muted uppercase tracking-wider mb-2">
+          {t('admin.detail.identity')}
+        </p>
+        {identity ? (
+          <div className="bg-amber-50 border border-amber-200 rounded-xl p-4">
+            <p className="font-mono text-sm text-accent">{identity}</p>
+            <p className="text-xs text-muted mt-1.5">{t('admin.detail.auditNote')}</p>
+          </div>
+        ) : (
+          <div className="bg-accent-light border border-accent/20 rounded-xl p-4 space-y-3">
+            {error && <p className="text-sm text-error">{error}</p>}
+            <Button variant="secondary" onClick={handleReveal} loading={revealLoading}>
+              {t('admin.detail.reveal')}
+            </Button>
+            <p className="text-xs text-muted">{t('admin.detail.auditNote')}</p>
+          </div>
+        )}
+      </div>
+    )
+  }
+
+  // role === 'admin' — show locked card
+  return (
+    <div>
+      <p className="text-xs font-semibold text-muted uppercase tracking-wider mb-2">
+        {t('admin.detail.identity')}
+      </p>
+      <div
+        style={{ backgroundColor: '#F3F2F0' }}
+        className="border border-border rounded-xl p-4 flex items-center gap-3 text-muted"
+      >
+        <LockIcon />
+        <span className="text-sm">Identity reveal requires super admin access</span>
+      </div>
+    </div>
+  )
+}
+
+// ── Match history ──────────────────────────────────────────────────────────────
+
+interface MatchHistoryProps {
+  matches: Match[]
+  applicantId: string
+}
+
+function MatchHistory({ matches, applicantId }: MatchHistoryProps) {
+  const { t } = useTranslation()
+
+  if (matches.length === 0) {
+    return (
+      <p className="text-sm text-muted">No matches yet</p>
+    )
+  }
+
+  return (
+    <div className="space-y-3">
+      {matches.map(m => {
+        const partnerId    = m.applicantAId === applicantId ? m.applicantBId    : m.applicantAId
+        const partnerAlias = m.applicantAId === applicantId ? m.applicantBAlias : m.applicantAAlias
+        const scorePercent = Math.round(m.score * 100)
+
+        return (
+          <div key={m.id} className="flex items-center justify-between gap-3">
+            <div className="min-w-0">
+              <div className="flex items-center gap-1.5 text-sm font-mono text-primary">
+                <span className="text-muted shrink-0">{m.applicantAAlias}</span>
+                <span className="text-muted shrink-0">↔</span>
+                <Link
+                  to={`/admin/applicants/${partnerId}`}
+                  className="text-accent hover:underline truncate"
+                >
+                  {partnerAlias}
+                </Link>
+              </div>
+              <div className="flex items-center gap-2 mt-1.5">
+                <div className="bg-border rounded-full h-1.5 w-24">
+                  <div
+                    style={{ width: `${scorePercent}%` }}
+                    className="h-1.5 bg-accent rounded-full"
+                  />
+                </div>
+                <span className="text-xs text-muted shrink-0">{scorePercent}%</span>
+              </div>
+            </div>
+            <div className="shrink-0">
+              <span className={`inline-flex px-2 py-0.5 rounded-full text-xs font-medium ${MATCH_STATUS_BADGE[m.status]}`}>
+                {t(`admin.matches.${m.status}`)}
+              </span>
+            </div>
+          </div>
+        )
+      })}
+    </div>
+  )
+}
+
+// ── Main component ─────────────────────────────────────────────────────────────
+
 export function ApplicantDetail() {
   const { t, i18n } = useTranslation()
   const isRTL = i18n.dir() === 'rtl'
@@ -30,7 +238,6 @@ export function ApplicantDetail() {
 
   const [applicant, setApplicant]             = useState<Applicant | null>(null)
   const [identity, setIdentity]               = useState<string | null>(null)
-  const [revealLoading, setRevealLoading]     = useState(false)
   const [withdrawLoading, setWithdrawLoading] = useState(false)
   const [error, setError]                     = useState('')
   const [matches, setMatches]                 = useState<Match[]>([])
@@ -39,17 +246,10 @@ export function ApplicantDetail() {
     if (!id) return
     setIdentity(null)
     setApplicant(null)
+    setMatches([])
     fetchApplicant(id).then(setApplicant)
     fetchMatches(1, 10, undefined, id).then(res => setMatches(res.data))
   }, [id])
-
-  async function handleReveal() {
-    if (!id) return
-    setRevealLoading(true); setError('')
-    try { const res = await fetchIdentity(id); setIdentity(res.instagramHandle) }
-    catch (err) { setError(err instanceof Error ? err.message : t('admin.detail.auditNote')) }
-    finally { setRevealLoading(false) }
-  }
 
   async function handleWithdraw() {
     if (!id || !confirm(t('admin.detail.withdrawConfirm'))) return
@@ -70,92 +270,120 @@ export function ApplicantDetail() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <Link to="/admin/applicants" className="inline-flex items-center gap-1.5 text-sm text-muted hover:text-primary transition-colors">
-          <svg className="h-3.5 w-3.5" style={isRTL ? { transform: 'scaleX(-1)' } : undefined}
-            xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-            strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-            <path d="M19 12H5M12 5l-7 7 7 7" />
-          </svg>
-          {t('admin.detail.back')}
-        </Link>
-        <div className="flex items-start justify-between mt-3">
-          <div>
-            <div className="flex items-center gap-3">
-              <h1 className="text-xl font-semibold font-mono text-primary">{applicant.alias}</h1>
-              <span className={`inline-flex px-2 py-0.5 rounded-full text-xs font-medium ${STATUS_BADGE[applicant.status]}`}>
-                {t(`admin.applicants.${applicant.status}`)}
-              </span>
-            </div>
-            <p className="text-xs text-muted mt-1">
-              {t('admin.detail.submitted', { date: new Date(applicant.createdAt).toLocaleString() })}
-            </p>
-          </div>
-          {applicant.status !== 'inactive' && (
-            <Button variant="secondary" onClick={handleWithdraw} loading={withdrawLoading}>
-              {t('admin.detail.withdraw')}
-            </Button>
-          )}
-        </div>
-      </div>
+      {/* Back link */}
+      <Link
+        to="/admin/applicants"
+        className="inline-flex items-center gap-1.5 text-sm text-muted hover:text-primary transition-colors"
+      >
+        <span style={isRTL ? { transform: 'scaleX(-1)', display: 'inline-block' } : undefined}>
+          <ChevronLeftIcon />
+        </span>
+        {t('admin.detail.back')}
+      </Link>
 
       {error && <p className="text-sm text-error">{error}</p>}
 
-      <div className="bg-surface border border-border rounded-2xl p-5">
-        <p className="text-sm font-medium text-primary mb-3">{t('admin.detail.identity')}</p>
-        {identity ? (
-          <p className="text-sm font-mono text-accent">{identity}</p>
-        ) : (
-          <Button variant="secondary" onClick={handleReveal} loading={revealLoading}>
-            {t('admin.detail.reveal')}
-          </Button>
-        )}
-        <p className="text-xs text-muted mt-2">{t('admin.detail.auditNote')}</p>
-      </div>
+      {/* Two-column layout */}
+      <div className="flex flex-col lg:flex-row gap-6">
 
-      {/* Matches for this applicant */}
-      {matches.length > 0 && (
-        <div className="bg-surface border border-border rounded-2xl p-5">
-          <div className="flex items-center justify-between mb-3">
-            <p className="text-sm font-medium text-primary">{t('admin.detail.matches')}</p>
-            <Link to={`/admin/matches?participantId=${id}`} className="text-xs text-accent hover:underline">
-              {t('admin.detail.viewAllMatches')}
-            </Link>
-          </div>
-          <div className="space-y-2">
-            {matches.map(m => {
-              const partnerId    = m.applicantAId === id ? m.applicantBId    : m.applicantAId
-              const partnerAlias = m.applicantAId === id ? m.applicantBAlias : m.applicantAAlias
-              return (
-                <div key={m.id} className="flex items-center justify-between gap-3">
-                  <Link to={`/admin/applicants/${partnerId}`}
-                    className="text-sm font-mono text-accent hover:underline truncate">
-                    {partnerAlias}
-                  </Link>
-                  <div className="flex items-center gap-2 shrink-0">
-                    <span className="text-xs text-muted">{Math.round(m.score * 100)}%</span>
-                    <span className={`inline-flex px-2 py-0.5 rounded-full text-xs font-medium ${MATCH_STATUS_BADGE[m.status]}`}>
-                      {t(`admin.matches.${m.status}`)}
+        {/* LEFT: Profile info card */}
+        <div className="lg:w-80 shrink-0">
+          <div className="bg-surface border border-border rounded-2xl p-6 shadow-sm space-y-5">
+            {/* Alias + status */}
+            <div>
+              <h1 className="text-2xl font-semibold text-primary tracking-tight font-mono">
+                {applicant.alias}
+              </h1>
+              <div className="mt-2 flex items-center gap-2">
+                <span className={`inline-flex px-2.5 py-0.5 rounded-full text-xs font-medium ${STATUS_BADGE[applicant.status]}`}>
+                  {t(`admin.applicants.${applicant.status}`)}
+                </span>
+              </div>
+            </div>
+
+            {/* Metadata */}
+            <dl className="space-y-2.5 text-sm">
+              <div className="flex justify-between gap-3">
+                <dt className="text-muted">{t('admin.detail.submitted', { date: '' }).replace(':', '').trim()}</dt>
+                <dd className="text-primary text-right">
+                  {new Date(applicant.createdAt).toLocaleDateString()}
+                </dd>
+              </div>
+              <div className="flex justify-between gap-3">
+                <dt className="text-muted">Version</dt>
+                <dd className="text-primary font-mono text-right">{applicant.questionnaireVersion}</dd>
+              </div>
+            </dl>
+
+            {/* Divider */}
+            <div className="border-t border-border" />
+
+            {/* Identity reveal section */}
+            <IdentityCard
+              id={id!}
+              identity={identity}
+              setIdentity={setIdentity}
+            />
+
+            {/* Divider */}
+            <div className="border-t border-border" />
+
+            {/* Answers */}
+            <div>
+              <p className="text-xs font-semibold text-muted uppercase tracking-wider mb-3">
+                {t('admin.detail.answers')}
+              </p>
+              <div className="space-y-2.5">
+                {Object.entries(applicant.answers).map(([key, value]) => (
+                  <div key={key} className="flex justify-between gap-3 text-sm">
+                    <span className="text-muted capitalize">{key.replace(/_/g, ' ')}</span>
+                    <span className="text-primary text-right break-words max-w-[60%]">
+                      {typeof value === 'boolean' ? (value ? 'Yes' : 'No') : String(value ?? '—')}
                     </span>
                   </div>
-                </div>
-              )
-            })}
+                ))}
+              </div>
+            </div>
+
+            {/* Withdraw action */}
+            {applicant.status !== 'inactive' && (
+              <>
+                <div className="border-t border-border" />
+                <Button variant="secondary" onClick={handleWithdraw} loading={withdrawLoading} className="w-full">
+                  {t('admin.detail.withdraw')}
+                </Button>
+              </>
+            )}
           </div>
         </div>
-      )}
 
-      <div className="bg-surface border border-border rounded-2xl p-5">
-        <p className="text-sm font-medium text-primary mb-4">{t('admin.detail.answers')}</p>
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-10 gap-y-4">
-          {Object.entries(applicant.answers).map(([key, value]) => (
-            <div key={key}>
-              <p className="text-xs text-muted capitalize">{key.replace(/_/g, ' ')}</p>
-              <p className="text-sm text-primary mt-0.5 break-words">
-                {typeof value === 'boolean' ? (value ? 'Yes' : 'No') : String(value ?? '—')}
-              </p>
+        {/* RIGHT: Match history + status stepper */}
+        <div className="flex-1 space-y-5">
+          {/* Status stepper card */}
+          <div className="bg-surface border border-border rounded-2xl p-6 shadow-sm">
+            <p className="text-xs font-semibold text-muted uppercase tracking-wider mb-4">
+              Status
+            </p>
+            <StatusStepper status={applicant.status} />
+          </div>
+
+          {/* Match history card — only rendered when there are matches */}
+          {matches.length > 0 && (
+            <div className="bg-surface border border-border rounded-2xl p-6 shadow-sm">
+              <div className="flex items-center justify-between mb-4">
+                <p className="text-xs font-semibold text-muted uppercase tracking-wider">
+                  {t('admin.detail.matches')}
+                </p>
+                <Link
+                  to={`/admin/matches?participantId=${id}`}
+                  className="text-xs text-accent hover:underline"
+                >
+                  {t('admin.detail.viewAllMatches')}
+                </Link>
+              </div>
+              <MatchHistory matches={matches} applicantId={id!} />
             </div>
-          ))}
+          )}
         </div>
       </div>
     </div>
