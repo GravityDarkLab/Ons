@@ -85,7 +85,7 @@ async function del(path: string, token: string) {
 }
 
 async function adminToken() {
-  return signAdminToken("507f1f77bcf86cd799439011", "admin");
+  return signAdminToken("507f1f77bcf86cd799439011", "test_admin", "admin");
 }
 
 beforeEach(() => {
@@ -239,7 +239,7 @@ describe("GET /admin/applicants/:id", () => {
 
 describe("GET /admin/applicants/:id/identity", () => {
   async function superAdminToken() {
-    return signAdminToken("507f1f77bcf86cd799439011", "super_admin");
+    return signAdminToken("507f1f77bcf86cd799439011", "test_admin", "super_admin");
   }
 
   it("returns 200 with decrypted handle when identity exists (super_admin)", async () => {
@@ -384,7 +384,7 @@ describe("POST /admin/questionnaires", () => {
 
 describe("GET /admin/applicants/:id/identity — role-based access", () => {
   async function superAdminToken() {
-    return signAdminToken("507f1f77bcf86cd799439011", "super_admin");
+    return signAdminToken("507f1f77bcf86cd799439011", "test_admin", "super_admin");
   }
 
   it("returns 403 when authenticated as regular admin", async () => {

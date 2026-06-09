@@ -18,6 +18,7 @@ import { getDb, closeDb } from "../db/connection.js";
 import {
   getApplicantsCollection,
   getIdentitiesCollection,
+  getMatchesCollection,
 } from "../db/collections.js";
 import { generateUniqueAlias } from "../privacy/alias.generator.js";
 import { encrypt } from "../privacy/encryption.js";
@@ -287,6 +288,7 @@ async function seed() {
   const db = await getDb();
   const applicants = getApplicantsCollection(db);
   const identities = getIdentitiesCollection(db);
+  const matches    = getMatchesCollection(db);
 
   // Hash once; reused for every inserted applicant
   const devPasswordHash = await Bun.password.hash(seedLogin);
@@ -294,7 +296,8 @@ async function seed() {
   if (CLEAR) {
     const { deletedCount: a } = await applicants.deleteMany({});
     const { deletedCount: i } = await identities.deleteMany({});
-    console.log(`[SEED:applicants] Cleared ${a} applicants, ${i} identities.\n`);
+    const { deletedCount: m } = await matches.deleteMany({});
+    console.log(`[SEED:applicants] Cleared ${a} applicants, ${i} identities, ${m} matches.\n`);
   }
 
   const existingAliases = await applicants

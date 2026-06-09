@@ -44,7 +44,7 @@ async function post(path: string, body: unknown, token?: string) {
 }
 
 async function adminToken() {
-  return signAdminToken("507f1f77bcf86cd799439011", "admin");
+  return signAdminToken("507f1f77bcf86cd799439011", "test_admin", "admin");
 }
 
 // ── Fixture: ranked candidates ───────────────────────────────────────────────

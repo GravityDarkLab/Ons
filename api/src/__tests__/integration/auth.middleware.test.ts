@@ -22,7 +22,7 @@ async function request(app: Hono<any>, path: string, headers: Record<string, str
 describe("requireAdmin — happy path", () => {
   it("passes with a valid admin token and sets adminId on context", async () => {
     const app   = makeApp();
-    const token = await signAdminToken(TEST_ADMIN_ID, "admin");
+    const token = await signAdminToken(TEST_ADMIN_ID, "test_admin", "admin");
 
     const res  = await request(app, "/protected", { Authorization: `Bearer ${token}` });
     expect(res.status).toBe(200);
@@ -33,14 +33,14 @@ describe("requireAdmin — happy path", () => {
 
   it("accepts super_admin role", async () => {
     const app   = makeApp();
-    const token = await signAdminToken(TEST_ADMIN_ID, "super_admin");
+    const token = await signAdminToken(TEST_ADMIN_ID, "test_admin", "super_admin");
     const res   = await request(app, "/protected", { Authorization: `Bearer ${token}` });
     expect(res.status).toBe(200);
   });
 
   it("accepts viewer role", async () => {
     const app   = makeApp();
-    const token = await signAdminToken(TEST_ADMIN_ID, "viewer");
+    const token = await signAdminToken(TEST_ADMIN_ID, "test_admin", "viewer");
     const res   = await request(app, "/protected", { Authorization: `Bearer ${token}` });
     expect(res.status).toBe(200);
   });
@@ -58,7 +58,7 @@ describe("requireAdmin — missing / malformed header", () => {
 
   it("returns 401 when scheme is not Bearer", async () => {
     const app   = makeApp();
-    const token = await signAdminToken(TEST_ADMIN_ID, "admin");
+    const token = await signAdminToken(TEST_ADMIN_ID, "test_admin", "admin");
     const res   = await request(app, "/protected", { Authorization: `Basic ${token}` });
     expect(res.status).toBe(401);
   });
@@ -138,14 +138,14 @@ describe("requireAdmin — wrong role", () => {
 
 describe("signAdminToken", () => {
   it("returns a non-empty string", async () => {
-    const token = await signAdminToken(TEST_ADMIN_ID, "admin");
+    const token = await signAdminToken(TEST_ADMIN_ID, "test_admin", "admin");
     expect(typeof token).toBe("string");
     expect(token.length).toBeGreaterThan(0);
   });
 
   it("produces tokens accepted by requireAdmin", async () => {
     const app   = makeApp();
-    const token = await signAdminToken(TEST_ADMIN_ID, "admin");
+    const token = await signAdminToken(TEST_ADMIN_ID, "test_admin", "admin");
     const res   = await request(app, "/protected", { Authorization: `Bearer ${token}` });
     expect(res.status).toBe(200);
   });

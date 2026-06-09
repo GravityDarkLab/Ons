@@ -50,7 +50,7 @@ async function del(path: string, token?: string) {
   return app.request(path, { method: "DELETE", headers });
 }
 
-async function adminToken() { return signAdminToken("507f1f77bcf86cd799439011", "admin"); }
+async function adminToken() { return signAdminToken("507f1f77bcf86cd799439011", "test_admin", "admin"); }
 
 const MATCH_FIXTURE = {
   id: "64b1234567890abcdef01234",

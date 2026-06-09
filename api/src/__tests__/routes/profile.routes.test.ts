@@ -234,7 +234,7 @@ describe("GET /profile/me", () => {
   });
 
   it("returns 401 with an admin JWT (wrong type)", async () => {
-    const adminJwt = await signAdminToken("adminId", "admin");
+    const adminJwt = await signAdminToken("adminId", "test_admin", "admin");
     const res = await get("/profile/me", adminJwt);
     expect(res.status).toBe(401);
   });

@@ -63,8 +63,9 @@ export async function me(c: Context): Promise<Response> {
   return c.json({
     success: true,
     data: {
-      adminId:   c.get("adminId")   as string,
-      adminRole: c.get("adminRole") as AdminRole,
+      adminId:       c.get("adminId")       as string,
+      adminUsername: c.get("adminUsername") as string,
+      adminRole:     c.get("adminRole")     as AdminRole,
     },
   });
 }

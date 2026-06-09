@@ -100,6 +100,7 @@ export async function contact(c: Context): Promise<Response> {
   } catch (err: unknown) {
     const e = err as { message?: string; statusCode?: number };
     if (e.statusCode === 404) return c.json({ success: false, error: e.message }, 404);
+    if (e.statusCode === 409) return c.json({ success: false, error: e.message }, 409);
     return c.json({ success: false, error: e.message ?? "Forbidden" }, 403);
   }
 }

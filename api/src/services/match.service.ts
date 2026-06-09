@@ -88,11 +88,16 @@ export function assertMatchTransition(
     match.applicantAId.equals(actorId) || match.applicantBId.equals(actorId);
 
   if (action === "contact") {
-    if (match.status !== "proposed") {
-      throw new Error(`Cannot request contact on a match with status "${match.status}"`);
-    }
     if (!isParticipant) {
-      throw new Error("Not a participant in this match");
+      throw Object.assign(new Error("Not a participant in this match"), { statusCode: 403 });
+    }
+    if (match.status !== "proposed") {
+      // Target should use the respond endpoint, not contact
+      if (match.status === "in_progress" && !match.initiatorId?.equals(actorId)) {
+        throw Object.assign(new Error("Use the respond endpoint to accept or decline"), { statusCode: 403 });
+      }
+      // Any other state (duplicate, terminal): conflict
+      throw Object.assign(new Error(`Match status is "${match.status}" — contact not allowed`), { statusCode: 409 });
     }
     return;
   }

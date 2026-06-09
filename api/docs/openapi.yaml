@@ -599,12 +599,16 @@ components:
           enum: [true]
         data:
           type: object
-          required: [adminId, adminRole]
+          required: [adminId, adminUsername, adminRole]
           properties:
             adminId:
               type: string
               description: MongoDB `_id` of the authenticated admin.
               example: "507f1f77bcf86cd799439011"
+            adminUsername:
+              type: string
+              description: Username of the authenticated admin.
+              example: "alice"
             adminRole:
               type: string
               enum: [super_admin, admin, viewer]
@@ -1249,6 +1253,7 @@ paths:
                 success: true
                 data:
                   adminId: "507f1f77bcf86cd799439011"
+                  adminUsername: "alice"
                   adminRole: "admin"
         '401':
           $ref: '#/components/responses/Unauthorized'

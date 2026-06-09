@@ -48,7 +48,9 @@ export async function processFormSubmission(
 
   // Verify the submission key
   if (!verifySubmissionKey(input.questionnaireVersion, submissionKey)) {
-    throw new Error("Invalid submission key.");
+    const err = new Error("Invalid or missing submission key.") as Error & { statusCode: number };
+    err.statusCode = 401;
+    throw err;
   }
 
   // 2. Cross-check answer keys

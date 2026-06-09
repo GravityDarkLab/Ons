@@ -37,7 +37,7 @@ export async function adminLogin(
   const valid = await Bun.password.verify(password, admin.passwordHash);
   if (!valid) return null;
 
-  return signAdminToken(admin._id.toHexString(), admin.role);
+  return signAdminToken(admin._id.toHexString(), admin.username, admin.role);
 }
 
 /**
@@ -63,7 +63,7 @@ export async function listApplicants(
     col.countDocuments(filter),
   ]);
 
-  const data = docs.map(({ _id, ...rest }) => ({
+  const data = docs.map(({ _id, magicToken: _mt, passwordHash: _ph, ...rest }) => ({
     id: _id.toHexString(),
     ...rest,
   }));
@@ -96,7 +96,7 @@ export async function getApplicantById(
   const doc = await col.findOne({ _id: objectId });
   if (!doc) return null;
 
-  const { _id, ...rest } = doc;
+  const { _id, magicToken: _mt, passwordHash: _ph, ...rest } = doc;
   return { id: _id.toHexString(), ...rest };
 }
 
