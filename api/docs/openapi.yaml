@@ -7,7 +7,7 @@ info:
 
     **Privacy model:** Instagram handles are never stored in the applicant profile.
     They are AES-256-GCM encrypted in a separate `identities` collection and
-    resolvable only by `super_admin` users (every access is audit-logged).
+    resolvable only by authorized admin roles (every access is audit-logged).
     Applicants are identified throughout the system by a human-friendly alias
     such as "Blue Falcon" or "Silent River".
 
@@ -425,7 +425,7 @@ components:
     # ── Profile (applicant self-service) ─────────────────────────────────────
     ProfileLoginRequest:
       type: object
-      required: [magicToken, password]
+      required: [magicToken]
       properties:
         magicToken:
           type: string
@@ -437,7 +437,11 @@ components:
         password:
           type: string
           example: "amber-river-silent-fox"
-          description: "4-word passphrase from the form submission response."
+          description: |
+            The applicant's password. Optional — omit to probe for first-login state
+            without attempting password verification. If the account has no password set,
+            the server returns `{ firstLogin: true }` regardless of whether this field
+            is present.
 
     ProfileLoginResponse:
       type: object
@@ -529,6 +533,13 @@ components:
             type: string
           description: "AI-generated ice-breaking questions. Only present when `perspective = initiator` AND `status = in_progress`."
           example: ["What's the most spontaneous trip you've taken?", "What does your ideal Sunday look like?"]
+        contactRequestedAt:
+          type: string
+          format: date-time
+          description: |
+            When the initiator clicked "contact". Present for **both** perspectives
+            when `status = in_progress`. The target can use this to show "X minutes ago".
+          example: "2026-06-09T14:32:00.000Z"
         dateIdeas:
           type: array
           items:
