@@ -10,8 +10,8 @@ export default function Success() {
 
   const origin = typeof window !== 'undefined' ? window.location.origin : ''
   const profileUrl = token
-    ? `${origin}/profile?token=${token}`
-    : `${origin}/profile?token=YOUR_TOKEN_HERE`
+    ? `${origin}/profile/login?token=${token}`
+    : `${origin}/profile/login?token=YOUR_TOKEN_HERE`
 
   const [copied, setCopied] = useState(false)
 
