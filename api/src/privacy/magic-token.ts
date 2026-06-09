@@ -1,4 +1,4 @@
-import { randomBytes } from "crypto";
+import { randomBytes, randomInt } from "crypto";
 
 const WORDS: readonly string[] = [
   "amber", "anchor", "apple", "arch", "arrow", "aspen", "atlas", "autumn",
@@ -31,6 +31,6 @@ export function generateMagicToken(): string {
 }
 
 export function generateReadablePassword(): string {
-  const pick = () => WORDS[Math.floor(Math.random() * WORDS.length)];
+  const pick = () => WORDS[randomInt(WORDS.length)];
   return `${pick()}-${pick()}-${pick()}-${pick()}`;
 }
