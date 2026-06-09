@@ -55,17 +55,19 @@ async function profileRequest<T>(path: string, opts: RequestInit = {}): Promise<
     credentials: 'include', // Send HttpOnly session cookie automatically
   })
 
-  if (res.status === 401) {
-    throw new Error('Session expired')
-  }
-
   const body = await res.json().catch(() => ({ success: false, error: res.statusText }))
 
   if (!body.success) {
-    throw new Error((body as { error?: string }).error ?? 'Request failed')
+    const error = (body as { error?: string }).error
+    // Only the auth middleware's own 401s mean the session itself is invalid.
+    // Other 401s (e.g. "Current password is incorrect") are business-logic errors.
+    if (res.status === 401 && (error === 'Unauthorized' || error === 'Invalid or expired token')) {
+      throw new Error('Session expired')
+    }
+    throw new Error(error ?? 'Request failed')
   }
 
-  return body.data as T
+  return body as T
 }
 
 // ── Public endpoints ──────────────────────────────────────────────────────────
@@ -74,12 +76,12 @@ export async function profileLogin(magicToken: string, password?: string): Promi
   const payload: { magicToken: string; password?: string } = { magicToken }
   if (password !== undefined) payload.password = password
 
-  const data = await profileRequest<{ firstLogin?: boolean }>(
+  const body = await profileRequest<{ firstLogin?: boolean }>(
     '/profile/login',
     { method: 'POST', body: JSON.stringify(payload) },
   )
 
-  return data.firstLogin ? { type: 'first_login' } : { type: 'ok' }
+  return body.firstLogin ? { type: 'first_login' } : { type: 'ok' }
 }
 
 export async function setPassword(magicToken: string, newPassword: string): Promise<void> {
@@ -106,7 +108,8 @@ export async function changePassword(
 }
 
 export async function getMyProfile(): Promise<ProfileView> {
-  return profileRequest<ProfileView>('/profile/me', { method: 'GET' })
+  const body = await profileRequest<{ data: ProfileView }>('/profile/me', { method: 'GET' })
+  return body.data
 }
 
 export async function getMyMatches(threshold?: number, limit?: number): Promise<MatchView[]> {
@@ -114,14 +117,16 @@ export async function getMyMatches(threshold?: number, limit?: number): Promise<
   if (threshold !== undefined) params.set('threshold', String(threshold))
   if (limit !== undefined) params.set('limit', String(limit))
   const qs = params.toString() ? `?${params.toString()}` : ''
-  return profileRequest<MatchView[]>(`/profile/matches${qs}`, { method: 'GET' })
+  const body = await profileRequest<{ data: MatchView[] }>(`/profile/matches${qs}`, { method: 'GET' })
+  return body.data
 }
 
 export async function requestContact(matchId: string): Promise<ContactResult> {
-  return profileRequest<ContactResult>(
+  const body = await profileRequest<{ data: ContactResult }>(
     `/profile/matches/${matchId}/contact`,
     { method: 'POST' },
   )
+  return body.data
 }
 
 export async function respondToContact(matchId: string, accept: boolean): Promise<void> {
