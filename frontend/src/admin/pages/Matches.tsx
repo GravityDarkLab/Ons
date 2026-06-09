@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { fetchMatches, updateMatch, removeMatch } from '../api/client'
@@ -8,13 +8,13 @@ import type { Match, MatchStatus } from '../types'
 const LIMIT = 20
 
 const STATUS_BADGE: Record<MatchStatus, string> = {
-  proposed:    'bg-border text-muted',
-  in_progress: 'bg-accent-light text-accent',
-  dating:      'bg-success-light text-success',
-  success:     'bg-success-light text-success',
-  failed:      'bg-error-light text-error',
-  declined:    'bg-error-light text-error',
-  expired:     'bg-border text-muted',
+  proposed:    'bg-gray-100 text-gray-600',
+  in_progress: 'bg-blue-100 text-blue-700',
+  dating:      'bg-green-100 text-green-700',
+  success:     'bg-amber-100 text-amber-700',
+  failed:      'bg-red-100 text-red-600',
+  declined:    'bg-gray-100 text-gray-500',
+  expired:     'bg-gray-100 text-gray-400',
 }
 
 const STATUS_NEXT: Partial<Record<MatchStatus, MatchStatus[]>> = {
@@ -24,6 +24,30 @@ const STATUS_NEXT: Partial<Record<MatchStatus, MatchStatus[]>> = {
   failed:      ['proposed'],
   declined:    ['proposed'],
   expired:     ['proposed'],
+}
+
+const ALL_STATUSES: MatchStatus[] = [
+  'proposed', 'in_progress', 'dating', 'success', 'failed', 'declined', 'expired',
+]
+
+function TrashIcon() {
+  return (
+    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <polyline points="3 6 5 6 21 6" />
+      <path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6" />
+      <path d="M10 11v6" />
+      <path d="M14 11v6" />
+      <path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2" />
+    </svg>
+  )
+}
+
+function ChevronDownIcon() {
+  return (
+    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <polyline points="6 9 12 15 18 9" />
+    </svg>
+  )
 }
 
 export function Matches() {
@@ -100,8 +124,10 @@ export function Matches() {
     try {
       await removeMatch(id)
       setMatches(ms => ms.filter(m => m.id !== id))
-      setTotal(t => t - 1)
-    } finally { setSavingId(null) }
+      setTotal(n => n - 1)
+    } finally {
+      setSavingId(null)
+    }
   }
 
   return (
@@ -113,7 +139,7 @@ export function Matches() {
         </p>
       </div>
 
-      {/* Alias search */}
+      {/* Search bar */}
       <div className="relative">
         <svg className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted pointer-events-none" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
           <circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/>
@@ -123,7 +149,7 @@ export function Matches() {
           value={search}
           onChange={e => setSearch(e.target.value)}
           placeholder={t('admin.matches.searchPlaceholder')}
-          className="w-full sm:w-72 rounded-xl border border-border bg-surface pl-9 pr-4 py-2 text-sm text-primary placeholder:text-muted focus:outline-none focus:ring-2 focus:ring-accent/40"
+          className="w-full sm:w-80 rounded-xl border border-border bg-surface pl-9 pr-4 py-2 text-sm text-primary placeholder:text-muted focus:outline-none focus:ring-2 focus:ring-accent/40"
         />
         {search && (
           <button onClick={() => setSearch('')} className="absolute right-3 top-1/2 -translate-y-1/2 text-muted hover:text-primary">
@@ -134,13 +160,18 @@ export function Matches() {
         )}
       </div>
 
-      {/* Status filter tabs */}
-      <div className="flex gap-1 bg-surface border border-border rounded-xl p-1 w-fit flex-wrap">
+      {/* Status filter chips */}
+      <div className="flex gap-2 flex-wrap">
         {FILTERS.map(f => (
-          <button key={f.value} onClick={() => setFilter(f.value)}
-            className={`px-3 py-1.5 rounded-lg text-sm transition-colors ${
-              status === f.value ? 'bg-primary text-white font-medium' : 'text-muted hover:text-primary'
-            }`}>
+          <button
+            key={f.value}
+            onClick={() => setFilter(f.value)}
+            className={`rounded-full px-3 py-1 text-sm transition-colors ${
+              status === f.value
+                ? 'bg-accent text-white'
+                : 'bg-surface border border-border text-muted hover:text-primary'
+            }`}
+          >
             {f.label}
           </button>
         ))}
@@ -248,24 +279,38 @@ function MatchRow({
     expired:     t('admin.matches.markExpired'),
   }
 
+  const [dropdownOpen, setDropdownOpen] = useState(false)
+  const dropdownRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    if (!dropdownOpen) return
+    function handleOutside(e: MouseEvent) {
+      if (dropdownRef.current && !dropdownRef.current.contains(e.target as Node)) {
+        setDropdownOpen(false)
+      }
+    }
+    document.addEventListener('mousedown', handleOutside)
+    return () => document.removeEventListener('mousedown', handleOutside)
+  }, [dropdownOpen])
+
   return (
     <>
       <tr className="border-b border-border last:border-0 hover:bg-bg transition-colors">
-        {/* Couple */}
+        {/* Participants */}
         <td className="px-4 py-3.5">
           <div className="flex items-center gap-2 flex-wrap">
             <Link to={`/admin/applicants/${match.applicantAId}`}
-              className="text-xs font-mono text-accent hover:underline truncate max-w-[150px]">
+              className="font-semibold text-accent hover:underline truncate max-w-[140px]">
               {match.applicantAAlias}
             </Link>
             <span className="text-muted text-xs">↔</span>
             <Link to={`/admin/applicants/${match.applicantBId}`}
-              className="text-xs font-mono text-accent hover:underline truncate max-w-[150px]">
+              className="font-semibold text-accent hover:underline truncate max-w-[140px]">
               {match.applicantBAlias}
             </Link>
           </div>
           {match.notes && (
-            <p className="text-xs text-muted mt-1 truncate max-w-[220px]" title={match.notes}>
+            <p className="text-xs text-muted mt-1 truncate max-w-[240px]" title={match.notes}>
               {match.notes}
             </p>
           )}
@@ -274,10 +319,10 @@ function MatchRow({
         {/* Score bar */}
         <td className="px-4 py-3.5">
           <div className="flex items-center gap-2">
-            <div className="w-16 h-1.5 bg-border rounded-full overflow-hidden">
-              <div className="h-full bg-accent rounded-full" style={{ width: `${Math.round(match.score * 100)}%` }} />
+            <div className="w-24 bg-border rounded-full h-1.5">
+              <div className="bg-accent rounded-full h-1.5" style={{ width: `${Math.round(match.score * 100)}%` }} />
             </div>
-            <span className="text-xs text-muted w-7 shrink-0">{Math.round(match.score * 100)}%</span>
+            <span className="text-xs text-muted w-8 shrink-0">{Math.round(match.score * 100)}%</span>
           </div>
         </td>
 
@@ -286,11 +331,31 @@ function MatchRow({
           <span className="text-xs font-mono text-muted">{match.algorithm}</span>
         </td>
 
-        {/* Status badge */}
+        {/* Status badge with dropdown */}
         <td className="px-4 py-3.5">
-          <span className={`inline-flex px-2 py-0.5 rounded-full text-xs font-medium ${STATUS_BADGE[match.status]}`}>
-            {STATUS_LABEL[match.status]}
-          </span>
+          <div className="relative" ref={dropdownRef}>
+            <button
+              onClick={() => setDropdownOpen(o => !o)}
+              className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium cursor-pointer hover:opacity-80 transition-opacity ${STATUS_BADGE[match.status]}`}
+            >
+              {STATUS_LABEL[match.status]}
+              <ChevronDownIcon />
+            </button>
+            {dropdownOpen && (
+              <div className="absolute left-0 top-full mt-1 z-10 bg-surface border border-border rounded-xl shadow-lg py-1 min-w-[140px]">
+                {ALL_STATUSES.map(s => (
+                  <button
+                    key={s}
+                    disabled={saving}
+                    onClick={() => { onStatusChange(s); setDropdownOpen(false) }}
+                    className={`w-full text-left px-3 py-1.5 text-xs hover:bg-bg transition-colors disabled:opacity-40 ${s === match.status ? 'font-medium text-primary' : 'text-muted'}`}
+                  >
+                    {STATUS_LABEL[s]}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
         </td>
 
         {/* Actions */}
@@ -308,8 +373,10 @@ function MatchRow({
               {expanded ? t('admin.matches.cancelNotes') : t('admin.matches.editNotes')}
             </button>
             <button onClick={onDelete} disabled={saving}
-              className="px-2 py-1 rounded-lg text-xs text-error hover:bg-error-light transition-colors disabled:opacity-40">
-              {t('admin.matches.delete')}
+              className="p-1.5 rounded-lg text-error hover:bg-red-50 transition-colors disabled:opacity-40"
+              title={t('admin.matches.delete')}>
+              <span className="sr-only">{t('admin.matches.delete')}</span>
+              <TrashIcon />
             </button>
           </div>
         </td>
@@ -337,6 +404,7 @@ function MatchRow({
     </>
   )
 }
+
 
 function Th({ children }: { children?: React.ReactNode }) {
   return <th className="px-4 py-3 text-left text-xs font-medium text-muted uppercase tracking-wider">{children}</th>
