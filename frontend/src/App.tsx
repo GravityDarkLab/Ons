@@ -1,5 +1,6 @@
 import { BrowserRouter, Routes, Route } from 'react-router-dom'
 import { ToastProvider } from './components/ui/Toast'
+import { ThemeProvider } from './theme/ThemeProvider'
 import { AuthProvider } from './admin/context/AuthContext'
 import { ProtectedRoute } from './admin/components/ProtectedRoute'
 import { AdminLayout } from './admin/components/AdminLayout'
@@ -28,6 +29,7 @@ export default function App() {
         <Route
           path="/admin/*"
           element={
+            <ThemeProvider>
             <AuthProvider>
               <Routes>
                 <Route path="login" element={<Login />} />
@@ -50,12 +52,13 @@ export default function App() {
                 />
               </Routes>
             </AuthProvider>
+            </ThemeProvider>
           }
         />
 
         {/* ── Applicant portal (Bearer JWT auth) ─────────────────────── */}
-        <Route path="/profile/login" element={<ProfileLoginPage />} />
-        <Route path="/profile" element={<ProfileDashboard />} />
+        <Route path="/profile/login" element={<ThemeProvider><ProfileLoginPage /></ThemeProvider>} />
+        <Route path="/profile" element={<ThemeProvider><ProfileDashboard /></ThemeProvider>} />
 
         {/* ── Public form (invite gate) ─────────────────────────────── */}
         <Route
