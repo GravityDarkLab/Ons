@@ -1,4 +1,6 @@
 import { useState } from 'react'
+import Badge from '../../components/ui/Badge'
+import { matchStatusTone } from '../../components/ui/statusTones'
 import type { MatchView, ContactResult } from '../../api/profile.client'
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -96,20 +98,14 @@ export function MatchCard({ match, onContactRequest, onRespond, onOutcome }: Mat
 
   // ── Case 5: Terminal statuses ──────────────────────────────────────────────
   if (status === 'declined' || status === 'failed' || status === 'success' || status === 'expired') {
-    const badgeClass =
-      status === 'success'
-        ? 'bg-green-50 text-green-700'
-        : status === 'expired'
-        ? 'bg-gray-100 text-gray-400'
-        : 'bg-gray-100 text-gray-500'
-
+    // Terminal cards are visually quieter than active ones: subtle bg, no lift
     return (
-      <div className="bg-surface border border-border rounded-2xl p-5 shadow-sm hover-card transition-card">
+      <div className="bg-surface-subtle border border-border rounded-2xl p-5">
         <div className="flex items-center justify-between gap-3">
-          <span className="text-base font-medium text-primary">{partnerAlias}</span>
-          <span className={`text-xs rounded-full px-2 py-0.5 font-medium ${badgeClass}`}>
+          <span className="text-base font-medium text-muted">{partnerAlias}</span>
+          <Badge tone={matchStatusTone(status)} size="sm">
             {status}
-          </span>
+          </Badge>
         </div>
       </div>
     )
@@ -137,7 +133,7 @@ export function MatchCard({ match, onContactRequest, onRespond, onOutcome }: Mat
     }
 
     return (
-      <div className="bg-surface border border-border rounded-2xl p-5 shadow-sm hover-card transition-card">
+      <div className="bg-surface border border-border rounded-2xl p-5 shadow-card hover-card transition-card">
         <p className="text-base font-medium text-primary">
           {partnerAlias} wants to meet you
         </p>
@@ -176,12 +172,12 @@ export function MatchCard({ match, onContactRequest, onRespond, onOutcome }: Mat
   // ── Case 2: in_progress + initiator ──────────────────────────────────────
   if (status === 'in_progress' && perspective === 'initiator') {
     return (
-      <div className="bg-surface border border-border rounded-2xl p-5 shadow-sm hover-card transition-card">
+      <div className="bg-surface border border-border rounded-2xl p-5 shadow-card hover-card transition-card">
         <div className="flex items-center justify-between gap-3">
           <span className="text-base font-medium text-primary">{partnerAlias}</span>
-          <span className="bg-amber-50 text-amber-700 text-xs rounded-full px-2 py-0.5 font-medium">
+          <Badge tone="warning" size="sm">
             Waiting
-          </span>
+          </Badge>
         </div>
         {displayMatch.targetInstagram && (
           <p className="text-accent font-medium text-sm mt-1">
@@ -215,7 +211,7 @@ export function MatchCard({ match, onContactRequest, onRespond, onOutcome }: Mat
     }
 
     return (
-      <div className="bg-surface border border-border rounded-2xl p-5 shadow-sm hover-card transition-card">
+      <div className="bg-surface border border-border rounded-2xl p-5 shadow-card hover-card transition-card">
         <div className="flex items-center justify-between gap-3">
           <span className="text-base font-medium text-primary">
             You're dating {partnerAlias}
@@ -282,7 +278,7 @@ export function MatchCard({ match, onContactRequest, onRespond, onOutcome }: Mat
   }
 
   return (
-    <div className="bg-surface border border-border rounded-2xl p-5 shadow-sm hover-card transition-card">
+    <div className="bg-surface border border-border rounded-2xl p-5 shadow-card hover-card transition-card">
       <div className="flex items-center justify-between gap-3">
         <span className="text-base font-medium text-primary">{partnerAlias}</span>
         <ScoreBar score={score} />

@@ -18,15 +18,21 @@ vi.mock('react-router-dom', async (importOriginal) => {
 
 import * as profileClient from '../../api/profile.client'
 import ProfileDashboard from '../../pages/profile/ProfileDashboard'
+import { ThemeProvider } from '../../theme/ThemeProvider'
+import { ToastProvider } from '../../components/ui/Toast'
 
 const mockGetMyProfile = vi.mocked(profileClient.getMyProfile)
 const mockGetMyMatches = vi.mocked(profileClient.getMyMatches)
 
 function renderDashboard() {
   return render(
-    <MemoryRouter>
-      <ProfileDashboard />
-    </MemoryRouter>,
+    <ThemeProvider>
+      <ToastProvider>
+        <MemoryRouter>
+          <ProfileDashboard />
+        </MemoryRouter>
+      </ToastProvider>
+    </ThemeProvider>,
   )
 }
 

@@ -1,4 +1,5 @@
 import { useState, useEffect, type FormEvent } from 'react'
+import ThemeToggle from '../../theme/ThemeToggle'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { profileLogin, setPassword, suggestPassword } from '../../api/profile.client'
 
@@ -81,7 +82,7 @@ function SetPasswordForm({ magicToken }: { magicToken: string }) {
       <button
         type="submit"
         disabled={loading || password.length === 0}
-        className="bg-accent text-white rounded-full px-5 py-2.5 text-sm font-medium hover:opacity-90 w-full disabled:opacity-50 disabled:cursor-not-allowed transition-opacity duration-200"
+        className="bg-accent text-bg rounded-full px-5 py-2.5 text-sm font-medium hover:opacity-90 w-full disabled:opacity-50 disabled:cursor-not-allowed transition-opacity duration-200"
       >
         {loading ? 'Setting password…' : 'Set password'}
       </button>
@@ -126,9 +127,10 @@ export default function ProfileLoginPage() {
 
   if (mode === 'no-token') {
     return (
-      <div className="min-h-screen bg-bg flex items-center justify-center px-4">
+      <div className="min-h-screen bg-bg flex items-center justify-center px-4 relative">
+        <div className="absolute top-4 right-4"><ThemeToggle /></div>
         <div className="w-full max-w-sm">
-          <div className="bg-surface border border-border rounded-2xl p-8 shadow-sm text-center space-y-4">
+          <div className="bg-surface border border-border rounded-2xl p-8 shadow-card text-center space-y-4">
             <h1 className="text-2xl font-semibold text-primary tracking-tight">Your profile</h1>
             <p className="text-sm text-muted leading-relaxed">
               Please use your magic link to access your profile. Check the confirmation message you
@@ -150,9 +152,10 @@ export default function ProfileLoginPage() {
 
   if (mode === 'probing' || mode === 'idle') {
     return (
-      <div className="min-h-screen bg-bg flex items-center justify-center px-4">
+      <div className="min-h-screen bg-bg flex items-center justify-center px-4 relative">
+        <div className="absolute top-4 right-4"><ThemeToggle /></div>
         <div className="w-full max-w-sm">
-          <div className="bg-surface border border-border rounded-2xl p-8 shadow-sm flex flex-col items-center gap-4">
+          <div className="bg-surface border border-border rounded-2xl p-8 shadow-card flex flex-col items-center gap-4">
             <svg
               className="h-6 w-6 animate-spin text-accent"
               xmlns="http://www.w3.org/2000/svg"
@@ -174,9 +177,10 @@ export default function ProfileLoginPage() {
 
   if (mode === 'error') {
     return (
-      <div className="min-h-screen bg-bg flex items-center justify-center px-4">
+      <div className="min-h-screen bg-bg flex items-center justify-center px-4 relative">
+        <div className="absolute top-4 right-4"><ThemeToggle /></div>
         <div className="w-full max-w-sm">
-          <div className="bg-surface border border-border rounded-2xl p-8 shadow-sm text-center space-y-4">
+          <div className="bg-surface border border-border rounded-2xl p-8 shadow-card text-center space-y-4">
             <h1 className="text-2xl font-semibold text-primary tracking-tight">Link invalid</h1>
             <p className="text-sm text-error">{errorMessage}</p>
             <a href="/" className="inline-block text-xs text-accent hover:underline">
@@ -191,7 +195,8 @@ export default function ProfileLoginPage() {
   // ── Render: set-password ──────────────────────────────────────────────────────
 
   return (
-    <div className="min-h-screen bg-bg flex items-center justify-center px-4">
+    <div className="min-h-screen bg-bg flex items-center justify-center px-4 relative">
+        <div className="absolute top-4 right-4"><ThemeToggle /></div>
       <div className="w-full max-w-sm">
         {/* Header */}
         <div className="mb-8 text-center">
@@ -202,7 +207,7 @@ export default function ProfileLoginPage() {
         </div>
 
         {/* Card */}
-        <div className="bg-surface border border-border rounded-2xl p-8 shadow-sm">
+        <div className="bg-surface border border-border rounded-2xl p-8 shadow-card">
           <SetPasswordForm magicToken={token!} />
         </div>
       </div>

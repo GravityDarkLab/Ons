@@ -1,4 +1,5 @@
 import { MatchCard } from './MatchCard'
+import EmptyState from '../../components/ui/EmptyState'
 import type { MatchView, ContactResult } from '../../api/profile.client'
 import { requestContact, respondToContact, reportOutcome } from '../../api/profile.client'
 
@@ -44,7 +45,7 @@ export default function MatchList({ matches, onMatchesChange }: Props) {
   }
 
   if (matches.length === 0) {
-    return <p className="text-sm text-muted py-8 text-center">No matches to show.</p>
+    return <EmptyState title="No matches to show." />
   }
 
   return (

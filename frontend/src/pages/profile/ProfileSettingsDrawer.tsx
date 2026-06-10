@@ -1,6 +1,11 @@
-import { useState, type FormEvent } from 'react'
+import { useEffect, useState, type FormEvent } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { changePassword, deactivateAccount } from '../../api/profile.client'
+import Input from '../../components/ui/Input'
+import ConfirmDialog from '../../components/ui/ConfirmDialog'
+import Spinner from '../../components/ui/Spinner'
+import { useToast } from '../../components/ui/Toast'
+import { useFocusTrap } from '../../components/ui/useFocusTrap'
 
 // ── Icons ─────────────────────────────────────────────────────────────────────
 
@@ -34,6 +39,8 @@ interface Props {
 
 export default function ProfileSettingsDrawer({ onClose }: Props) {
   const navigate = useNavigate()
+  const { success } = useToast()
+  const trapRef = useFocusTrap<HTMLDivElement>(true)
 
   // ── Change password state ─────────────────────────────────────────────────
   const [currentPassword, setCurrentPassword] = useState('')
@@ -41,12 +48,21 @@ export default function ProfileSettingsDrawer({ onClose }: Props) {
   const [confirmPassword, setConfirmPassword] = useState('')
   const [passwordLoading, setPasswordLoading] = useState(false)
   const [passwordError, setPasswordError] = useState<string | null>(null)
-  const [passwordSuccess, setPasswordSuccess] = useState(false)
 
   // ── Deactivate state ──────────────────────────────────────────────────────
   const [showDeactivateConfirm, setShowDeactivateConfirm] = useState(false)
   const [deactivateLoading, setDeactivateLoading] = useState(false)
   const [deactivateError, setDeactivateError] = useState<string | null>(null)
+
+  // Escape closes the drawer (unless the nested confirm dialog is open —
+  // it handles its own Escape and closes first)
+  useEffect(() => {
+    function onKeyDown(e: KeyboardEvent) {
+      if (e.key === 'Escape' && !showDeactivateConfirm) onClose()
+    }
+    document.addEventListener('keydown', onKeyDown)
+    return () => document.removeEventListener('keydown', onKeyDown)
+  }, [onClose, showDeactivateConfirm])
 
   // ── Handlers ──────────────────────────────────────────────────────────────
 
@@ -70,11 +86,10 @@ export default function ProfileSettingsDrawer({ onClose }: Props) {
     setPasswordLoading(true)
     try {
       await changePassword(currentPassword, newPassword)
-      setPasswordSuccess(true)
+      success('Password updated ✓')
       setCurrentPassword('')
       setNewPassword('')
       setConfirmPassword('')
-      setTimeout(() => setPasswordSuccess(false), 3000)
     } catch (err) {
       setPasswordError(err instanceof Error ? err.message : 'Failed to update password.')
     } finally {
@@ -92,6 +107,7 @@ export default function ProfileSettingsDrawer({ onClose }: Props) {
     } catch (err) {
       setDeactivateError(err instanceof Error ? err.message : 'Failed to deactivate account.')
       setDeactivateLoading(false)
+      setShowDeactivateConfirm(false)
     }
   }
 
@@ -100,17 +116,26 @@ export default function ProfileSettingsDrawer({ onClose }: Props) {
   return (
     <>
       {/* Backdrop */}
-      <div className="fixed inset-0 bg-overlay z-40" onClick={onClose} />
+      <div className="fixed inset-0 bg-overlay z-40" onClick={onClose} aria-hidden="true" />
 
-      {/* Drawer panel */}
-      <div className="fixed right-0 top-0 h-full w-full max-w-sm bg-surface border-l border-border z-50 overflow-y-auto p-6 shadow-xl">
+      {/* Drawer panel — right drawer on ≥sm, bottom sheet on mobile */}
+      <div
+        ref={trapRef}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="settings-drawer-title"
+        className="fixed z-50 bg-surface overflow-y-auto p-6 shadow-raised
+                   inset-x-0 bottom-0 max-h-[85dvh] rounded-t-2xl border-t border-border
+                   sm:inset-x-auto sm:right-0 sm:top-0 sm:bottom-auto sm:h-full sm:max-h-none
+                   sm:w-full sm:max-w-sm sm:rounded-t-none sm:border-t-0 sm:border-l"
+      >
 
         {/* Header */}
         <div className="flex items-center justify-between mb-8">
-          <h2 className="text-lg font-semibold text-primary">Settings</h2>
+          <h2 id="settings-drawer-title" className="text-lg font-semibold text-primary">Settings</h2>
           <button
             onClick={onClose}
-            className="p-2 rounded-xl text-muted hover:text-primary hover:bg-bg"
+            className="p-2 rounded-xl text-muted hover:text-primary hover:bg-bg transition-colors"
             aria-label="Close settings"
           >
             <XIcon />
@@ -124,44 +149,38 @@ export default function ProfileSettingsDrawer({ onClose }: Props) {
           </h3>
 
           <form onSubmit={handleChangePassword} className="space-y-3" noValidate>
-            <input
+            <Input
               type="password"
               value={currentPassword}
               onChange={e => setCurrentPassword(e.target.value)}
-              className="w-full bg-bg border border-border rounded-xl px-4 py-2.5 text-sm text-primary placeholder-muted focus:outline-none focus:border-accent/60"
               placeholder="Current password"
               autoComplete="current-password"
             />
-            <input
+            <Input
               type="password"
               value={newPassword}
               onChange={e => setNewPassword(e.target.value)}
-              className="w-full bg-bg border border-border rounded-xl px-4 py-2.5 text-sm text-primary placeholder-muted focus:outline-none focus:border-accent/60"
               placeholder="New password"
               autoComplete="new-password"
             />
-            <input
+            <Input
               type="password"
               value={confirmPassword}
               onChange={e => setConfirmPassword(e.target.value)}
-              className="w-full bg-bg border border-border rounded-xl px-4 py-2.5 text-sm text-primary placeholder-muted focus:outline-none focus:border-accent/60"
               placeholder="Confirm new password"
               autoComplete="new-password"
             />
 
             {passwordError && (
-              <p className="text-error text-sm">{passwordError}</p>
-            )}
-
-            {passwordSuccess && (
-              <p className="text-sm text-green-600">Password updated ✓</p>
+              <p className="text-error text-sm" role="alert">{passwordError}</p>
             )}
 
             <button
               type="submit"
               disabled={passwordLoading}
-              className="bg-accent text-white rounded-full px-5 py-2.5 text-sm font-medium w-full hover:opacity-90 disabled:opacity-50"
+              className="inline-flex items-center justify-center gap-2 bg-accent text-bg rounded-full px-5 py-2.5 text-sm font-medium w-full hover:opacity-90 disabled:opacity-50 transition-all"
             >
+              {passwordLoading && <Spinner />}
               {passwordLoading ? 'Saving…' : 'Save new password'}
             </button>
           </form>
@@ -180,44 +199,28 @@ export default function ProfileSettingsDrawer({ onClose }: Props) {
             Once deactivated, your account will be scheduled for deletion in 180 days.
           </p>
 
-          {!showDeactivateConfirm ? (
-            <button
-              onClick={() => setShowDeactivateConfirm(true)}
-              className="bg-destructive text-white rounded-xl px-4 py-2 text-sm hover:opacity-90"
-            >
-              Deactivate my account
-            </button>
-          ) : (
-            <div className="space-y-3">
-              <p className="text-sm text-primary font-medium">
-                Are you sure? This cannot be undone.
-              </p>
-
-              {deactivateError && (
-                <p className="text-error text-sm">{deactivateError}</p>
-              )}
-
-              <div className="flex gap-3">
-                <button
-                  onClick={() => {
-                    setShowDeactivateConfirm(false)
-                    setDeactivateError(null)
-                  }}
-                  disabled={deactivateLoading}
-                  className="flex-1 bg-surface border border-border text-muted rounded-xl px-4 py-2 text-sm hover:bg-bg disabled:opacity-50"
-                >
-                  Cancel
-                </button>
-                <button
-                  onClick={handleDeactivateConfirm}
-                  disabled={deactivateLoading}
-                  className="flex-1 bg-destructive text-white rounded-xl px-4 py-2 text-sm hover:opacity-90 disabled:opacity-50"
-                >
-                  {deactivateLoading ? 'Deactivating…' : 'Yes, deactivate'}
-                </button>
-              </div>
-            </div>
+          {deactivateError && (
+            <p className="text-error text-sm mb-3" role="alert">{deactivateError}</p>
           )}
+
+          <button
+            onClick={() => setShowDeactivateConfirm(true)}
+            className="bg-destructive text-bg rounded-xl px-4 py-2 text-sm hover:opacity-90 transition-all"
+          >
+            Deactivate my account
+          </button>
+
+          <ConfirmDialog
+            open={showDeactivateConfirm}
+            title="Deactivate my account"
+            description="Are you sure? This cannot be undone. Your account will be scheduled for deletion in 180 days."
+            confirmLabel="Yes, deactivate"
+            cancelLabel="Cancel"
+            tone="danger"
+            loading={deactivateLoading}
+            onConfirm={handleDeactivateConfirm}
+            onClose={() => setShowDeactivateConfirm(false)}
+          />
         </section>
       </div>
     </>

@@ -4,21 +4,19 @@ import type { ProfileView, MatchView, ApplicantStatus } from '../../api/profile.
 import { getMyProfile, getMyMatches } from '../../api/profile.client'
 import MatchList from './MatchList'
 import ProfileSettingsDrawer from './ProfileSettingsDrawer'
+import Badge from '../../components/ui/Badge'
+import Skeleton from '../../components/ui/Skeleton'
+import ThemeToggle from '../../theme/ThemeToggle'
+import { applicantStatusTone } from '../../components/ui/statusTones'
 
 // ── Sub-components ────────────────────────────────────────────────────────────
 
 function StatusBadge({ status }: { status: ApplicantStatus | undefined }) {
   if (!status) return null
-  const classMap: Record<ApplicantStatus, string> = {
-    applied: 'bg-blue-50 text-blue-700',
-    matched: 'bg-amber-50 text-amber-700',
-    dating: 'bg-green-50 text-green-700',
-    inactive: 'bg-gray-100 text-gray-500',
-  }
   return (
-    <span className={`text-xs rounded-full px-2.5 py-0.5 font-medium ${classMap[status]}`}>
+    <Badge tone={applicantStatusTone(status)} size="sm">
       {status}
-    </span>
+    </Badge>
   )
 }
 
@@ -65,8 +63,13 @@ export default function ProfileDashboard() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-bg flex items-center justify-center">
-        <span className="text-muted text-sm">Loading…</span>
+      <div className="min-h-screen bg-bg px-6 pt-20">
+        <div className="max-w-2xl mx-auto space-y-4">
+          <Skeleton className="h-6 w-40" />
+          <Skeleton className="h-28 w-full rounded-2xl" />
+          <Skeleton className="h-28 w-full rounded-2xl" />
+          <span className="sr-only">Loading…</span>
+        </div>
       </div>
     )
   }
@@ -90,9 +93,11 @@ export default function ProfileDashboard() {
           <span className="text-sm text-muted">{profile?.alias}</span>
           <StatusBadge status={profile?.status} />
         </div>
+        <div className="flex items-center gap-1.5">
+        <ThemeToggle />
         <button
           onClick={() => setDrawerOpen(true)}
-          className="p-2 rounded-xl text-muted hover:text-primary hover:bg-bg"
+          className="p-2 rounded-xl text-muted hover:text-primary hover:bg-bg transition-colors"
           aria-label="Open settings"
         >
           {/* Settings gear icon */}
@@ -110,6 +115,7 @@ export default function ProfileDashboard() {
             <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z" />
           </svg>
         </button>
+        </div>
       </header>
 
       {/* Status-aware content */}
@@ -142,10 +148,10 @@ export default function ProfileDashboard() {
               {[60, 70, 80].map(pct => (
                 <button
                   key={pct}
-                  className={`rounded-full px-3 py-1 text-sm ${
+                  className={`rounded-full px-3 py-1 text-sm transition-colors ${
                     threshold * 100 === pct
-                      ? 'bg-accent text-white'
-                      : 'bg-surface border border-border text-muted'
+                      ? 'bg-accent text-bg'
+                      : 'bg-surface border border-border text-muted hover:text-primary hover:border-accent/40'
                   }`}
                   onClick={() => setThreshold(pct / 100)}
                 >

@@ -17,6 +17,7 @@ vi.mock('react-router-dom', async (importOriginal) => {
 
 import * as profileClient from '../../api/profile.client'
 import ProfileLoginPage from '../../pages/profile/ProfileLoginPage'
+import { ThemeProvider } from '../../theme/ThemeProvider'
 
 const mockProfileLogin = vi.mocked(profileClient.profileLogin)
 const mockSetPassword = vi.mocked(profileClient.setPassword)
@@ -24,9 +25,11 @@ const mockSuggestPassword = vi.mocked(profileClient.suggestPassword)
 
 function renderWithRouter(search = '') {
   return render(
-    <MemoryRouter initialEntries={[`/profile/login${search}`]}>
-      <ProfileLoginPage />
-    </MemoryRouter>,
+    <ThemeProvider>
+      <MemoryRouter initialEntries={[`/profile/login${search}`]}>
+        <ProfileLoginPage />
+      </MemoryRouter>
+    </ThemeProvider>,
   )
 }
 
