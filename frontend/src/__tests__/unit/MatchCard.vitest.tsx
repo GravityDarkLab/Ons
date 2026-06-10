@@ -1,4 +1,6 @@
 import { render, screen } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
+import { vi } from 'vitest'
 import { MatchCard } from '../../pages/profile/MatchCard'
 import type { MatchView } from '../../api/profile.client'
 
@@ -76,5 +78,48 @@ describe('MatchCard', () => {
     expect(screen.getByText('declined')).toBeInTheDocument()
     // No action buttons for terminal status
     expect(screen.queryByRole('button')).not.toBeInTheDocument()
+  })
+
+  // tested: failed actions surface an inline error instead of being swallowed
+  it('shows an error and keeps the card actionable when contact fails', async () => {
+    const onContactRequest = vi.fn().mockRejectedValue(new Error('Match is no longer available'))
+    render(<MatchCard match={base} onContactRequest={onContactRequest} />)
+
+    await userEvent.click(screen.getByRole('button', { name: /I want to reach out/i }))
+
+    expect(await screen.findByRole('alert')).toHaveTextContent('Match is no longer available')
+    // The optimistic transition must not have happened
+    expect(screen.getByRole('button', { name: /I want to reach out/i })).toBeEnabled()
+  })
+
+  it('shows an error when responding fails and does not flip the status', async () => {
+    const onRespond = vi.fn().mockRejectedValue(new Error('Match was already responded to'))
+    const match: MatchView = {
+      ...base,
+      status: 'in_progress',
+      perspective: 'target',
+    }
+    render(<MatchCard match={match} onRespond={onRespond} />)
+
+    await userEvent.click(screen.getByRole('button', { name: /Accept/i }))
+
+    expect(await screen.findByRole('alert')).toHaveTextContent('Match was already responded to')
+    expect(screen.getByRole('button', { name: /Accept/i })).toBeEnabled()
+    expect(screen.getByRole('button', { name: /Decline/i })).toBeEnabled()
+  })
+
+  it('shows an error when outcome reporting fails', async () => {
+    const onOutcome = vi.fn().mockRejectedValue(new Error('Outcome was already reported for this match'))
+    const match: MatchView = {
+      ...base,
+      status: 'dating',
+      perspective: 'none',
+    }
+    render(<MatchCard match={match} onOutcome={onOutcome} />)
+
+    await userEvent.click(screen.getByRole('button', { name: /It worked out/i }))
+
+    expect(await screen.findByRole('alert')).toHaveTextContent('Outcome was already reported')
+    expect(screen.getByRole('button', { name: /It worked out/i })).toBeEnabled()
   })
 })

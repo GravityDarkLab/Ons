@@ -15,6 +15,9 @@ export default function Textarea({
   ...rest
 }: TextareaProps) {
   const textareaId = id ?? label?.toLowerCase().replace(/\s+/g, '-')
+  const describedBy = textareaId
+    ? error ? `${textareaId}-error` : hint ? `${textareaId}-hint` : undefined
+    : undefined
 
   return (
     <div className="flex flex-col gap-1.5">
@@ -29,6 +32,8 @@ export default function Textarea({
       )}
       <textarea
         id={textareaId}
+        aria-invalid={error ? true : undefined}
+        aria-describedby={describedBy}
         rows={3}
         className={[
           'w-full rounded-xl border bg-surface px-4 py-3 text-[15px] text-primary',
@@ -45,10 +50,14 @@ export default function Textarea({
         {...rest}
       />
       {hint && !error && (
-        <p className="text-xs text-muted leading-relaxed">{hint}</p>
+        <p id={textareaId ? `${textareaId}-hint` : undefined} className="text-xs text-muted leading-relaxed">
+          {hint}
+        </p>
       )}
       {error && (
-        <p className="text-xs text-error font-medium">{error}</p>
+        <p id={textareaId ? `${textareaId}-error` : undefined} role="alert" className="text-xs text-error font-medium">
+          {error}
+        </p>
       )}
     </div>
   )

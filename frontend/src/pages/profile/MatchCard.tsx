@@ -86,6 +86,11 @@ export function MatchCard({ match, onContactRequest, onRespond, onOutcome }: Mat
   const [loadingDecline, setLoadingDecline] = useState(false)
   const [loadingSuccess, setLoadingSuccess] = useState(false)
   const [loadingFailed, setLoadingFailed] = useState(false)
+  const [actionError, setActionError] = useState('')
+
+  function failAction(err: unknown) {
+    setActionError(err instanceof Error ? err.message : 'Something went wrong. Please try again.')
+  }
 
   const { matchId, partnerAlias, score, status, perspective, contactRequestedAt } = displayMatch
 
@@ -116,12 +121,15 @@ export function MatchCard({ match, onContactRequest, onRespond, onOutcome }: Mat
       if (!onRespond) return
       if (accept) setLoadingAccept(true)
       else setLoadingDecline(true)
+      setActionError('')
       try {
         await onRespond(matchId, accept)
         setDisplayMatch(prev => ({
           ...prev,
           status: accept ? 'dating' : 'declined',
         }))
+      } catch (err) {
+        failAction(err)
       } finally {
         if (accept) setLoadingAccept(false)
         else setLoadingDecline(false)
@@ -160,6 +168,7 @@ export function MatchCard({ match, onContactRequest, onRespond, onOutcome }: Mat
             Decline
           </button>
         </div>
+        {actionError && <p role="alert" className="text-sm text-error mt-3">{actionError}</p>}
       </div>
     )
   }
@@ -193,9 +202,12 @@ export function MatchCard({ match, onContactRequest, onRespond, onOutcome }: Mat
       if (!onOutcome) return
       if (outcome === 'success') setLoadingSuccess(true)
       else setLoadingFailed(true)
+      setActionError('')
       try {
         await onOutcome(matchId, outcome)
         setDisplayMatch(prev => ({ ...prev, status: outcome }))
+      } catch (err) {
+        failAction(err)
       } finally {
         if (outcome === 'success') setLoadingSuccess(false)
         else setLoadingFailed(false)
@@ -241,6 +253,7 @@ export function MatchCard({ match, onContactRequest, onRespond, onOutcome }: Mat
               It didn't
             </button>
           </div>
+          {actionError && <p role="alert" className="text-sm text-error mt-3">{actionError}</p>}
         </div>
       </div>
     )
@@ -250,6 +263,7 @@ export function MatchCard({ match, onContactRequest, onRespond, onOutcome }: Mat
   const handleContactRequest = async () => {
     if (!onContactRequest) return
     setLoadingContact(true)
+    setActionError('')
     try {
       const result = await onContactRequest(matchId)
       setDisplayMatch(prev => ({
@@ -260,6 +274,8 @@ export function MatchCard({ match, onContactRequest, onRespond, onOutcome }: Mat
         iceBreakers: result.iceBreakers,
         dateIdeas: result.dateIdeas,
       }))
+    } catch (err) {
+      failAction(err)
     } finally {
       setLoadingContact(false)
     }
@@ -280,6 +296,7 @@ export function MatchCard({ match, onContactRequest, onRespond, onOutcome }: Mat
           {loadingContact ? <LoadingSpinner /> : null}
           I want to reach out
         </button>
+        {actionError && <p role="alert" className="text-sm text-error mt-3">{actionError}</p>}
       </div>
     </div>
   )
