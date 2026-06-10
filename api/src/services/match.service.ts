@@ -1,4 +1,5 @@
 import { ObjectId } from "mongodb";
+import { AppError } from "../errors.js";
 import { getDb } from "../db/connection.js";
 import { getMatchesCollection, getApplicantsCollection } from "../db/collections.js";
 import type { MatchDoc, MatchStatus } from "../models/match.model.js";
@@ -89,38 +90,38 @@ export function assertMatchTransition(
 
   if (action === "contact") {
     if (!isParticipant) {
-      throw Object.assign(new Error("Not a participant in this match"), { statusCode: 403 });
+      throw new AppError("Not a participant in this match", 403);
     }
     if (match.status !== "proposed") {
       // Target should use the respond endpoint, not contact
       if (match.status === "in_progress" && !match.initiatorId?.equals(actorId)) {
-        throw Object.assign(new Error("Use the respond endpoint to accept or decline"), { statusCode: 403 });
+        throw new AppError("Use the respond endpoint to accept or decline", 403);
       }
       // Any other state (duplicate, terminal): conflict
-      throw Object.assign(new Error(`Match status is "${match.status}" — contact not allowed`), { statusCode: 409 });
+      throw new AppError(`Match status is "${match.status}" — contact not allowed`, 409);
     }
     return;
   }
 
   if (action === "respond") {
     if (!isParticipant) {
-      throw Object.assign(new Error("Not a participant in this match"), { statusCode: 403 });
+      throw new AppError("Not a participant in this match", 403);
     }
     if (match.status !== "in_progress") {
-      throw Object.assign(new Error(`Match status is "${match.status}" — nothing to respond to`), { statusCode: 409 });
+      throw new AppError(`Match status is "${match.status}" — nothing to respond to`, 409);
     }
     if (match.initiatorId?.equals(actorId)) {
-      throw Object.assign(new Error("Initiator cannot respond to their own contact request"), { statusCode: 403 });
+      throw new AppError("Initiator cannot respond to their own contact request", 403);
     }
     return;
   }
 
   if (action === "outcome") {
     if (!isParticipant) {
-      throw Object.assign(new Error("Not a participant in this match"), { statusCode: 403 });
+      throw new AppError("Not a participant in this match", 403);
     }
     if (match.status !== "dating" && match.status !== "in_progress") {
-      throw Object.assign(new Error(`Match status is "${match.status}" — outcome cannot be reported`), { statusCode: 409 });
+      throw new AppError(`Match status is "${match.status}" — outcome cannot be reported`, 409);
     }
     return;
   }

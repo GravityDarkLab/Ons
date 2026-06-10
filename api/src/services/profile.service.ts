@@ -1,4 +1,5 @@
 import { ObjectId } from "mongodb";
+import { AppError } from "../errors.js";
 import { getDb } from "../db/connection.js";
 import { getApplicantsCollection, getMatchesCollection } from "../db/collections.js";
 import type { ApplicantDoc } from "../models/applicant.model.js";
@@ -53,10 +54,7 @@ export async function setPassword(
   if (!doc) return null;
 
   if (doc.passwordHash !== null) {
-    throw Object.assign(
-      new Error("Password already set. Use change-password to update it."),
-      { statusCode: 409 }
-    );
+    throw new AppError("Password already set. Use change-password to update it.", 409);
   }
 
   const passwordHash = await Bun.password.hash(newPassword);
@@ -74,17 +72,14 @@ export async function changePassword(
   const col = getApplicantsCollection(db);
 
   const doc = await col.findOne({ _id: new ObjectId(applicantId) });
-  if (!doc) throw Object.assign(new Error("Not found"), { statusCode: 404 });
+  if (!doc) throw new AppError("Not found", 404);
 
   if (!doc.passwordHash) {
-    throw Object.assign(
-      new Error("No password set. Use set-password for first-time setup."),
-      { statusCode: 400 }
-    );
+    throw new AppError("No password set. Use set-password for first-time setup.", 400);
   }
 
   const ok = await Bun.password.verify(currentPassword, doc.passwordHash);
-  if (!ok) throw Object.assign(new Error("Current password is incorrect"), { statusCode: 401 });
+  if (!ok) throw new AppError("Current password is incorrect", 401);
 
   const passwordHash = await Bun.password.hash(newPassword);
   const now = new Date();
@@ -172,12 +167,12 @@ export async function requestContact(
 
   let matchOid: ObjectId;
   try { matchOid = new ObjectId(matchId); } catch {
-    throw Object.assign(new Error("Match not found"), { statusCode: 404 });
+    throw new AppError("Match not found", 404);
   }
 
   // Load match to authorise the actor before the atomic write
   const match = await matchCol.findOne({ _id: matchOid });
-  if (!match) throw Object.assign(new Error("Match not found"), { statusCode: 404 });
+  if (!match) throw new AppError("Match not found", 404);
 
   assertMatchTransition(match, "contact", actorId);
 
@@ -198,7 +193,7 @@ export async function requestContact(
   // Pre-flight identity check before any mutation — prevents stuck state if identity is missing
   const targetInstagram = await resolveIdentityById(targetId);
   if (!targetInstagram) {
-    throw Object.assign(new Error("Target identity not found"), { statusCode: 404 });
+    throw new AppError("Target identity not found", 404);
   }
 
   const now = new Date();
@@ -221,10 +216,7 @@ export async function requestContact(
   );
 
   if (!claimed) {
-    throw Object.assign(
-      new Error("Match is no longer available for contact — it may have been claimed concurrently"),
-      { statusCode: 409 },
-    );
+    throw new AppError("Match is no longer available for contact — it may have been claimed concurrently", 409);
   }
 
   // Write audit log after winning the race (identity was pre-fetched without side-effects)
@@ -258,11 +250,11 @@ export async function respondToContact(
 
   let matchOid: ObjectId;
   try { matchOid = new ObjectId(matchId); } catch {
-    throw Object.assign(new Error("Match not found"), { statusCode: 404 });
+    throw new AppError("Match not found", 404);
   }
 
   const match = await matchCol.findOne({ _id: matchOid });
-  if (!match) throw Object.assign(new Error("Match not found"), { statusCode: 404 });
+  if (!match) throw new AppError("Match not found", 404);
 
   assertMatchTransition(match, "respond", actorId);
 
@@ -283,10 +275,7 @@ export async function respondToContact(
   );
 
   if (!claimed) {
-    throw Object.assign(
-      new Error("Match was already responded to"),
-      { statusCode: 409 },
-    );
+    throw new AppError("Match was already responded to", 409);
   }
 
   if (accept) {
@@ -308,11 +297,11 @@ export async function reportOutcome(
 
   let matchOid: ObjectId;
   try { matchOid = new ObjectId(matchId); } catch {
-    throw Object.assign(new Error("Match not found"), { statusCode: 404 });
+    throw new AppError("Match not found", 404);
   }
 
   const match = await matchCol.findOne({ _id: matchOid });
-  if (!match) throw Object.assign(new Error("Match not found"), { statusCode: 404 });
+  if (!match) throw new AppError("Match not found", 404);
 
   assertMatchTransition(match, "outcome", actorId);
 
@@ -328,10 +317,7 @@ export async function reportOutcome(
   );
 
   if (!claimed) {
-    throw Object.assign(
-      new Error("Outcome was already reported for this match"),
-      { statusCode: 409 },
-    );
+    throw new AppError("Outcome was already reported for this match", 409);
   }
 
   if (outcome === "success") {

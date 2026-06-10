@@ -1,4 +1,5 @@
 import { ObjectId } from "mongodb";
+import { AppError } from "../errors.js";
 import { getDb } from "../db/connection.js";
 import { getApplicantsCollection } from "../db/collections.js";
 import type { FormSubmissionInput } from "../validators/form.validator.js";
@@ -19,12 +20,12 @@ export interface FormSubmissionResult {
   magicToken: string;
 }
 
-export class DuplicateInstagramError extends Error {
-  readonly statusCode = 409;
+export class DuplicateInstagramError extends AppError {
   constructor() {
     super(
       "An account already exists for this handle. " +
-      "Check your saved access link and password. If you need help, contact support."
+      "Check your saved access link and password. If you need help, contact support.",
+      409,
     );
   }
 }
@@ -48,9 +49,7 @@ export async function processFormSubmission(
 
   // Verify the submission key
   if (!verifySubmissionKey(input.questionnaireVersion, submissionKey)) {
-    const err = new Error("Invalid or missing submission key.") as Error & { statusCode: number };
-    err.statusCode = 401;
-    throw err;
+    throw new AppError("Invalid or missing submission key.", 401);
   }
 
   // 2. Cross-check answer keys

@@ -59,7 +59,11 @@ export const env = {
   embeddingModel: required("EMBEDDING_MODEL"),
   embeddingBaseUrl: optional("EMBEDDING_BASE_URL", ""),  // required for local — validated below
   openaiApiKey: optional("OPENAI_API_KEY", ""),          // required for openai — validated below
-  
+  openaiChatModel: optional("OPENAI_CHAT_MODEL", "gpt-4o-mini"),
+
+  // Scheduled matching job — disabled unless a positive interval is set
+  matchingJobIntervalHours: parseFloat(optional("MATCHING_JOB_INTERVAL_HOURS", "0")),
+
   // Server config
   port: parseInt(optional("PORT", "3001"), 10),
   nodeEnv: optional("NODE_ENV", "development"),
