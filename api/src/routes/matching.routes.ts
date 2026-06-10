@@ -7,11 +7,15 @@ import {
   runMatching,
 } from "../controllers/matching.controller.js";
 import { requireAdmin } from "../middleware/auth.middleware.js";
+import { adminRateLimiter } from "../middleware/rateLimit.middleware.js";
 
 const matchingRoutes = new Hono();
 
-// Get candidates for a specific applicant — public (alias-based, no PII)
-matchingRoutes.get("/candidates/:applicantId", getMatchCandidates);
+matchingRoutes.use("*", adminRateLimiter);
+
+// Admin-only: candidates expose compatibility data (aliases, scores,
+// breakdowns) and can trigger paid embedding calls — never public
+matchingRoutes.get("/candidates/:applicantId", requireAdmin, getMatchCandidates);
 
 // Admin-only: trigger a full matching pass
 matchingRoutes.post(

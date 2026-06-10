@@ -1,5 +1,17 @@
 import { describe, it, expect, mock, beforeEach } from "bun:test";
 
+mock.module("../../middleware/rateLimit.middleware.js", () => {
+  const noop = async (_c: unknown, next: () => Promise<void>) => { await next(); };
+  return {
+    formSubmitRateLimiter:   noop,
+    adminRateLimiter:        noop,
+    adminLoginRateLimiter:   noop,
+    profileRateLimiter:      noop,
+    profileLoginRateLimiter: noop,
+    createRateLimiter:       () => noop,
+  };
+});
+
 // ── Mock engine before any imports ────────────────────────────────────────────
 
 const mockGetCandidates         = mock(async () => [] as any[]);
@@ -76,7 +88,7 @@ beforeEach(() => {
 
 describe("GET /matching/candidates/:applicantId", () => {
   it("returns 200 with a candidates array", async () => {
-    const res = await get("/matching/candidates/64b1234567890abcdef01234");
+    const res = await get("/matching/candidates/64b1234567890abcdef01234", await adminToken());
     expect(res.status).toBe(200);
     const body = await res.json() as any;
     expect(body.success).toBe(true);
@@ -85,7 +97,7 @@ describe("GET /matching/candidates/:applicantId", () => {
   });
 
   it("passes algorithm query param to getCandidates", async () => {
-    await get("/matching/candidates/abc123?algorithm=cosine&top=5");
+    await get("/matching/candidates/abc123?algorithm=cosine&top=5", await adminToken());
     const [id, topN, algo] = mockGetCandidates.mock.calls[0] as unknown as [string, number, string];
     expect(id).toBe("abc123");
     expect(topN).toBe(5);
@@ -93,20 +105,20 @@ describe("GET /matching/candidates/:applicantId", () => {
   });
 
   it("uses baseline algorithm by default", async () => {
-    await get("/matching/candidates/abc123");
+    await get("/matching/candidates/abc123", await adminToken());
     const [, , algo] = mockGetCandidates.mock.calls[0] as unknown as [string, number, string];
     expect(algo).toBe("baseline");
   });
 
   it("caps top at 50 regardless of query param", async () => {
-    await get("/matching/candidates/abc123?top=999");
+    await get("/matching/candidates/abc123?top=999", await adminToken());
     const [, topN] = mockGetCandidates.mock.calls[0] as unknown as [string, number, string];
     expect(topN).toBe(50);
   });
 
   it("returns 404 when engine throws 'not found'", async () => {
     mockGetCandidates.mockRejectedValue(new Error("Active applicant not found: abc123"));
-    const res = await get("/matching/candidates/abc123");
+    const res = await get("/matching/candidates/abc123", await adminToken());
     expect(res.status).toBe(404);
     const body = await res.json() as any;
     expect(body.success).toBe(false);
@@ -114,19 +126,22 @@ describe("GET /matching/candidates/:applicantId", () => {
 
   it("returns 404 for invalid applicant ID", async () => {
     mockGetCandidates.mockRejectedValue(new Error("Invalid applicant ID: not-an-id"));
-    const res = await get("/matching/candidates/not-an-id");
+    const res = await get("/matching/candidates/not-an-id", await adminToken());
     expect(res.status).toBe(404);
   });
 
   it("returns 500 when engine throws an unexpected error", async () => {
     mockGetCandidates.mockRejectedValue(new Error("DB connection lost"));
-    const res = await get("/matching/candidates/abc123");
+    const res = await get("/matching/candidates/abc123", await adminToken());
     expect(res.status).toBe(500);
   });
 
-  it("this route is public — no token required", async () => {
+  // tested: candidates endpoint requires admin auth — compatibility data and
+  // paid embedding calls must not be reachable anonymously
+  it("returns 401 without a token", async () => {
     const res = await get("/matching/candidates/64b1234567890abcdef01234");
-    expect(res.status).not.toBe(401);
+    expect(res.status).toBe(401);
+    expect(mockGetCandidates).not.toHaveBeenCalled();
   });
 });
 
