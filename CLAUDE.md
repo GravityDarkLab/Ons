@@ -113,3 +113,11 @@ bun run vitest run src/__tests__/unit/ApplicantDetail.vitest.tsx
 ```
 
 Frontend test files use `.vitest.tsx` / `.vitest.ts` extensions; API test files use `.test.ts`.
+
+**Smoke tests** (`tests/smoke/`) run against a live server + DB and require env vars — without them every test self-skips with a warning:
+```bash
+SMOKE_ADMIN_USER=... SMOKE_ADMIN_PASS=... \
+SMOKE_MONGO_URI='mongodb://.../ons?authSource=ons' \
+bun test ./tests/smoke/portal.smoke.ts ./tests/smoke/match-flow.smoke.ts
+```
+Credentials are in `api/.env.dev`; `SMOKE_MONGO_URI` matches `MONGODB_URI` there.

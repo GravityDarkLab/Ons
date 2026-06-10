@@ -22,9 +22,18 @@ import {
 
 // ── Availability guards ────────────────────────────────────────────────────────
 
-const SERVER_AVAILABLE = await checkServerAvailable();
+const CREDS_AVAILABLE = !!(ADMIN_USER && ADMIN_PASS);
 
-if (!SERVER_AVAILABLE) {
+if (!CREDS_AVAILABLE) {
+  console.warn(`\n⚠️  Smoke tests: SMOKE_ADMIN_USER / SMOKE_ADMIN_PASS not set.\n` +
+    `   Without admin credentials most tests fail confusingly — skipping all.\n` +
+    `   Example:\n` +
+    `   SMOKE_ADMIN_USER=admin SMOKE_ADMIN_PASS=... bun test ./tests/smoke/match-flow.smoke.ts\n`);
+}
+
+const SERVER_AVAILABLE = CREDS_AVAILABLE && await checkServerAvailable();
+
+if (CREDS_AVAILABLE && !SERVER_AVAILABLE) {
   console.warn(`\n⚠️  Match-flow smoke: server not reachable at ${BASE_ROOT}. All tests skipped.\n`);
 }
 

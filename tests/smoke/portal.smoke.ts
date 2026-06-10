@@ -19,9 +19,18 @@ import {
 
 // ── Availability check (top-level await — runs before any test is registered) ─
 
-const SERVER_AVAILABLE = await checkServerAvailable();
+const CREDS_AVAILABLE = !!(ADMIN_USER && ADMIN_PASS);
 
-if (!SERVER_AVAILABLE) {
+if (!CREDS_AVAILABLE) {
+  console.warn(`\n⚠️  Smoke tests: SMOKE_ADMIN_USER / SMOKE_ADMIN_PASS not set.\n` +
+    `   Without admin credentials most tests fail confusingly — skipping all.\n` +
+    `   Example:\n` +
+    `   SMOKE_ADMIN_USER=admin SMOKE_ADMIN_PASS=... bun test ./tests/smoke/portal.smoke.ts\n`);
+}
+
+const SERVER_AVAILABLE = CREDS_AVAILABLE && await checkServerAvailable();
+
+if (CREDS_AVAILABLE && !SERVER_AVAILABLE) {
   console.warn(`\n⚠️  Smoke tests: server not reachable at ${BASE_ROOT}\n` +
     `   Set SMOKE_BASE_URL or start the server, then re-run.\n` +
     `   All tests below will be skipped.\n`);
@@ -580,6 +589,49 @@ describe("Admin matching", () => {
       { bearer: S.jwtB },
     );
     expect([401, 403]).toContain(r.status);
+  });
+
+  // tested: candidates endpoint is admin-only (compatibility data + paid
+  // embedding calls must not be reachable anonymously)
+  T("GET /matching/candidates — no auth → 401", async () => {
+    const r = await get(`/matching/candidates/${S.sampleApplicantId}`);
+    expect(r.status).toBe(401);
+  });
+
+  T("GET /matching/candidates — admin → 200 + candidates array", async () => {
+    // sampleApplicantId may have been deactivated by the Deactivate section
+    // (candidates 404s on inactive applicants) — fetch a currently active one
+    const list = await get("/admin/applicants?status=applied&limit=1", { cookie: S.adminCookie });
+    const activeId = list.body?.data?.[0]?.id;
+    expect(activeId).toBeTruthy();
+
+    const r = await get(
+      `/matching/candidates/${activeId}?algorithm=baseline`,
+      { cookie: S.adminCookie },
+    );
+    expect(r.status).toBe(200);
+    expect(Array.isArray(r.body.candidates)).toBe(true);
+  });
+
+  // tested: last-run persistence — POST /matching/run above must have written
+  // a summary to app_config that survives independent of component state
+  T("GET /matching/last-run — no auth → 401", async () => {
+    const r = await get("/matching/last-run");
+    expect(r.status).toBe(401);
+  });
+
+  T("GET /matching/last-run — reflects the run this suite triggered", async () => {
+    const r = await get("/matching/last-run", { cookie: S.adminCookie });
+    expect(r.status).toBe(200);
+    expect(r.body.data).toBeTruthy();
+    const d = r.body.data;
+    expect(typeof d.totalApplicants).toBe("number");
+    expect(typeof d.couplesProposed).toBe("number");
+    expect(["admin", "scheduler"]).toContain(d.triggeredBy);
+    // The run happened within this suite execution — `at` must be recent
+    const ageMs = Date.now() - new Date(d.at).getTime();
+    expect(ageMs).toBeGreaterThanOrEqual(0);
+    expect(ageMs).toBeLessThan(10 * 60 * 1000);
   });
 });
 
