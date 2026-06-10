@@ -15,6 +15,9 @@ import { hashMagicToken } from "../privacy/magic-token.js";
 import { writeAuditLog } from "../middleware/audit.middleware.js";
 import { generateIceBreakers } from "./icebreaker.service.js";
 
+/** Grace period before personal data of inactive accounts is purged. */
+const DELETION_GRACE_MS = 180 * 24 * 60 * 60 * 1000;
+
 // ── Auth ──────────────────────────────────────────────────────────────────────
 
 export type LoginAttemptResult =
@@ -265,19 +268,31 @@ export async function respondToContact(
 
   const now = new Date();
 
-  if (accept) {
-    await matchCol.updateOne(
-      { _id: matchOid },
-      { $set: { status: "dating", contactRespondedAt: now, updatedAt: now } }
+  // Atomic claim — the status filter prevents concurrent accept/decline from
+  // both applying after passing assertMatchTransition on the same snapshot
+  const claimed = await matchCol.findOneAndUpdate(
+    { _id: matchOid, status: "in_progress" },
+    {
+      $set: {
+        status:             accept ? "dating" : "declined",
+        contactRespondedAt: now,
+        updatedAt:          now,
+      },
+    },
+    { returnDocument: "after" },
+  );
+
+  if (!claimed) {
+    throw Object.assign(
+      new Error("Match was already responded to"),
+      { statusCode: 409 },
     );
+  }
+
+  if (accept) {
     const ids = [match.applicantAId, match.applicantBId];
     await transitionApplicantStatus(ids, "dating");
     await expireConflictingMatches(ids);
-  } else {
-    await matchCol.updateOne(
-      { _id: matchOid },
-      { $set: { status: "declined", contactRespondedAt: now, updatedAt: now } }
-    );
   }
 }
 
@@ -304,19 +319,32 @@ export async function reportOutcome(
   const now = new Date();
   const ids  = [match.applicantAId, match.applicantBId];
 
+  // Atomic claim — only one partner's outcome report wins; a concurrent
+  // conflicting report gets 409 instead of silently overwriting state
+  const claimed = await matchCol.findOneAndUpdate(
+    { _id: matchOid, status: { $in: ["dating", "in_progress"] } },
+    { $set: { status: outcome === "success" ? "success" : "failed", updatedAt: now } },
+    { returnDocument: "after" },
+  );
+
+  if (!claimed) {
+    throw Object.assign(
+      new Error("Outcome was already reported for this match"),
+      { statusCode: 409 },
+    );
+  }
+
   if (outcome === "success") {
-    await matchCol.updateOne({ _id: matchOid }, { $set: { status: "success", updatedAt: now } });
-    const deletionScheduledAt = new Date(now.getTime() + 180 * 24 * 60 * 60 * 1000);
+    const deletionScheduledAt = new Date(now.getTime() + DELETION_GRACE_MS);
     await transitionApplicantStatus(ids, "inactive", { deletionScheduledAt });
   } else {
-    await matchCol.updateOne({ _id: matchOid }, { $set: { status: "failed", updatedAt: now } });
     await transitionApplicantStatus(ids, "applied");
   }
 }
 
 export async function deactivateMyAccount(applicantId: string): Promise<void> {
   const oid                = new ObjectId(applicantId);
-  const deletionScheduledAt = new Date(Date.now() + 180 * 24 * 60 * 60 * 1000);
+  const deletionScheduledAt = new Date(Date.now() + DELETION_GRACE_MS);
   await transitionApplicantStatus([oid], "inactive", { deletionScheduledAt });
   await expireConflictingMatches([oid]);
 }
