@@ -1,5 +1,5 @@
-import { useState } from 'react'
-import { NavLink, useNavigate } from 'react-router-dom'
+import { useEffect, useState } from 'react'
+import { NavLink, useLocation, useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { useAuth } from '../context/AuthContext'
 import LanguageSwitcher from '../../components/LanguageSwitcher'
@@ -77,6 +77,7 @@ export function AdminLayout({ children }: { children: ReactNode }) {
   const { t } = useTranslation()
   const { logout, role } = useAuth()
   const navigate = useNavigate()
+  const location = useLocation()
   const [collapsed, setCollapsed] = useState(false)
 
   const NAV = [
@@ -86,6 +87,14 @@ export function AdminLayout({ children }: { children: ReactNode }) {
     { to: '/admin/matching',   icon: SparklesIcon,  label: t('admin.nav.matching'),   end: false },
     { to: '/admin/audit-logs', icon: ClipboardIcon, label: t('admin.nav.auditLogs'),  end: false },
   ]
+
+  // Per-route tab title; public pages keep the generic index.html title
+  useEffect(() => {
+    const active = NAV.filter(n => (n.end ? location.pathname === n.to : location.pathname.startsWith(n.to)))
+      .sort((a, b) => b.to.length - a.to.length)[0]
+    document.title = active ? `${active.label} · Ons Admin` : 'Ons Admin'
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [location.pathname, t])
 
   function handleLogout() { logout(); navigate('/admin/login') }
 

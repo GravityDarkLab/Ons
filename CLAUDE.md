@@ -36,7 +36,7 @@ bun test --watch --preload ./src/__tests__/setup.ts ./src/__tests__
 bun run seed              # Interactive: questionnaire / applicants / both
 ```
 
-API is at `http://localhost:3001`, Swagger UI at `http://localhost:3001/api/v1/docs`, frontend at `http://localhost:5174`.
+API is at `http://localhost:3001`, Swagger UI at `http://localhost:3001/api/v1/docs`, frontend at `http://localhost:5173`.
 
 ## Environment setup
 
