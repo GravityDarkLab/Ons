@@ -1,4 +1,5 @@
 import { BrowserRouter, Routes, Route } from 'react-router-dom'
+import { ToastProvider } from './components/ui/Toast'
 import { AuthProvider } from './admin/context/AuthContext'
 import { ProtectedRoute } from './admin/components/ProtectedRoute'
 import { AdminLayout } from './admin/components/AdminLayout'
@@ -19,6 +20,7 @@ import ProfileDashboard from './pages/profile/ProfileDashboard'
 export default function App() {
   return (
     <BrowserRouter>
+      <ToastProvider>
       <Routes>
         {/* ── Admin (session auth, no invite gate) ─────────────────────
             AuthProvider is scoped here — getMe() is only called when
@@ -69,6 +71,7 @@ export default function App() {
           }
         />
       </Routes>
+      </ToastProvider>
     </BrowserRouter>
   )
 }
