@@ -4,14 +4,15 @@ import { describe, it, expect, mock, beforeEach } from "bun:test";
 
 const mockGetCandidates         = mock(async () => [] as any[]);
 const mockRunFullMatchingPass   = mock(async () => ({} as Record<string, any[]>));
-const mockGenerateCoupleProposals = mock(() => [] as any[]);
 const mockSaveMatchProposals    = mock(async (..._: any[]) => 0);
 const mockLoadActiveApplicants  = mock(async () => [] as any[]);
 
+// generateCoupleProposals (matching/proposals.js) is pure and DB-free, so it
+// stays unmocked. Bun's mock.module is process-global: mocking it here would
+// replace the shared export binding and poison the unit tests in full runs.
 mock.module("../../matching/engine.js", () => ({
   getCandidates:          mockGetCandidates,
   runFullMatchingPass:    mockRunFullMatchingPass,
-  generateCoupleProposals: mockGenerateCoupleProposals,
   ALGORITHM_REGISTRY:     {},
 }));
 

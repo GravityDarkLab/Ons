@@ -3,7 +3,7 @@ import { getDb } from "../db/connection.js";
 import { getMatchesCollection, getApplicantsCollection } from "../db/collections.js";
 import type { MatchDoc, MatchStatus } from "../models/match.model.js";
 import type { ApplicantDoc, ApplicantStatus } from "../models/applicant.model.js";
-import type { CoupleProposal } from "../matching/engine.js";
+import type { CoupleProposal } from "../matching/proposals.js";
 import type { PaginatedResult } from "./admin.service.js";
 
 // ── Admin view (ObjectIds serialised to strings) ──────────────────────────────

@@ -1,5 +1,6 @@
 import { Context } from "hono";
-import { getCandidates, runFullMatchingPass, generateCoupleProposals } from "../matching/engine.js";
+import { getCandidates, runFullMatchingPass } from "../matching/engine.js";
+import { generateCoupleProposals } from "../matching/proposals.js";
 import { saveMatchProposals, loadActiveApplicants } from "../services/match.service.js";
 
 /**

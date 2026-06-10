@@ -1,5 +1,6 @@
 import { loadActiveApplicants, saveMatchProposals } from "../services/match.service.js";
-import { runFullMatchingPass, generateCoupleProposals } from "../matching/engine.js";
+import { runFullMatchingPass } from "../matching/engine.js";
+import { generateCoupleProposals } from "../matching/proposals.js";
 import { transitionApplicantStatus } from "../services/match.service.js";
 import { getDb } from "../db/connection.js";
 import { getMatchesCollection } from "../db/collections.js";
