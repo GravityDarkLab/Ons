@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom'
 import { useTranslation, Trans } from 'react-i18next'
 import { runMatching, fetchMatchingLastRun } from '../api/client'
 import Button from '../../components/ui/Button'
+import ConfirmDialog from '../../components/ui/ConfirmDialog'
 import { useTimeAgo } from '../utils/timeAgo'
 import type { MatchingRun, MatchingLastRun } from '../types'
 
@@ -66,12 +67,12 @@ export function Matching() {
     <div className="max-w-2xl space-y-6">
       {/* Page header */}
       <div>
-        <h1 className="text-xl font-semibold text-primary">{t('admin.matching.title')}</h1>
+        <h1 className="text-2xl font-semibold tracking-tight text-primary">{t('admin.matching.title')}</h1>
         <p className="text-sm text-muted mt-0.5">{t('admin.matching.subtitle')}</p>
       </div>
 
       {/* Run Matching card */}
-      <div className="bg-surface border border-border rounded-2xl p-8 shadow-sm space-y-6">
+      <div className="bg-surface border border-border rounded-2xl p-8 shadow-card space-y-6">
         <h2 className="text-xl font-semibold text-primary mb-6">{t('admin.matching.title')}</h2>
 
         {/* Algorithm dropdown */}
@@ -121,42 +122,27 @@ export function Matching() {
         {error && <p className="text-sm text-error">{error}</p>}
 
         {/* Confirm dialog */}
-        {confirming ? (
-          <div className="bg-surface border border-border rounded-xl p-5 space-y-4">
-            <div>
-              <p className="text-sm font-medium text-primary">
-                {t('admin.matching.confirmTitle', { algorithm: selectedAlgorithm?.label ?? algorithm })}
-              </p>
-              <p className="text-xs text-muted mt-1">
-                {t('admin.matching.confirmBody')}
-              </p>
-            </div>
-            <div className="flex items-center gap-3">
-              <button
-                type="button"
-                onClick={() => setConfirming(false)}
-                className="px-4 py-2 text-sm font-medium text-muted border border-border rounded-lg hover:text-primary hover:border-border/80 transition-colors"
-              >
-                {t('admin.matching.cancel')}
-              </button>
-              <Button onClick={handleConfirm} loading={loading}>
-                {t('admin.matching.confirmRun')}
-              </Button>
-            </div>
-          </div>
-        ) : (
-          <Button onClick={() => setConfirming(true)} loading={loading}>
-            {t('admin.matching.run')}
-          </Button>
-        )}
+        <Button onClick={() => setConfirming(true)} loading={loading}>
+          {t('admin.matching.run')}
+        </Button>
+        <ConfirmDialog
+          open={confirming}
+          title={t('admin.matching.confirmTitle', { algorithm: selectedAlgorithm?.label ?? algorithm })}
+          description={t('admin.matching.confirmBody')}
+          confirmLabel={t('admin.matching.confirmRun')}
+          cancelLabel={t('admin.matching.cancel')}
+          loading={loading}
+          onConfirm={handleConfirm}
+          onClose={() => setConfirming(false)}
+        />
       </div>
 
       {/* Result summary card */}
       {result && (
-        <div className="bg-green-50 border border-green-200 rounded-xl p-4 space-y-4">
+        <div className="bg-success-light border border-success/30 rounded-xl p-4 space-y-4">
           <div className="flex items-center gap-2">
-            <span className="flex h-6 w-6 items-center justify-center rounded-full bg-green-100">
-              <svg className="h-3.5 w-3.5 text-green-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+            <span className="flex h-6 w-6 items-center justify-center rounded-full bg-success-light">
+              <svg className="h-3.5 w-3.5 text-success" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
                 <polyline points="20 6 9 17 4 12" />
               </svg>
             </span>

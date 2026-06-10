@@ -2,20 +2,13 @@ import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { fetchApplicants, fetchMatches, fetchAuditLogs } from '../api/client'
-import type { Match, AuditLog, MatchStatus } from '../types'
+import { useTimeAgo } from '../utils/timeAgo'
+import Badge from '../../components/ui/Badge'
+import Skeleton from '../../components/ui/Skeleton'
+import { matchStatusTone } from '../../components/ui/statusTones'
+import type { Match, AuditLog } from '../types'
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
-
-function timeAgo(iso: string): string {
-  const diffMs = Date.now() - new Date(iso).getTime()
-  const diffSec = Math.floor(diffMs / 1000)
-  if (diffSec < 60) return 'just now'
-  const diffMin = Math.floor(diffSec / 60)
-  if (diffMin < 60) return `${diffMin}m ago`
-  const diffHr = Math.floor(diffMin / 60)
-  if (diffHr < 24) return `${diffHr}h ago`
-  return `${Math.floor(diffHr / 24)}d ago`
-}
 
 function formatDate(date: Date): string {
   return date.toLocaleDateString('en-GB', {
@@ -49,23 +42,11 @@ const STATUS_NUMBER_COLOR: Record<string, string> = {
   inactive: 'text-muted',
 }
 
-// ── Match status badge ────────────────────────────────────────────────────────
-
-const MATCH_BADGE: Record<MatchStatus, string> = {
-  proposed:    'bg-border text-muted',
-  in_progress: 'bg-blue-100 text-blue-700',
-  dating:      'bg-green-100 text-green-700',
-  success:     'bg-amber-100 text-amber-700',
-  failed:      'bg-red-100 text-red-600',
-  declined:    'bg-border text-muted',
-  expired:     'bg-border text-muted',
-}
-
 // ── Audit action color ────────────────────────────────────────────────────────
 
 function auditActionColor(action: string): string {
-  if (action === 'RESOLVE_IDENTITY') return 'text-amber-600'
-  if (action === 'LOGIN') return 'text-blue-600'
+  if (action === 'RESOLVE_IDENTITY') return 'text-warning'
+  if (action === 'LOGIN') return 'text-info'
   return 'text-muted'
 }
 
@@ -73,18 +54,18 @@ function auditActionColor(action: string): string {
 
 function StatCardSkeleton() {
   return (
-    <div className="bg-surface border border-border border-l-4 rounded-2xl px-5 py-4 shadow-sm animate-pulse">
-      <div className="h-8 w-10 bg-border rounded mb-2" />
-      <div className="h-4 w-20 bg-border rounded" />
+    <div className="bg-surface border border-border border-l-4 rounded-2xl px-5 py-4 shadow-card">
+      <Skeleton className="h-9 w-12 mb-2" />
+      <Skeleton className="h-4 w-20" />
     </div>
   )
 }
 
 function FeedRowSkeleton() {
   return (
-    <div className="py-3 animate-pulse flex flex-col gap-1.5">
-      <div className="h-4 w-3/4 bg-border rounded" />
-      <div className="h-3 w-1/3 bg-border rounded" />
+    <div className="py-3 flex flex-col gap-1.5">
+      <Skeleton className="h-4 w-3/4" />
+      <Skeleton className="h-3 w-1/3" />
     </div>
   )
 }
@@ -102,6 +83,7 @@ const STAT_CARDS: Array<{ key: keyof StatusCount; label: string }> = [
 
 export function Dashboard() {
   const { t } = useTranslation()
+  const timeAgo = useTimeAgo()
 
   const [counts, setCounts]   = useState<StatusCount | null>(null)
   const [matches, setMatches] = useState<Match[] | null>(null)
@@ -137,7 +119,7 @@ export function Dashboard() {
     <div className="space-y-8">
       {/* Page header */}
       <div>
-        <h1 className="text-xl font-semibold text-primary">
+        <h1 className="text-2xl font-semibold tracking-tight text-primary">
           {t('admin.dashboard.title')}
         </h1>
         <p className="text-sm text-muted mt-0.5">{formatDate(new Date())}</p>
@@ -149,9 +131,9 @@ export function Dashboard() {
           counts ? (
             <div
               key={key}
-              className={`bg-surface border border-border border-l-4 ${STATUS_BORDER[key]} rounded-2xl px-5 py-4 shadow-sm`}
+              className={`bg-surface border border-border border-l-4 ${STATUS_BORDER[key]} rounded-2xl px-5 py-4 shadow-card transition-card hover-card`}
             >
-              <p className={`text-3xl font-semibold ${STATUS_NUMBER_COLOR[key]}`}>
+              <p className={`text-4xl font-semibold tabular-nums ${STATUS_NUMBER_COLOR[key]}`}>
                 {counts[key]}
               </p>
               <p className="text-sm text-muted mt-1 flex items-center gap-1.5">
@@ -168,7 +150,7 @@ export function Dashboard() {
       {/* Live feed panels */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Recent Matches */}
-        <div className="bg-surface border border-border rounded-2xl p-6 shadow-sm">
+        <div className="bg-surface border border-border rounded-2xl p-6 shadow-card">
           <p className="text-sm font-medium text-primary uppercase tracking-wider mb-4">
             Recent Matches
           </p>
@@ -189,11 +171,9 @@ export function Dashboard() {
                       <span className="mx-1.5 text-muted">↔</span>
                       {m.applicantBAlias}
                     </span>
-                    <span
-                      className={`shrink-0 text-xs px-2 py-0.5 rounded-full font-medium ${MATCH_BADGE[m.status]}`}
-                    >
+                    <Badge tone={matchStatusTone(m.status)} size="sm" className="shrink-0">
                       {m.status.replace('_', ' ')}
-                    </span>
+                    </Badge>
                   </div>
                   <p className="text-xs text-muted mt-0.5">
                     Score: {Math.round(m.score * 100)}%
@@ -214,7 +194,7 @@ export function Dashboard() {
         </div>
 
         {/* Recent Activity */}
-        <div className="bg-surface border border-border rounded-2xl p-6 shadow-sm">
+        <div className="bg-surface border border-border rounded-2xl p-6 shadow-card">
           <p className="text-sm font-medium text-primary uppercase tracking-wider mb-4">
             Recent Activity
           </p>
@@ -233,7 +213,7 @@ export function Dashboard() {
                     {log.action.replace(/_/g, ' ')}
                   </p>
                   <p className="text-xs text-muted mt-0.5">
-                    {timeAgo(log.timestamp)}
+                    {timeAgo(new Date(log.timestamp).getTime())}
                   </p>
                 </li>
               ))}

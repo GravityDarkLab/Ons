@@ -2,20 +2,22 @@ import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { fetchAuditLogs } from '../api/client'
 import { useTimeAgo } from '../utils/timeAgo'
+import Skeleton from '../../components/ui/Skeleton'
+import EmptyState from '../../components/ui/EmptyState'
 import type { AuditLog } from '../types'
 
 const LIMIT = 20
 
 function dotColor(action: string): string {
-  if (action === 'RESOLVE_IDENTITY' || action === 'APPLICANT_REVEAL_IDENTITY') return 'bg-amber-400'
-  if (action === 'LOGIN') return 'bg-blue-400'
-  if (action === 'LOGOUT') return 'bg-gray-400'
+  if (action === 'RESOLVE_IDENTITY' || action === 'APPLICANT_REVEAL_IDENTITY') return 'bg-warning'
+  if (action === 'LOGIN') return 'bg-info'
+  if (action === 'LOGOUT') return 'bg-faint'
   return 'bg-border'
 }
 
 function actionColor(action: string): string {
-  if (action === 'RESOLVE_IDENTITY' || action === 'APPLICANT_REVEAL_IDENTITY') return 'text-amber-500'
-  if (action === 'LOGIN') return 'text-blue-500'
+  if (action === 'RESOLVE_IDENTITY' || action === 'APPLICANT_REVEAL_IDENTITY') return 'text-warning'
+  if (action === 'LOGIN') return 'text-info'
   return 'text-muted'
 }
 
@@ -37,25 +39,25 @@ export function AuditLogs() {
   return (
     <div className="space-y-6">
       <div className="mb-6">
-        <h1 className="text-xl font-semibold text-primary">{t('admin.audit.title')}</h1>
+        <h1 className="text-2xl font-semibold tracking-tight text-primary">{t('admin.audit.title')}</h1>
         <p className="text-sm text-muted mt-0.5">{t('admin.audit.subtitle')}</p>
       </div>
 
-      <div className="bg-surface border border-border rounded-2xl shadow-sm overflow-hidden">
+      <div className="bg-surface border border-border rounded-2xl shadow-card overflow-hidden">
         {loading ? (
           <ul className="divide-y divide-border">
             {Array.from({ length: 6 }).map((_, i) => (
-              <li key={i} className="flex items-start gap-4 py-4 px-6 animate-pulse">
-                <div className="mt-1.5 w-2 h-2 rounded-full bg-border flex-shrink-0" />
+              <li key={i} className="flex items-start gap-4 py-4 px-6">
+                <Skeleton className="mt-1.5 w-2 h-2 rounded-full" />
                 <div className="space-y-2 flex-1">
-                  <div className="h-3.5 bg-border rounded w-48" />
-                  <div className="h-3 bg-border rounded w-32" />
+                  <Skeleton className="h-3.5 w-48" />
+                  <Skeleton className="h-3 w-32" />
                 </div>
               </li>
             ))}
           </ul>
         ) : logs.length === 0 ? (
-          <div className="px-6 py-10 text-center text-sm text-muted">{t('admin.audit.empty')}</div>
+          <EmptyState title={t('admin.audit.empty')} />
         ) : (
           <ul className="divide-y divide-border">
             {logs.map(log => (

@@ -16,14 +16,17 @@ vi.mock('react-router-dom', async (importOriginal) => {
 
 import { useAuth } from '../../admin/context/AuthContext'
 import { AdminLayout } from '../../admin/components/AdminLayout'
+import { ThemeProvider } from '../../theme/ThemeProvider'
 
 const mockUseAuth = vi.mocked(useAuth)
 
 function renderLayout(children = <div>Page content</div>) {
   return render(
+    <ThemeProvider>
     <MemoryRouter initialEntries={['/admin']}>
       <AdminLayout>{children}</AdminLayout>
-    </MemoryRouter>,
+    </MemoryRouter>
+    </ThemeProvider>,
   )
 }
 

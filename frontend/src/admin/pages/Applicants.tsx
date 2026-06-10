@@ -2,14 +2,12 @@ import { useEffect, useState } from 'react'
 import { useSearchParams, useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { fetchApplicants, deleteApplicant } from '../api/client'
-import type { Applicant, ApplicantStatus } from '../types'
-
-const STATUS_BADGE: Record<ApplicantStatus, string> = {
-  applied:  'bg-blue-50 text-blue-700',
-  matched:  'bg-amber-50 text-amber-700',
-  dating:   'bg-green-50 text-green-700',
-  inactive: 'bg-gray-100 text-gray-500',
-}
+import Badge from '../../components/ui/Badge'
+import ConfirmDialog from '../../components/ui/ConfirmDialog'
+import Skeleton from '../../components/ui/Skeleton'
+import { useToast } from '../../components/ui/Toast'
+import { applicantStatusTone } from '../../components/ui/statusTones'
+import type { Applicant } from '../types'
 
 const LIMIT = 20
 
@@ -37,6 +35,7 @@ function TrashIcon() {
 export function Applicants() {
   const { t } = useTranslation()
   const navigate = useNavigate()
+  const { success, error: toastError } = useToast()
   const [searchParams, setSearchParams] = useSearchParams()
   const status = searchParams.get('status') ?? ''
   const page   = parseInt(searchParams.get('page') ?? '1', 10)
@@ -47,7 +46,8 @@ export function Applicants() {
   const [loading, setLoading]       = useState(true)
   const [search, setSearch]         = useState('')
   const [debouncedSearch, setDebouncedSearch] = useState('')
-  const [deletingId, setDeletingId] = useState<string | null>(null)
+  const [pendingDelete, setPendingDelete] = useState<Applicant | null>(null)
+  const [deleteLoading, setDeleteLoading] = useState(false)
 
   // Debounce search input by 300 ms
   useEffect(() => {
@@ -80,16 +80,25 @@ export function Applicants() {
     setSearchParams(prev => { const n = new URLSearchParams(prev); n.set('page', String(p)); return n })
   }
 
-  async function handleDelete(id: string) {
-    await deleteApplicant(id)
-    setDeletingId(null)
-    loadApplicants()
+  async function handleDelete() {
+    if (!pendingDelete) return
+    setDeleteLoading(true)
+    try {
+      await deleteApplicant(pendingDelete.id)
+      success(t('admin.applicants.deletedToast', { alias: pendingDelete.alias }))
+      setPendingDelete(null)
+      loadApplicants()
+    } catch (err) {
+      toastError(err instanceof Error ? err.message : 'Delete failed')
+    } finally {
+      setDeleteLoading(false)
+    }
   }
 
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-xl font-semibold text-primary">{t('admin.applicants.title')}</h1>
+        <h1 className="text-2xl font-semibold tracking-tight text-primary">{t('admin.applicants.title')}</h1>
         <p className="text-sm text-muted mt-0.5">{loading ? '—' : t('admin.applicants.total', { count: total })}</p>
       </div>
 
@@ -123,8 +132,8 @@ export function Applicants() {
             onClick={() => setFilter(f.value)}
             className={`rounded-full px-3 py-1 text-sm transition-colors ${
               status === f.value
-                ? 'bg-accent text-white'
-                : 'bg-surface border border-border text-muted hover:text-primary'
+                ? 'bg-accent text-bg'
+                : 'bg-surface border border-border text-muted hover:text-primary hover:border-accent/40'
             }`}
           >
             {f.label}
@@ -133,9 +142,9 @@ export function Applicants() {
       </div>
 
       {/* Desktop table */}
-      <div className="hidden md:block bg-surface border border-border rounded-2xl overflow-hidden">
+      <div className="hidden md:block bg-surface border border-border rounded-2xl overflow-hidden shadow-card">
         <table className="w-full text-sm">
-          <thead>
+          <thead className="bg-surface-subtle">
             <tr className="border-b border-border">
               <Th>{t('admin.applicants.colAlias')}</Th>
               <Th>{t('admin.applicants.colStatus')}</Th>
@@ -147,9 +156,9 @@ export function Applicants() {
           <tbody>
             {loading ? (
               Array.from({ length: 6 }).map((_, i) => (
-                <tr key={i} className="border-b border-border last:border-0 animate-pulse">
+                <tr key={i} className="border-b border-border last:border-0">
                   {Array.from({ length: 5 }).map((_, j) => (
-                    <td key={j} className="px-4 py-3.5"><div className="h-4 bg-border rounded w-20" /></td>
+                    <td key={j} className="px-4 py-3.5"><Skeleton className="h-4 w-20" /></td>
                   ))}
                 </tr>
               ))
@@ -163,47 +172,31 @@ export function Applicants() {
                 >
                   <td className="px-4 py-3.5 font-mono text-xs text-primary">{a.alias}</td>
                   <td className="px-4 py-3.5">
-                    <span className={`inline-flex rounded-full px-2.5 py-0.5 text-xs font-medium ${STATUS_BADGE[a.status]}`}>
+                    <Badge tone={applicantStatusTone(a.status)} size="sm">
                       {t(`admin.applicants.${a.status}`)}
-                    </span>
+                    </Badge>
                   </td>
                   <td className="px-4 py-3.5 text-muted text-xs">{a.questionnaireVersion}</td>
                   <td className="px-4 py-3.5 text-muted">{new Date(a.createdAt).toLocaleDateString()}</td>
                   <td className="px-4 py-3.5">
-                    {deletingId === a.id ? (
-                      <div className="flex items-center gap-2 text-xs">
-                        <span className="text-muted">Delete {a.alias}?</span>
-                        <button
-                          onClick={() => setDeletingId(null)}
-                          className="px-2 py-0.5 rounded border border-border text-muted hover:text-primary transition-colors"
-                        >
-                          Cancel
-                        </button>
-                        <button
-                          onClick={() => handleDelete(a.id)}
-                          className="px-2 py-0.5 rounded bg-red-500 text-white hover:bg-red-600 transition-colors"
-                        >
-                          Confirm
-                        </button>
-                      </div>
-                    ) : (
-                      <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                        <button
-                          onClick={() => navigate(`/admin/applicants/${a.id}`)}
-                          className="p-1 rounded text-muted hover:text-primary transition-colors"
-                          title="View applicant"
-                        >
-                          <EyeIcon />
-                        </button>
-                        <button
-                          onClick={() => setDeletingId(a.id)}
-                          className="p-1 rounded text-muted hover:text-red-500 transition-colors"
-                          title="Delete applicant"
-                        >
-                          <TrashIcon />
-                        </button>
-                      </div>
-                    )}
+                    <div className="flex items-center gap-1">
+                      <button
+                        onClick={() => navigate(`/admin/applicants/${a.id}`)}
+                        className="p-1.5 rounded-lg text-muted hover:text-primary hover:bg-surface-subtle focus-visible:ring-2 focus-visible:ring-accent/40 outline-none transition-colors"
+                        title="View applicant"
+                        aria-label={`View ${a.alias}`}
+                      >
+                        <EyeIcon />
+                      </button>
+                      <button
+                        onClick={() => setPendingDelete(a)}
+                        className="p-1.5 rounded-lg text-muted hover:text-error hover:bg-error-light focus-visible:ring-2 focus-visible:ring-accent/40 outline-none transition-colors"
+                        title="Delete applicant"
+                        aria-label={`Delete ${a.alias}`}
+                      >
+                        <TrashIcon />
+                      </button>
+                    </div>
                   </td>
                 </tr>
               ))
@@ -216,21 +209,21 @@ export function Applicants() {
       <div className="md:hidden grid grid-cols-1 gap-3">
         {loading ? (
           Array.from({ length: 4 }).map((_, i) => (
-            <div key={i} className="bg-surface border border-border rounded-2xl p-4 animate-pulse space-y-2">
-              <div className="h-4 bg-border rounded w-32" />
-              <div className="h-3 bg-border rounded w-20" />
+            <div key={i} className="bg-surface border border-border rounded-2xl p-4 space-y-2 shadow-card">
+              <Skeleton className="h-4 w-32" />
+              <Skeleton className="h-3 w-20" />
             </div>
           ))
         ) : applicants.length === 0 ? (
           <p className="text-center text-sm text-muted py-10">{t('admin.applicants.empty')}</p>
         ) : (
           applicants.map(a => (
-            <div key={a.id} className="bg-surface border border-border rounded-2xl p-4">
+            <div key={a.id} className="bg-surface border border-border rounded-2xl p-4 shadow-card">
               <div className="flex items-center justify-between mb-2">
                 <span className="font-mono text-xs font-bold text-primary">{a.alias}</span>
-                <span className={`inline-flex rounded-full px-2.5 py-0.5 text-xs font-medium ${STATUS_BADGE[a.status]}`}>
+                <Badge tone={applicantStatusTone(a.status)} size="sm">
                   {t(`admin.applicants.${a.status}`)}
-                </span>
+                </Badge>
               </div>
               <p className="text-xs text-muted mb-3">{new Date(a.createdAt).toLocaleDateString()}</p>
               <button
@@ -243,6 +236,18 @@ export function Applicants() {
           ))
         )}
       </div>
+
+      <ConfirmDialog
+        open={pendingDelete !== null}
+        title={pendingDelete ? `Delete ${pendingDelete.alias}?` : ''}
+        description="This permanently removes the applicant, their encrypted identity, and all their matches."
+        confirmLabel="Delete"
+        cancelLabel="Cancel"
+        tone="danger"
+        loading={deleteLoading}
+        onConfirm={handleDelete}
+        onClose={() => setPendingDelete(null)}
+      />
 
       {totalPages > 1 && (
         <div className="flex items-center justify-between text-sm">

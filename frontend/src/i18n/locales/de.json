@@ -1,6 +1,5 @@
 {
   "brand": "Ons",
-
   "common": {
     "yes": "Ja",
     "no": "Nein",
@@ -14,7 +13,6 @@
       "daysAgo_other": "vor {{count}} Tagen"
     }
   },
-
   "invite": {
     "title": "Nur auf Einladung",
     "subtitle": "Dies ist ein privates Matchmaking-Erlebnis. Gib deinen Einladungsschlüssel ein.",
@@ -25,7 +23,6 @@
     "noInvite": "Keine Einladung?",
     "noInviteLink": "Frag einen Freund, der bereits dabei ist."
   },
-
   "home": {
     "badge": "Datenschutz zuerst · Nur auf Einladung",
     "headline": "Finde deinen\nMenschen.",
@@ -33,13 +30,24 @@
     "cta": "Jetzt bewerben",
     "howItWorks": "So funktioniert es",
     "cards": [
-      { "emoji": "🗒️", "title": "Formular ausfüllen", "desc": "Beantworte einen kurzen Fragebogen über dich und was du suchst." },
-      { "emoji": "🔒", "title": "Wir schützen deine Identität", "desc": "Dein Instagram-Handle wird verschlüsselt. Du bekommst einen Codenamen." },
-      { "emoji": "💌", "title": "Wir machen das Match", "desc": "Wenn wir eine Verbindung sehen, melden wir uns direkt. Kein Algorithmus." }
+      {
+        "emoji": "🗒️",
+        "title": "Formular ausfüllen",
+        "desc": "Beantworte einen kurzen Fragebogen über dich und was du suchst."
+      },
+      {
+        "emoji": "🔒",
+        "title": "Wir schützen deine Identität",
+        "desc": "Dein Instagram-Handle wird verschlüsselt. Du bekommst einen Codenamen."
+      },
+      {
+        "emoji": "💌",
+        "title": "Wir machen das Match",
+        "desc": "Wenn wir eine Verbindung sehen, melden wir uns direkt. Kein Algorithmus."
+      }
     ],
     "footer": "© 2025 Ons · Mit Sorgfalt entwickelt"
   },
-
   "apply": {
     "stepOf": "Schritt {{current}} von {{total}}",
     "back": "Zurück",
@@ -48,7 +56,6 @@
     "submitting": "Wird gesendet…",
     "error": "Etwas ist schiefgelaufen. Bitte versuche es erneut."
   },
-
   "steps": {
     "s1": {
       "title": "Wer bist du?",
@@ -110,7 +117,6 @@
       "disclaimerRequired": "Du musst zustimmen, um fortzufahren."
     }
   },
-
   "success": {
     "title": "Du bist dabei.",
     "subtitle": "Speichere diesen Link — er ist der einzige Weg zu deinem Profil.",
@@ -125,7 +131,6 @@
     "laterHint": "Du kannst später auch über /profile/login mit deinem Magic-Link auf dein Profil zugreifen.",
     "backHome": "Zurück zur Startseite"
   },
-
   "admin": {
     "subtitle": "Admin",
     "login": {
@@ -173,7 +178,8 @@
       "empty": "Keine Bewerber gefunden.",
       "page": "Seite {{current}} von {{total}}",
       "prev": "← Zurück",
-      "next": "Weiter →"
+      "next": "Weiter →",
+      "deletedToast": "{{alias}} gelöscht"
     },
     "detail": {
       "back": "Bewerber",
@@ -191,7 +197,8 @@
       "viewAllMatches": "Alle anzeigen →",
       "page": "Seite {{current}} von {{total}}",
       "prev": "← Zurück",
-      "next": "Weiter →"
+      "next": "Weiter →",
+      "withdrawn": "Bewerber zurückgezogen"
     },
     "matching": {
       "title": "Matching",
@@ -254,7 +261,11 @@
       "deleteConfirm": "Diesen Paarvorschlag dauerhaft löschen?",
       "page": "Seite {{current}} von {{total}}",
       "prev": "← Zurück",
-      "next": "Weiter →"
+      "next": "Weiter →",
+      "statusUpdated": "Status aktualisiert",
+      "notesSaved": "Notizen gespeichert",
+      "deleted": "Match gelöscht",
+      "updateError": "Aktualisierung fehlgeschlagen"
     },
     "audit": {
       "title": "Audit-Protokoll",

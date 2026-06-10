@@ -12,6 +12,7 @@ vi.mock('../../admin/api/client', () => ({
 
 import * as client from '../../admin/api/client'
 import { Applicants } from '../../admin/pages/Applicants'
+import { ToastProvider } from '../../components/ui/Toast'
 import type { Applicant } from '../../admin/types'
 
 const mockFetchApplicants = vi.mocked(client.fetchApplicants)
@@ -39,9 +40,11 @@ function page(data: Applicant[], total = data.length, totalPages = 1) {
 
 function renderApplicants(initialPath = '/admin/applicants') {
   return render(
-    <MemoryRouter initialEntries={[initialPath]}>
-      <Applicants />
-    </MemoryRouter>,
+    <ToastProvider>
+      <MemoryRouter initialEntries={[initialPath]}>
+        <Applicants />
+      </MemoryRouter>
+    </ToastProvider>,
   )
 }
 

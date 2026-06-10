@@ -1,4 +1,7 @@
-import { render, screen, waitFor } from '@testing-library/react'
+// NOTE: jsdom renders both the desktop table and the mobile card list, so
+// match-level queries are scoped to the table via within(); page-level chrome
+// (tabs, search, dialogs) is queried on screen.
+import { render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { MemoryRouter } from 'react-router-dom'
 import { vi } from 'vitest'
@@ -11,6 +14,7 @@ vi.mock('../../admin/api/client', () => ({
 
 import * as client from '../../admin/api/client'
 import { Matches } from '../../admin/pages/Matches'
+import { ToastProvider } from '../../components/ui/Toast'
 
 const mockFetchMatches = vi.mocked(client.fetchMatches)
 const mockUpdateMatch  = vi.mocked(client.updateMatch)
@@ -47,10 +51,16 @@ function renderMatches(search = '') {
     ? `/admin/matches?${search}`
     : '/admin/matches'
   return render(
-    <MemoryRouter initialEntries={[initialPath]}>
-      <Matches />
-    </MemoryRouter>,
+    <ToastProvider>
+      <MemoryRouter initialEntries={[initialPath]}>
+        <Matches />
+      </MemoryRouter>
+    </ToastProvider>,
   )
+}
+
+function table() {
+  return within(screen.getByRole('table'))
 }
 
 beforeEach(() => {
@@ -58,7 +68,6 @@ beforeEach(() => {
   mockUpdateMatch.mockReset()
   mockRemoveMatch.mockReset()
   mockFetchMatches.mockResolvedValue({ data: [], total: 0, page: 1, limit: 20, totalPages: 0 })
-  vi.spyOn(window, 'confirm').mockReturnValue(true)
 })
 
 afterEach(() => {
@@ -70,16 +79,16 @@ describe('Matches page — initial render', () => {
   it('shows empty state when there are no matches', async () => {
     renderMatches()
     await waitFor(() =>
-      expect(screen.getByText('admin.matches.empty')).toBeInTheDocument(),
+      expect(screen.getAllByText('admin.matches.empty').length).toBeGreaterThan(0),
     )
   })
 
   it('renders couple aliases with score and status after load', async () => {
     mockFetchMatches.mockResolvedValue({ data: [MATCH_A], total: 1, page: 1, limit: 20, totalPages: 1 })
     renderMatches()
-    await waitFor(() => screen.getByText('Lunar Ocean'))
-    expect(screen.getByText('Pearl Lantern')).toBeInTheDocument()
-    expect(screen.getByText('87%')).toBeInTheDocument()
+    await waitFor(() => table().getByText('Lunar Ocean'))
+    expect(table().getByText('Pearl Lantern')).toBeInTheDocument()
+    expect(table().getByText('87%')).toBeInTheDocument()
     // Status badge + filter tab both render the same key — use getAllByText
     expect(screen.getAllByText('admin.matches.proposed').length).toBeGreaterThanOrEqual(2)
   })
@@ -95,7 +104,7 @@ describe('Matches page — initial render', () => {
   it('renders algorithm for each match', async () => {
     mockFetchMatches.mockResolvedValue({ data: [MATCH_A], total: 1, page: 1, limit: 20, totalPages: 1 })
     renderMatches()
-    await waitFor(() => screen.getByText('baseline'))
+    await waitFor(() => table().getByText('baseline'))
   })
 })
 
@@ -169,18 +178,18 @@ describe('Matches page — status transitions', () => {
   it('shows InProgress and Failed action buttons for a proposed match', async () => {
     mockFetchMatches.mockResolvedValue({ data: [MATCH_A], total: 1, page: 1, limit: 20, totalPages: 1 })
     renderMatches()
-    await waitFor(() => screen.getByText('Lunar Ocean'))
-    expect(screen.getByRole('button', { name: 'admin.matches.markInProgress' })).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: 'admin.matches.markFailed' })).toBeInTheDocument()
+    await waitFor(() => table().getByText('Lunar Ocean'))
+    expect(table().getByRole('button', { name: 'admin.matches.markInProgress' })).toBeInTheDocument()
+    expect(table().getByRole('button', { name: 'admin.matches.markFailed' })).toBeInTheDocument()
   })
 
   it('calls updateMatch with new status when action button is clicked', async () => {
     mockFetchMatches.mockResolvedValue({ data: [MATCH_A], total: 1, page: 1, limit: 20, totalPages: 1 })
     mockUpdateMatch.mockResolvedValue({ ...MATCH_A, status: 'in_progress' as const })
     renderMatches()
-    await waitFor(() => screen.getByRole('button', { name: 'admin.matches.markInProgress' }))
+    await waitFor(() => table().getByRole('button', { name: 'admin.matches.markInProgress' }))
 
-    await userEvent.click(screen.getByRole('button', { name: 'admin.matches.markInProgress' }))
+    await userEvent.click(table().getByRole('button', { name: 'admin.matches.markInProgress' }))
     await waitFor(() =>
       expect(mockUpdateMatch).toHaveBeenCalledWith('match-001', { status: 'in_progress' }),
     )
@@ -190,23 +199,23 @@ describe('Matches page — status transitions', () => {
     mockFetchMatches.mockResolvedValue({ data: [MATCH_A], total: 1, page: 1, limit: 20, totalPages: 1 })
     mockUpdateMatch.mockResolvedValue({ ...MATCH_A, status: 'in_progress' as const })
     renderMatches()
-    await waitFor(() => screen.getByRole('button', { name: 'admin.matches.markInProgress' }))
+    await waitFor(() => table().getByRole('button', { name: 'admin.matches.markInProgress' }))
 
-    await userEvent.click(screen.getByRole('button', { name: 'admin.matches.markInProgress' }))
+    await userEvent.click(table().getByRole('button', { name: 'admin.matches.markInProgress' }))
 
     // After proposed→in_progress, actions change: "InProgress" disappears, "Dating" appears
     await waitFor(() => {
-      expect(screen.queryByRole('button', { name: 'admin.matches.markInProgress' })).not.toBeInTheDocument()
-      expect(screen.getByRole('button', { name: 'admin.matches.markDating' })).toBeInTheDocument()
+      expect(table().queryByRole('button', { name: 'admin.matches.markInProgress' })).not.toBeInTheDocument()
+      expect(table().getByRole('button', { name: 'admin.matches.markDating' })).toBeInTheDocument()
     })
   })
 
   it('shows Dating and Failed buttons for an in_progress match', async () => {
     mockFetchMatches.mockResolvedValue({ data: [MATCH_B], total: 1, page: 1, limit: 20, totalPages: 1 })
     renderMatches()
-    await waitFor(() => screen.getByText('Echo Blue'))
-    expect(screen.getByRole('button', { name: 'admin.matches.markDating' })).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: 'admin.matches.markFailed' })).toBeInTheDocument()
+    await waitFor(() => table().getByText('Echo Blue'))
+    expect(table().getByRole('button', { name: 'admin.matches.markDating' })).toBeInTheDocument()
+    expect(table().getByRole('button', { name: 'admin.matches.markFailed' })).toBeInTheDocument()
   })
 })
 
@@ -214,32 +223,39 @@ describe('Matches page — notes', () => {
   it('expands notes editor when Notes button is clicked', async () => {
     mockFetchMatches.mockResolvedValue({ data: [MATCH_A], total: 1, page: 1, limit: 20, totalPages: 1 })
     renderMatches()
-    await waitFor(() => screen.getByRole('button', { name: 'admin.matches.editNotes' }))
+    await waitFor(() => table().getByRole('button', { name: 'admin.matches.editNotes' }))
 
-    await userEvent.click(screen.getByRole('button', { name: 'admin.matches.editNotes' }))
-    expect(screen.getByPlaceholderText('admin.matches.notesPlaceholder')).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: 'admin.matches.cancelNotes' })).toBeInTheDocument()
+    await userEvent.click(table().getByRole('button', { name: 'admin.matches.editNotes' }))
+    expect(table().getByPlaceholderText('admin.matches.notesPlaceholder')).toBeInTheDocument()
+    expect(table().getByRole('button', { name: 'admin.matches.cancelNotes' })).toBeInTheDocument()
   })
 
   it('collapses notes editor when Cancel is clicked', async () => {
     mockFetchMatches.mockResolvedValue({ data: [MATCH_A], total: 1, page: 1, limit: 20, totalPages: 1 })
     renderMatches()
-    await waitFor(() => screen.getByRole('button', { name: 'admin.matches.editNotes' }))
+    await waitFor(() => table().getByRole('button', { name: 'admin.matches.editNotes' }))
 
-    await userEvent.click(screen.getByRole('button', { name: 'admin.matches.editNotes' }))
-    await userEvent.click(screen.getByRole('button', { name: 'admin.matches.cancelNotes' }))
-    expect(screen.queryByPlaceholderText('admin.matches.notesPlaceholder')).not.toBeInTheDocument()
+    await userEvent.click(table().getByRole('button', { name: 'admin.matches.editNotes' }))
+    await userEvent.click(table().getByRole('button', { name: 'admin.matches.cancelNotes' }))
+    expect(table().queryByPlaceholderText('admin.matches.notesPlaceholder')).not.toBeInTheDocument()
   })
 })
 
 describe('Matches page — delete', () => {
-  it('calls removeMatch after confirm dialog', async () => {
+  async function openDeleteDialog() {
+    await waitFor(() => table().getByRole('button', { name: 'admin.matches.delete' }))
+    await userEvent.click(table().getByRole('button', { name: 'admin.matches.delete' }))
+    return screen.getByRole('alertdialog')
+  }
+
+  it('calls removeMatch after confirming in the dialog', async () => {
     mockFetchMatches.mockResolvedValue({ data: [MATCH_A], total: 1, page: 1, limit: 20, totalPages: 1 })
     mockRemoveMatch.mockResolvedValue(undefined)
     renderMatches()
-    await waitFor(() => screen.getByRole('button', { name: 'admin.matches.delete' }))
 
-    await userEvent.click(screen.getByRole('button', { name: 'admin.matches.delete' }))
+    const dialog = await openDeleteDialog()
+    expect(dialog).toHaveAccessibleDescription('admin.matches.deleteConfirm')
+    await userEvent.click(within(dialog).getByRole('button', { name: 'admin.matches.delete' }))
     await waitFor(() => expect(mockRemoveMatch).toHaveBeenCalledWith('match-001'))
   })
 
@@ -247,21 +263,21 @@ describe('Matches page — delete', () => {
     mockFetchMatches.mockResolvedValue({ data: [MATCH_A], total: 1, page: 1, limit: 20, totalPages: 1 })
     mockRemoveMatch.mockResolvedValue(undefined)
     renderMatches()
-    await waitFor(() => screen.getByText('Lunar Ocean'))
 
-    await userEvent.click(screen.getByRole('button', { name: 'admin.matches.delete' }))
+    const dialog = await openDeleteDialog()
+    await userEvent.click(within(dialog).getByRole('button', { name: 'admin.matches.delete' }))
     await waitFor(() =>
       expect(screen.queryByText('Lunar Ocean')).not.toBeInTheDocument(),
     )
   })
 
-  it('does not call removeMatch when confirm dialog is cancelled', async () => {
-    vi.spyOn(window, 'confirm').mockReturnValue(false)
+  it('does not call removeMatch when the dialog is cancelled', async () => {
     mockFetchMatches.mockResolvedValue({ data: [MATCH_A], total: 1, page: 1, limit: 20, totalPages: 1 })
     renderMatches()
-    await waitFor(() => screen.getByRole('button', { name: 'admin.matches.delete' }))
 
-    await userEvent.click(screen.getByRole('button', { name: 'admin.matches.delete' }))
+    const dialog = await openDeleteDialog()
+    await userEvent.click(within(dialog).getByRole('button', { name: 'admin.matches.cancelNotes' }))
     expect(mockRemoveMatch).not.toHaveBeenCalled()
+    expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument()
   })
 })

@@ -12,6 +12,7 @@ vi.mock('../../admin/api/client', () => ({
 
 import * as client from '../../admin/api/client'
 import { ApplicantDetail } from '../../admin/pages/ApplicantDetail'
+import { ToastProvider } from '../../components/ui/Toast'
 
 const mockFetchApplicant      = vi.mocked(client.fetchApplicant)
 const mockFetchIdentity       = vi.mocked(client.fetchIdentity)
@@ -53,11 +54,13 @@ const MATCH_WITH_B = {
 
 function renderDetail(initialId = 'id-a') {
   return render(
-    <MemoryRouter initialEntries={[`/admin/applicants/${initialId}`]}>
-      <Routes>
-        <Route path="/admin/applicants/:id" element={<ApplicantDetail />} />
-      </Routes>
-    </MemoryRouter>,
+    <ToastProvider>
+      <MemoryRouter initialEntries={[`/admin/applicants/${initialId}`]}>
+        <Routes>
+          <Route path="/admin/applicants/:id" element={<ApplicantDetail />} />
+        </Routes>
+      </MemoryRouter>
+    </ToastProvider>,
   )
 }
 

@@ -1,6 +1,5 @@
 {
   "brand": "Ons",
-
   "common": {
     "yes": "Oui",
     "no": "Non",
@@ -14,7 +13,6 @@
       "daysAgo_other": "il y a {{count}} jours"
     }
   },
-
   "invite": {
     "title": "Sur invitation uniquement",
     "subtitle": "C'est une expérience de matchmaking privée. Entrez votre clé d'invitation pour continuer.",
@@ -25,7 +23,6 @@
     "noInvite": "Pas d'invitation ?",
     "noInviteLink": "Demandez à un ami qui est déjà inscrit."
   },
-
   "home": {
     "badge": "Vie privée d'abord · Sur invitation",
     "headline": "Trouvez votre\npersonne.",
@@ -33,13 +30,24 @@
     "cta": "Postuler maintenant",
     "howItWorks": "Comment ça marche",
     "cards": [
-      { "emoji": "🗒️", "title": "Remplissez le formulaire", "desc": "Répondez à un court questionnaire sur vous et ce que vous recherchez." },
-      { "emoji": "🔒", "title": "Nous protégeons votre identité", "desc": "Votre pseudo Instagram est chiffré. Vous recevez un nom de code." },
-      { "emoji": "💌", "title": "Nous faisons le match", "desc": "Si nous voyons une connexion, nous vous contactons directement. Pas d'algorithme." }
+      {
+        "emoji": "🗒️",
+        "title": "Remplissez le formulaire",
+        "desc": "Répondez à un court questionnaire sur vous et ce que vous recherchez."
+      },
+      {
+        "emoji": "🔒",
+        "title": "Nous protégeons votre identité",
+        "desc": "Votre pseudo Instagram est chiffré. Vous recevez un nom de code."
+      },
+      {
+        "emoji": "💌",
+        "title": "Nous faisons le match",
+        "desc": "Si nous voyons une connexion, nous vous contactons directement. Pas d'algorithme."
+      }
     ],
     "footer": "© 2025 Ons · Conçu avec soin"
   },
-
   "apply": {
     "stepOf": "Étape {{current}} sur {{total}}",
     "back": "Retour",
@@ -48,7 +56,6 @@
     "submitting": "Envoi en cours…",
     "error": "Une erreur s'est produite. Veuillez réessayer."
   },
-
   "steps": {
     "s1": {
       "title": "Qui êtes-vous ?",
@@ -110,7 +117,6 @@
       "disclaimerRequired": "Vous devez accepter pour continuer."
     }
   },
-
   "success": {
     "title": "C'est parti.",
     "subtitle": "Sauvegardez ce lien — c'est le seul moyen d'accéder à votre profil.",
@@ -125,7 +131,6 @@
     "laterHint": "Vous pouvez également accéder à votre profil plus tard sur /profile/login avec votre lien magique.",
     "backHome": "Retour à l'accueil"
   },
-
   "admin": {
     "subtitle": "Admin",
     "login": {
@@ -173,7 +178,8 @@
       "empty": "Aucun candidat trouvé.",
       "page": "Page {{current}} sur {{total}}",
       "prev": "← Préc.",
-      "next": "Suiv. →"
+      "next": "Suiv. →",
+      "deletedToast": "{{alias}} supprimé"
     },
     "detail": {
       "back": "Candidats",
@@ -191,7 +197,8 @@
       "viewAllMatches": "Voir tout →",
       "page": "Page {{current}} sur {{total}}",
       "prev": "← Préc.",
-      "next": "Suiv. →"
+      "next": "Suiv. →",
+      "withdrawn": "Candidat retiré"
     },
     "matching": {
       "title": "Matching",
@@ -254,7 +261,11 @@
       "deleteConfirm": "Supprimer définitivement cette proposition ?",
       "page": "Page {{current}} sur {{total}}",
       "prev": "← Préc.",
-      "next": "Suiv. →"
+      "next": "Suiv. →",
+      "statusUpdated": "Statut mis à jour",
+      "notesSaved": "Notes enregistrées",
+      "deleted": "Match supprimé",
+      "updateError": "Échec de la mise à jour"
     },
     "audit": {
       "title": "Journal d'audit",

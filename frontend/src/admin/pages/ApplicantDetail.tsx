@@ -3,8 +3,13 @@ import { useParams, useNavigate, Link } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { fetchApplicant, fetchIdentity, deactivateApplicant, fetchMatches } from '../api/client'
 import Button from '../../components/ui/Button'
+import Badge from '../../components/ui/Badge'
+import ConfirmDialog from '../../components/ui/ConfirmDialog'
+import Skeleton from '../../components/ui/Skeleton'
+import { useToast } from '../../components/ui/Toast'
+import { applicantStatusTone, matchStatusTone } from '../../components/ui/statusTones'
 import { useOptionalAuth } from '../context/AuthContext'
-import type { Applicant, ApplicantStatus, Match, MatchStatus } from '../types'
+import type { Applicant, ApplicantStatus, Match } from '../types'
 
 // ── Icons ──────────────────────────────────────────────────────────────────────
 
@@ -25,25 +30,6 @@ function ChevronLeftIcon() {
       <path d="M10 3L5 8l5 5" />
     </svg>
   )
-}
-
-// ── Badge maps ─────────────────────────────────────────────────────────────────
-
-const MATCH_STATUS_BADGE: Record<MatchStatus, string> = {
-  proposed:    'bg-border text-muted',
-  in_progress: 'bg-accent-light text-accent',
-  dating:      'bg-success-light text-success',
-  success:     'bg-success-light text-success',
-  failed:      'bg-error-light text-error',
-  declined:    'bg-error-light text-error',
-  expired:     'bg-border text-muted',
-}
-
-const STATUS_BADGE: Record<ApplicantStatus, string> = {
-  applied:  'bg-success-light text-success',
-  matched:  'bg-accent-light text-accent',
-  dating:   'bg-success-light text-success',
-  inactive: 'bg-border text-muted',
 }
 
 // ── Status stepper ─────────────────────────────────────────────────────────────
@@ -136,8 +122,8 @@ function IdentityCard({ id, identity, setIdentity }: IdentityCardProps) {
           {t('admin.detail.identity')}
         </p>
         {identity ? (
-          <div className="bg-amber-50 border border-amber-200 rounded-xl p-4">
-            <p className="font-mono text-sm text-accent">{identity}</p>
+          <div className="bg-warning-light border border-warning/30 rounded-xl p-4">
+            <p className="font-mono text-sm text-warning">{identity}</p>
             <p className="text-xs text-muted mt-1.5">{t('admin.detail.auditNote')}</p>
           </div>
         ) : (
@@ -219,9 +205,9 @@ function MatchHistory({ matches, applicantId }: MatchHistoryProps) {
               </div>
             </div>
             <div className="shrink-0">
-              <span className={`inline-flex px-2 py-0.5 rounded-full text-xs font-medium ${MATCH_STATUS_BADGE[m.status]}`}>
+              <Badge tone={matchStatusTone(m.status)} size="sm">
                 {t(`admin.matches.${m.status}`)}
-              </span>
+              </Badge>
             </div>
           </div>
         )
@@ -237,10 +223,12 @@ export function ApplicantDetail() {
   const isRTL = i18n.dir() === 'rtl'
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
+  const { success } = useToast()
 
   const [applicant, setApplicant]             = useState<Applicant | null>(null)
   const [identity, setIdentity]               = useState<string | null>(null)
   const [withdrawLoading, setWithdrawLoading] = useState(false)
+  const [confirmWithdraw, setConfirmWithdraw] = useState(false)
   const [error, setError]                     = useState('')
   const [matches, setMatches]                 = useState<Match[]>([])
 
@@ -254,18 +242,25 @@ export function ApplicantDetail() {
   }, [id])
 
   async function handleWithdraw() {
-    if (!id || !confirm(t('admin.detail.withdrawConfirm'))) return
+    if (!id) return
     setWithdrawLoading(true); setError('')
-    try { await deactivateApplicant(id); navigate('/admin/applicants') }
-    catch (err) { setError(err instanceof Error ? err.message : ''); setWithdrawLoading(false) }
+    try {
+      await deactivateApplicant(id)
+      success(t('admin.detail.withdrawn'))
+      navigate('/admin/applicants')
+    } catch (err) {
+      setError(err instanceof Error ? err.message : '')
+      setWithdrawLoading(false)
+      setConfirmWithdraw(false)
+    }
   }
 
   if (!applicant) {
     return (
-      <div className="space-y-6 animate-pulse">
-        <div className="h-5 w-32 bg-border rounded" />
-        <div className="h-8 w-48 bg-border rounded" />
-        <div className="h-40 bg-border rounded-2xl" />
+      <div className="space-y-6">
+        <Skeleton className="h-5 w-32" />
+        <Skeleton className="h-8 w-48" />
+        <Skeleton className="h-40 rounded-2xl w-full" />
       </div>
     )
   }
@@ -290,16 +285,16 @@ export function ApplicantDetail() {
 
         {/* LEFT: Profile info card */}
         <div className="lg:w-80 shrink-0">
-          <div className="bg-surface border border-border rounded-2xl p-6 shadow-sm space-y-5">
+          <div className="bg-surface border border-border rounded-2xl p-6 shadow-card space-y-5">
             {/* Alias + status */}
             <div>
               <h1 className="text-2xl font-semibold text-primary tracking-tight font-mono">
                 {applicant.alias}
               </h1>
               <div className="mt-2 flex items-center gap-2">
-                <span className={`inline-flex px-2.5 py-0.5 rounded-full text-xs font-medium ${STATUS_BADGE[applicant.status]}`}>
+                <Badge tone={applicantStatusTone(applicant.status)}>
                   {t(`admin.applicants.${applicant.status}`)}
-                </span>
+                </Badge>
               </div>
             </div>
 
@@ -351,9 +346,20 @@ export function ApplicantDetail() {
             {applicant.status !== 'inactive' && (
               <>
                 <div className="border-t border-border" />
-                <Button variant="secondary" onClick={handleWithdraw} loading={withdrawLoading} className="w-full">
+                <Button variant="secondary" onClick={() => setConfirmWithdraw(true)} loading={withdrawLoading} className="w-full">
                   {t('admin.detail.withdraw')}
                 </Button>
+                <ConfirmDialog
+                  open={confirmWithdraw}
+                  title={t('admin.detail.withdraw')}
+                  description={t('admin.detail.withdrawConfirm')}
+                  confirmLabel={t('admin.detail.withdraw')}
+                  cancelLabel={t('admin.matching.cancel')}
+                  tone="danger"
+                  loading={withdrawLoading}
+                  onConfirm={handleWithdraw}
+                  onClose={() => setConfirmWithdraw(false)}
+                />
               </>
             )}
           </div>
@@ -362,7 +368,7 @@ export function ApplicantDetail() {
         {/* RIGHT: Match history + status stepper */}
         <div className="flex-1 space-y-5">
           {/* Status stepper card */}
-          <div className="bg-surface border border-border rounded-2xl p-6 shadow-sm">
+          <div className="bg-surface border border-border rounded-2xl p-6 shadow-card">
             <p className="text-xs font-semibold text-muted uppercase tracking-wider mb-4">
               {t('admin.detail.status')}
             </p>
@@ -371,7 +377,7 @@ export function ApplicantDetail() {
 
           {/* Match history card — only rendered when there are matches */}
           {matches.length > 0 && (
-            <div className="bg-surface border border-border rounded-2xl p-6 shadow-sm">
+            <div className="bg-surface border border-border rounded-2xl p-6 shadow-card">
               <div className="flex items-center justify-between mb-4">
                 <p className="text-xs font-semibold text-muted uppercase tracking-wider">
                   {t('admin.detail.matches')}

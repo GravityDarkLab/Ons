@@ -36,7 +36,7 @@ export function Login() {
       {/* Left panel — hidden on mobile, visible from md breakpoint */}
       <div
         className="hidden md:flex md:w-1/2 flex-col items-center justify-center px-12"
-        style={{ background: 'linear-gradient(135deg, #F5ECD7 0%, #FAF9F7 100%)' }}
+        style={{ background: 'linear-gradient(135deg, var(--t-accent-light) 0%, var(--t-bg) 100%)' }}
       >
         <p className="text-5xl font-semibold text-primary tracking-tight">{t('brand')}</p>
         <div className="w-8 h-0.5 bg-accent my-4" />
@@ -70,7 +70,7 @@ export function Login() {
             </div>
 
             {/* Form card */}
-            <div className="bg-surface border border-border rounded-2xl p-8 shadow-sm">
+            <div className="bg-surface border border-border rounded-2xl p-8 shadow-card">
               <form onSubmit={handleSubmit} className="space-y-4" noValidate>
                 <Input
                   label={t('admin.login.username')}

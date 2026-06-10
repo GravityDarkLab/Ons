@@ -1,6 +1,5 @@
 {
   "brand": "Ons",
-
   "common": {
     "yes": "Yes",
     "no": "No",
@@ -14,7 +13,6 @@
       "daysAgo_other": "{{count}} days ago"
     }
   },
-
   "invite": {
     "title": "Invite only",
     "subtitle": "This is a private matchmaking experience. Enter your invite key to continue.",
@@ -25,7 +23,6 @@
     "noInvite": "Don't have an invite?",
     "noInviteLink": "Ask a friend who's already in."
   },
-
   "home": {
     "badge": "Privacy first · Invite only",
     "headline": "Find your\nperson.",
@@ -33,13 +30,24 @@
     "cta": "Apply Now",
     "howItWorks": "How it works",
     "cards": [
-      { "emoji": "🗒️", "title": "Fill the form", "desc": "Answer a short questionnaire about you and what you're looking for." },
-      { "emoji": "🔒", "title": "We protect your identity", "desc": "Your Instagram handle is encrypted. You get a codename. Only admins know the link." },
-      { "emoji": "💌", "title": "We make the match", "desc": "If we see a connection, we reach out directly. No algorithm swiping." }
+      {
+        "emoji": "🗒️",
+        "title": "Fill the form",
+        "desc": "Answer a short questionnaire about you and what you're looking for."
+      },
+      {
+        "emoji": "🔒",
+        "title": "We protect your identity",
+        "desc": "Your Instagram handle is encrypted. You get a codename. Only admins know the link."
+      },
+      {
+        "emoji": "💌",
+        "title": "We make the match",
+        "desc": "If we see a connection, we reach out directly. No algorithm swiping."
+      }
     ],
     "footer": "© 2025 Ons · Built with care"
   },
-
   "apply": {
     "stepOf": "Step {{current}} of {{total}}",
     "back": "Back",
@@ -48,7 +56,6 @@
     "submitting": "Submitting…",
     "error": "Something went wrong. Please try again."
   },
-
   "steps": {
     "s1": {
       "title": "Who are you?",
@@ -110,7 +117,6 @@
       "disclaimerRequired": "You must agree to continue."
     }
   },
-
   "success": {
     "title": "You're in.",
     "subtitle": "Save this link — it's the only way to access your profile.",
@@ -125,7 +131,6 @@
     "laterHint": "You can also access your profile later at /profile/login with your magic link.",
     "backHome": "Back to home"
   },
-
   "admin": {
     "subtitle": "Admin",
     "login": {
@@ -173,7 +178,8 @@
       "empty": "No applicants found.",
       "page": "Page {{current}} of {{total}}",
       "prev": "← Prev",
-      "next": "Next →"
+      "next": "Next →",
+      "deletedToast": "{{alias}} deleted"
     },
     "detail": {
       "back": "Applicants",
@@ -191,7 +197,8 @@
       "viewAllMatches": "View all →",
       "page": "Page {{current}} of {{total}}",
       "prev": "← Prev",
-      "next": "Next →"
+      "next": "Next →",
+      "withdrawn": "Applicant withdrawn"
     },
     "matching": {
       "title": "Matching",
@@ -254,7 +261,11 @@
       "deleteConfirm": "Delete this match proposal permanently?",
       "page": "Page {{current}} of {{total}}",
       "prev": "← Prev",
-      "next": "Next →"
+      "next": "Next →",
+      "statusUpdated": "Status updated",
+      "notesSaved": "Notes saved",
+      "deleted": "Match deleted",
+      "updateError": "Update failed"
     },
     "audit": {
       "title": "Audit Logs",

@@ -3,6 +3,8 @@ import { NavLink, useLocation, useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { useAuth } from '../context/AuthContext'
 import LanguageSwitcher from '../../components/LanguageSwitcher'
+import ThemeToggle from '../../theme/ThemeToggle'
+import Badge from '../../components/ui/Badge'
 import type { ReactNode } from 'react'
 
 function MenuIcon() {
@@ -115,12 +117,13 @@ export function AdminLayout({ children }: { children: ReactNode }) {
           <span className="text-xs text-muted ml-1">Admin</span>
         </div>
 
-        {/* Right: language switcher + role badge + logout */}
-        <div className="flex items-center gap-3">
+        {/* Right: theme + language switcher + role badge + logout */}
+        <div className="flex items-center gap-1.5">
+          <ThemeToggle />
           <LanguageSwitcher />
-          <span className="bg-accent-light text-accent text-xs rounded-full px-2 py-0.5">
+          <Badge tone="accent" size="sm" className="ml-1.5">
             {role ?? 'admin'}
-          </span>
+          </Badge>
           <button
             onClick={handleLogout}
             title="Sign out"
@@ -152,7 +155,7 @@ export function AdminLayout({ children }: { children: ReactNode }) {
                       : 'items-center gap-3 px-4 py-2.5 rounded-xl text-sm'
                   } ${
                     isActive
-                      ? 'bg-accent-light text-accent font-medium border-l-2 border-accent'
+                      ? 'bg-accent-light text-accent-ink font-medium'
                       : 'text-muted hover:text-primary hover:bg-bg'
                   }`
                 }
