@@ -1,7 +1,7 @@
 import { Hono } from "hono";
-import { z } from "zod";
 import { zValidator } from "@hono/zod-validator";
 import { adminLoginSchema, applicantFilterSchema, createQuestionnaireSchema } from "../validators/admin.validator.js";
+import { validationHook } from "../validators/validation-hook.js";
 import {
   login,
   logout,
@@ -34,18 +34,7 @@ adminRoutes.use("*", adminRateLimiter);
 adminRoutes.post(
   "/login",
   adminLoginRateLimiter,
-  zValidator("json", adminLoginSchema, (result, c) => {
-    if (!result.success) {
-      return c.json(
-        {
-          success: false,
-          error: "Validation failed",
-          details: z.flattenError(result.error).fieldErrors,
-        },
-        422
-      );
-    }
-  }),
+  zValidator("json", adminLoginSchema, validationHook),
   login
 );
 
@@ -53,11 +42,7 @@ adminRoutes.post(
 adminRoutes.get(
   "/applicants",
   requireAdmin,
-  zValidator("query", applicantFilterSchema, (result, c) => {
-    if (!result.success) {
-      return c.json({ success: false, error: "Validation failed", details: z.flattenError(result.error).fieldErrors }, 422);
-    }
-  }),
+  zValidator("query", applicantFilterSchema, validationHook),
   getApplicants
 );
 adminRoutes.get("/applicants/:id", requireAdmin, getApplicant);
@@ -72,18 +57,7 @@ adminRoutes.get("/audit-logs", requireAdmin, getAuditLogs);
 adminRoutes.post(
   "/questionnaires",
   requireAdmin,
-  zValidator("json", createQuestionnaireSchema, (result, c) => {
-    if (!result.success) {
-      return c.json(
-        {
-          success: false,
-          error: "Validation failed",
-          details: z.flattenError(result.error).fieldErrors,
-        },
-        422
-      );
-    }
-  }),
+  zValidator("json", createQuestionnaireSchema, validationHook),
   createQuestionnaireHandler
 );
 

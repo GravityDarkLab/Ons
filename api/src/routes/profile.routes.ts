@@ -1,6 +1,6 @@
 import { Hono } from "hono";
-import { z } from "zod";
 import { zValidator } from "@hono/zod-validator";
+import { validationHook } from "../validators/validation-hook.js";
 import {
   profileLoginSchema,
   setPasswordSchema,
@@ -27,17 +27,6 @@ import {
   profileRateLimiter,
 } from "../middleware/rateLimit.middleware.js";
 
-function validationErr(result: { error: z.ZodError }, c: any) {
-  return c.json(
-    {
-      success: false,
-      error:   "Validation failed",
-      details: z.flattenError(result.error).fieldErrors,
-    },
-    422
-  );
-}
-
 export const profileRoutes = new Hono();
 
 // ── Public ─────────────────────────────────────────────────────────────────────
@@ -45,18 +34,14 @@ export const profileRoutes = new Hono();
 profileRoutes.post(
   "/login",
   profileLoginRateLimiter,
-  zValidator("json", profileLoginSchema, (r, c) => {
-    if (!r.success) return validationErr(r as any, c);
-  }),
+  zValidator("json", profileLoginSchema, validationHook),
   login
 );
 
 profileRoutes.post(
   "/set-password",
   profileLoginRateLimiter,
-  zValidator("json", setPasswordSchema, (r, c) => {
-    if (!r.success) return validationErr(r as any, c);
-  }),
+  zValidator("json", setPasswordSchema, validationHook),
   setPassword
 );
 
@@ -71,9 +56,7 @@ profileRoutes.get("/me", requireApplicant, me);
 profileRoutes.get(
   "/matches",
   requireApplicant,
-  zValidator("query", matchQuerySchema, (r, c) => {
-    if (!r.success) return validationErr(r as any, c);
-  }),
+  zValidator("query", matchQuerySchema, validationHook),
   matches
 );
 
@@ -82,27 +65,21 @@ profileRoutes.post("/matches/:id/contact", requireApplicant, contact);
 profileRoutes.post(
   "/matches/:id/respond",
   requireApplicant,
-  zValidator("json", respondSchema, (r, c) => {
-    if (!r.success) return validationErr(r as any, c);
-  }),
+  zValidator("json", respondSchema, validationHook),
   respond
 );
 
 profileRoutes.post(
   "/matches/:id/outcome",
   requireApplicant,
-  zValidator("json", outcomeSchema, (r, c) => {
-    if (!r.success) return validationErr(r as any, c);
-  }),
+  zValidator("json", outcomeSchema, validationHook),
   outcome
 );
 
 profileRoutes.post(
   "/change-password",
   requireApplicant,
-  zValidator("json", changePasswordSchema, (r, c) => {
-    if (!r.success) return validationErr(r as any, c);
-  }),
+  zValidator("json", changePasswordSchema, validationHook),
   changePassword
 );
 
