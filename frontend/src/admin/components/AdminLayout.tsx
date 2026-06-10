@@ -80,7 +80,8 @@ export function AdminLayout({ children }: { children: ReactNode }) {
   const { logout, role } = useAuth()
   const navigate = useNavigate()
   const location = useLocation()
-  const [collapsed, setCollapsed] = useState(false)
+  // Sidebar starts collapsed on narrow screens — w-56 would eat half a phone
+  const [collapsed, setCollapsed] = useState(() => window.innerWidth < 768)
 
   const NAV = [
     { to: '/admin',            icon: HomeIcon,      label: t('admin.nav.dashboard'),  end: true  },
