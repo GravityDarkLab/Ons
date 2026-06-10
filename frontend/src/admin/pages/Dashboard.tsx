@@ -29,17 +29,17 @@ function formatDate(date: Date): string {
 // ── Stat card dot colors ──────────────────────────────────────────────────────
 
 const STATUS_DOTS: Record<string, string> = {
-  applied:  '#6B7280',
-  matched:  '#C9A96E',
-  dating:   '#3D9970',
-  inactive: '#8B8178',
+  applied:  'var(--t-info)',
+  matched:  'var(--t-accent)',
+  dating:   'var(--t-success)',
+  inactive: 'var(--t-ink-faint)',
 }
 
 const STATUS_BORDER: Record<string, string> = {
-  applied:  'border-l-[#6B7280]',
-  matched:  'border-l-[#C9A96E]',
-  dating:   'border-l-[#3D9970]',
-  inactive: 'border-l-[#8B8178]',
+  applied:  'border-l-info',
+  matched:  'border-l-accent',
+  dating:   'border-l-success',
+  inactive: 'border-l-faint',
 }
 
 const STATUS_NUMBER_COLOR: Record<string, string> = {

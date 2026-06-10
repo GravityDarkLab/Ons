@@ -8,13 +8,15 @@ interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
   fullWidth?: boolean
 }
 
+// text-bg = page-background token: near-white on dark buttons in light mode,
+// near-black on light buttons in dark mode — correct contrast in both themes
 const variantClasses: Record<Variant, string> = {
   primary:
-    'bg-primary text-white hover:bg-[#2D2D2D] disabled:bg-[#666] disabled:cursor-not-allowed',
+    'bg-primary text-bg hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed',
   secondary:
     'bg-surface border border-border text-primary hover:bg-bg disabled:opacity-50 disabled:cursor-not-allowed',
   accent:
-    'bg-accent text-white hover:bg-[#B05538] disabled:opacity-50 disabled:cursor-not-allowed',
+    'bg-accent text-bg hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed',
 }
 
 export default function Button({

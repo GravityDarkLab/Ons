@@ -160,7 +160,7 @@ function IdentityCard({ id, identity, setIdentity }: IdentityCardProps) {
         {t('admin.detail.identity')}
       </p>
       <div
-        style={{ backgroundColor: '#F3F2F0' }}
+        style={{ backgroundColor: 'var(--t-surface-subtle)' }}
         className="border border-border rounded-xl p-4 flex items-center gap-3 text-muted"
       >
         <LockIcon />

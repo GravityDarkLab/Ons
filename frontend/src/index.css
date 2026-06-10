@@ -1,20 +1,101 @@
 @import "tailwindcss";
 @config "../tailwind.config.js";
 
-@layer base {
-  :root {
-    --color-surface: #FAF9F7;
-    --color-surface-raised: #FFFFFF;
-    --color-surface-subtle: #F3F2F0;
-    --color-ink: #111111;
-    --color-ink-muted: #6B6B6B;
-    --color-ink-faint: #B0AFAD;
-    --color-accent: #C9A96E;
-    --color-accent-light: #F5ECD7;
-    --color-destructive: #E05252;
-    --color-success: #3D9970;
-  }
+/* ─── Design tokens ──────────────────────────────────────────────────────────
+   Single source of truth. Raw values live in --t-* custom properties; the
+   @theme block below maps them to Tailwind utility names. Dark mode swaps the
+   --t-* values under .dark — no dark: variants needed in markup. */
 
+:root {
+  color-scheme: light;
+
+  --t-bg:             #FAF9F7;
+  --t-surface:        #FFFFFF;
+  --t-surface-subtle: #F3F2F0;
+  --t-border:         #E5E0DA;
+
+  --t-ink:        #1A1815;
+  --t-ink-muted:  #8B8178;
+  --t-ink-faint:  #B0AFAD;
+
+  --t-accent:       #C9A96E;
+  --t-accent-light: #F5ECD7;
+  /* readable foreground on accent-light tints */
+  --t-accent-ink:   #8A6D3B;
+
+  --t-success:       #3D9970;
+  --t-success-light: #D4EFE3;
+  --t-error:         #D94F3D;
+  --t-error-light:   #FCECEA;
+  --t-warning:       #B07D2E;
+  --t-warning-light: #F7EDD8;
+  --t-info:          #4E6E8E;
+  --t-info-light:    #E7EEF4;
+
+  --t-overlay: rgb(0 0 0 / 0.25);
+  --t-shadow-card:   0 1px 2px rgb(26 24 21 / 0.04), 0 1px 3px rgb(26 24 21 / 0.06);
+  --t-shadow-raised: 0 4px 12px rgb(26 24 21 / 0.08), 0 12px 32px rgb(26 24 21 / 0.06);
+}
+
+.dark {
+  color-scheme: dark;
+
+  --t-bg:             #171411;
+  --t-surface:        #201C18;
+  --t-surface-subtle: #29241F;
+  --t-border:         #38322B;
+
+  --t-ink:        #F0EBE4;
+  --t-ink-muted:  #A89E92;
+  --t-ink-faint:  #6E665C;
+
+  --t-accent:       #D6B57E;
+  --t-accent-light: rgb(214 181 126 / 0.14);
+  --t-accent-ink:   #E2C896;
+
+  --t-success:       #5CB88E;
+  --t-success-light: rgb(92 184 142 / 0.14);
+  --t-error:         #E66A57;
+  --t-error-light:   rgb(230 106 87 / 0.14);
+  --t-warning:       #D6A04E;
+  --t-warning-light: rgb(214 160 78 / 0.14);
+  --t-info:          #7FA3C4;
+  --t-info-light:    rgb(127 163 196 / 0.14);
+
+  --t-overlay: rgb(0 0 0 / 0.55);
+  --t-shadow-card:   0 1px 2px rgb(0 0 0 / 0.3), 0 1px 3px rgb(0 0 0 / 0.25);
+  --t-shadow-raised: 0 4px 12px rgb(0 0 0 / 0.4), 0 12px 32px rgb(0 0 0 / 0.35);
+}
+
+@theme inline {
+  --color-bg:            var(--t-bg);
+  --color-surface:       var(--t-surface);
+  --color-surface-subtle: var(--t-surface-subtle);
+  --color-border:        var(--t-border);
+  --color-primary:       var(--t-ink);
+  --color-muted:         var(--t-ink-muted);
+  --color-faint:         var(--t-ink-faint);
+  --color-accent:        var(--t-accent);
+  --color-accent-light:  var(--t-accent-light);
+  --color-accent-ink:    var(--t-accent-ink);
+  --color-success:       var(--t-success);
+  --color-success-light: var(--t-success-light);
+  --color-error:         var(--t-error);
+  --color-error-light:   var(--t-error-light);
+  --color-warning:       var(--t-warning);
+  --color-warning-light: var(--t-warning-light);
+  --color-info:          var(--t-info);
+  --color-info-light:    var(--t-info-light);
+  --color-destructive:   var(--t-error);
+  --color-overlay:       var(--t-overlay);
+
+  --shadow-card:   var(--t-shadow-card);
+  --shadow-raised: var(--t-shadow-raised);
+}
+
+@custom-variant dark (&:where(.dark, .dark *));
+
+@layer base {
   html {
     font-family: 'Inter', system-ui, sans-serif;
     -webkit-font-smoothing: antialiased;
@@ -22,8 +103,8 @@
   }
 
   body {
-    background-color: #FAF9F7;
-    color: #111111;
+    background-color: var(--t-bg);
+    color: var(--t-ink);
   }
 
   * {
@@ -40,20 +121,19 @@
     display: none;
   }
 
-  /* Design token utility classes */
-  .bg-surface-raised { background-color: #FFFFFF; }
-  .bg-surface-subtle { background-color: #F3F2F0; }
-  .text-ink { color: #111111; }
-  .text-ink-muted { color: #6B6B6B; }
-  .text-ink-faint { color: #B0AFAD; }
-  .bg-accent-val { background-color: #C9A96E; }
-  .text-destructive { color: #E05252; }
-  .text-success-green { color: #3D9970; }
-  .bg-success-green { background-color: #3D9970; }
+  /* Legacy token utility classes — kept by name, re-pointed to variables */
+  .bg-surface-raised { background-color: var(--t-surface); }
+  .text-ink { color: var(--t-ink); }
+  .text-ink-muted { color: var(--t-ink-muted); }
+  .text-ink-faint { color: var(--t-ink-faint); }
+  .bg-accent-val { background-color: var(--t-accent); }
+  .text-destructive { color: var(--t-error); }
+  .text-success-green { color: var(--t-success); }
+  .bg-success-green { background-color: var(--t-success); }
 
   /* Transition utilities */
   .transition-page { transition: opacity 100ms ease-out, transform 100ms ease-out; }
   .transition-card { transition: box-shadow 150ms, transform 150ms; }
-  .hover-card:hover { box-shadow: 0 4px 12px rgb(0 0 0 / 0.08); transform: translateY(-1px); }
+  .hover-card:hover { box-shadow: var(--t-shadow-raised); transform: translateY(-1px); }
   .press:active { transform: scale(0.98); }
 }

@@ -77,7 +77,7 @@ export function AuditLogs() {
                     <span>{timeAgo(new Date(log.timestamp).getTime())}</span>
                   </div>
                   {log.ipAddress && (
-                    <div className="mt-0.5 text-xs" style={{ color: '#B0AFAD' }}>{log.ipAddress}</div>
+                    <div className="mt-0.5 text-xs text-faint">{log.ipAddress}</div>
                   )}
                 </div>
               </li>

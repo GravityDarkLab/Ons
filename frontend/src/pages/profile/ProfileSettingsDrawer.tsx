@@ -100,7 +100,7 @@ export default function ProfileSettingsDrawer({ onClose }: Props) {
   return (
     <>
       {/* Backdrop */}
-      <div className="fixed inset-0 bg-black/20 z-40" onClick={onClose} />
+      <div className="fixed inset-0 bg-overlay z-40" onClick={onClose} />
 
       {/* Drawer panel */}
       <div className="fixed right-0 top-0 h-full w-full max-w-sm bg-surface border-l border-border z-50 overflow-y-auto p-6 shadow-xl">

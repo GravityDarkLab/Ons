@@ -3,19 +3,8 @@ export default {
   content: ['./index.html', './src/**/*.{js,ts,jsx,tsx}'],
   theme: {
     extend: {
-      colors: {
-        bg: '#FAF9F7',
-        surface: '#FFFFFF',
-        primary: '#111111',
-        accent: '#C9A96E',
-        'accent-light': '#F5ECD7',
-        muted: '#8B8178',
-        border: '#E5E0DA',
-        error: '#D94F3D',
-        'error-light': '#FCECEA',
-        success: '#3D9970',
-        'success-light': '#D4EFE3',
-      },
+      // Colors are defined as CSS variables in src/index.css (@theme inline)
+      // so dark mode can swap values without dark: variants in markup.
       fontFamily: {
         sans: ['Inter', 'system-ui', 'sans-serif'],
       },
