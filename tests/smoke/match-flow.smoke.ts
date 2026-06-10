@@ -17,7 +17,7 @@ import { MongoClient, ObjectId } from "mongodb";
 import { createHash } from "crypto";
 import {
   BASE_ROOT, BASE, ADMIN_USER, ADMIN_PASS, MONGO_URI,
-  get, post, maleAnswers, femaleAnswers, checkServerAvailable,
+  get, post, maleAnswers, femaleAnswers, checkServerAvailable, cookieToken,
 } from "./helpers.ts";
 
 // ── Availability guards ────────────────────────────────────────────────────────
@@ -90,7 +90,7 @@ beforeAll(async () => {
       magicToken: sub.body.magicToken,
       newPassword: `mf-pass-${tokenKey}-${run}`, // ggignore
     });
-    (S as any)[jwtKey] = pwd.body.token ?? "";
+    (S as any)[jwtKey] = cookieToken(pwd.cookie);
   }
 
   // Connect to DB to look up applicant IDs + inject matches
@@ -301,8 +301,8 @@ describe("Match state machine — B-C failed outcome flow", () => {
     // Refresh JWTs (status change doesn't invalidate tokens but re-login confirms account works)
     const lB = await post("/profile/login", { magicToken: S.tokenB, password: `mf-pass-tokenB-${run}` }); // ggignore
     const lC = await post("/profile/login", { magicToken: S.tokenC, password: `mf-pass-tokenC-${run}` }); // ggignore
-    if (lB.body.token) S.jwtB = lB.body.token;
-    if (lC.body.token) S.jwtC = lC.body.token;
+    if (cookieToken(lB.cookie)) S.jwtB = cookieToken(lB.cookie);
+    if (cookieToken(lC.cookie)) S.jwtC = cookieToken(lC.cookie);
   });
 
   T("B reports failed outcome → 200", async () => {
@@ -334,5 +334,62 @@ describe("Match access control", () => {
     // B is not in the A-C match (which is now success status anyway)
     const r = await post(`/profile/matches/${S.matchAC}/contact`, {}, { bearer: S.jwtB });
     expect([403, 409]).toContain(r.status); // 409 if terminal state reached first
+  });
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Concurrency — atomic transition claims (regression: respond/outcome races)
+// ─────────────────────────────────────────────────────────────────────────────
+
+describe("Match state machine — concurrent transitions", () => {
+  // The matches collection has a unique index on (applicantAId, applicantBId),
+  // so the B-C pair can only hold one match doc at a time — each test injects
+  // its own fixture after removing the previous one.
+  async function injectBCMatch(status: "in_progress" | "dating"): Promise<string> {
+    const client = new MongoClient(MONGO_URI);
+    await client.connect();
+    const db = client.db();
+
+    const [cBC_a, cBC_b] = canonical(S.idB!, S.idC!);
+    const aliasA = cBC_a.equals(S.idB!) ? S.aliasB : S.aliasC;
+    const aliasB = cBC_a.equals(S.idB!) ? S.aliasC : S.aliasB;
+    const initiatorId = cBC_a.equals(S.idB!) ? cBC_a : cBC_b;
+    const now = new Date();
+
+    await db.collection("matches").deleteMany({ applicantAId: cBC_a, applicantBId: cBC_b });
+    const inserted = await db.collection("matches").insertOne({
+      _id: new ObjectId(),
+      applicantAId: cBC_a, applicantBId: cBC_b,
+      applicantAAlias: aliasA, applicantBAlias: aliasB,
+      score: 0.77, algorithm: "baseline",
+      status, initiatorId,
+      contactRequestedAt: now,
+      ...(status === "dating" ? { contactRespondedAt: now } : {}),
+      createdAt: now, updatedAt: now,
+    });
+
+    await client.close();
+    return inserted.insertedId.toHexString();
+  }
+
+  T("concurrent accept + decline → exactly one 200, one 409", async () => {
+    // B initiated, so C responds
+    const matchId = await injectBCMatch("in_progress");
+    const [r1, r2] = await Promise.all([
+      post(`/profile/matches/${matchId}/respond`, { accept: true },  { bearer: S.jwtC }),
+      post(`/profile/matches/${matchId}/respond`, { accept: false }, { bearer: S.jwtC }),
+    ]);
+    const statuses = [r1.status, r2.status].sort();
+    expect(statuses).toEqual([200, 409]);
+  });
+
+  T("concurrent conflicting outcome reports → exactly one 200, one 409", async () => {
+    const matchId = await injectBCMatch("dating");
+    const [r1, r2] = await Promise.all([
+      post(`/profile/matches/${matchId}/outcome`, { outcome: "success" }, { bearer: S.jwtB }),
+      post(`/profile/matches/${matchId}/outcome`, { outcome: "failed" },  { bearer: S.jwtC }),
+    ]);
+    const statuses = [r1.status, r2.status].sort();
+    expect(statuses).toEqual([200, 409]);
   });
 });

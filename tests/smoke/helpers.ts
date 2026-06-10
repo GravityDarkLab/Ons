@@ -99,6 +99,18 @@ export async function get(path: string, opts: Opts = {}) {
   return { status: r.status, body: bd };
 }
 
+// ── Auth helpers ──────────────────────────────────────────────────────────────
+
+/**
+ * Extracts the applicant session JWT from a Set-Cookie header.
+ * Login/set-password set an HttpOnly cookie instead of returning the token in
+ * the body; the API still accepts the JWT as a Bearer header.
+ */
+export function cookieToken(setCookie: string): string {
+  const m = setCookie.match(/ons_applicant_session=([^;]+)/);
+  return m?.[1] ?? "";
+}
+
 // ── Form payload helpers ──────────────────────────────────────────────────────
 
 export function maleAnswers(handle: string, run: number) {
