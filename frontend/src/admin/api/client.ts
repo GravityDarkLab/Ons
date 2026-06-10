@@ -1,4 +1,4 @@
-import type { Applicant, AuditLog, Match, MatchCandidate, MatchingRun, MatchStatus, Paginated } from '../types'
+import type { Applicant, AuditLog, Match, MatchCandidate, MatchingRun, MatchingLastRun, MatchStatus, Paginated } from '../types'
 
 const BASE = import.meta.env.VITE_API_URL ?? 'http://localhost:3001'
 
@@ -143,6 +143,11 @@ export async function runMatching(algorithm: string): Promise<MatchingRun> {
     method: 'POST',
     body: JSON.stringify({ algorithm }),
   })
+}
+
+export async function fetchMatchingLastRun(): Promise<MatchingLastRun | null> {
+  const res = await request<{ data: MatchingLastRun | null }>('/api/v1/matching/last-run')
+  return res.data
 }
 
 export async function fetchCandidates(

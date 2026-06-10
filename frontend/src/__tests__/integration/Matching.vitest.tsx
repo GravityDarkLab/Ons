@@ -5,12 +5,14 @@ import { vi } from 'vitest'
 
 vi.mock('../../admin/api/client', () => ({
   runMatching: vi.fn(),
+  fetchMatchingLastRun: vi.fn(),
 }))
 
 import * as client from '../../admin/api/client'
 import { Matching } from '../../admin/pages/Matching'
 
 const mockRunMatching = vi.mocked(client.runMatching)
+const mockFetchLastRun = vi.mocked(client.fetchMatchingLastRun)
 
 const RUN_RESULT = {
   algorithm: 'baseline',
@@ -30,10 +32,13 @@ function renderMatching() {
 
 beforeEach(() => {
   mockRunMatching.mockReset()
+  mockFetchLastRun.mockReset()
+  mockFetchLastRun.mockResolvedValue(null)
 })
 
-// Helpers: radios are ordered [baseline, cosine, embedding-cosine] in the DOM
-function getRadios() { return screen.getAllByRole('radio') }
+function getAlgorithmSelect() {
+  return screen.getByRole('combobox') as HTMLSelectElement
+}
 
 /** Click "Run Matching" then confirm via the inline confirm dialog */
 async function clickRunAndConfirm() {
@@ -44,22 +49,17 @@ async function clickRunAndConfirm() {
 describe('Matching page — algorithm selector', () => {
   it('renders all three algorithm options', () => {
     renderMatching()
-    expect(getRadios()).toHaveLength(3)
+    expect(screen.getAllByRole('option')).toHaveLength(3)
   })
 
   it('selects Embedding by default', () => {
     renderMatching()
-    const radios = getRadios()
-    // embedding-cosine is the last radio (alphabetical order: baseline, cosine, embedding-cosine)
-    const embeddingRadio = radios.find(r => (r as HTMLInputElement).value === 'embedding-cosine')
-    expect(embeddingRadio).toBeChecked()
+    expect(getAlgorithmSelect().value).toBe('embedding-cosine')
   })
 
   it('shows multilingual warning when non-embedding algorithm is selected', async () => {
     renderMatching()
-    const radios = getRadios()
-    const baselineRadio = radios.find(r => (r as HTMLInputElement).value === 'baseline')!
-    await userEvent.click(baselineRadio)
+    await userEvent.selectOptions(getAlgorithmSelect(), 'baseline')
     // Trans renders the i18nKey as text when the component is a stub
     expect(screen.getByText(/admin\.matching\.multilingualWarning/i)).toBeInTheDocument()
   })
@@ -74,9 +74,7 @@ describe('Matching page — run button', () => {
   it('calls runMatching with the selected algorithm', async () => {
     mockRunMatching.mockResolvedValue(RUN_RESULT)
     renderMatching()
-    const radios = getRadios()
-    const baselineRadio = radios.find(r => (r as HTMLInputElement).value === 'baseline')!
-    await userEvent.click(baselineRadio)
+    await userEvent.selectOptions(getAlgorithmSelect(), 'baseline')
     await clickRunAndConfirm()
     expect(mockRunMatching).toHaveBeenCalledWith('baseline')
   })
@@ -168,9 +166,41 @@ describe('Matching page — result summary card', () => {
     await waitFor(() => screen.getByText(/admin\.matching\.runComplete/i))
 
     // Switch algorithm — result card should disappear
-    const radios = getRadios()
-    const baselineRadio = radios.find(r => (r as HTMLInputElement).value === 'baseline')!
-    await userEvent.click(baselineRadio)
+    await userEvent.selectOptions(getAlgorithmSelect(), 'baseline')
     expect(screen.queryByText(/admin\.matching\.runComplete/i)).not.toBeInTheDocument()
+  })
+})
+
+// tested: persisted last-run summary — fetched from the server on mount
+// instead of living only in component state
+describe('Matching page — last run info', () => {
+  it('shows neverRun when the server has no recorded run', async () => {
+    renderMatching()
+    await waitFor(() => expect(mockFetchLastRun).toHaveBeenCalled())
+    expect(screen.getByText(/admin\.matching\.neverRun/i)).toBeInTheDocument()
+  })
+
+  it('shows the stored last-run summary on mount', async () => {
+    mockFetchLastRun.mockResolvedValue({
+      at: new Date(Date.now() - 60 * 60 * 1000).toISOString(),
+      algorithm: 'embedding-cosine',
+      totalApplicants: 12,
+      couplesProposed: 4,
+      durationMs: 850,
+      triggeredBy: 'scheduler',
+    })
+    renderMatching()
+    expect(await screen.findByText(/admin\.matching\.lastRunSummary/i)).toBeInTheDocument()
+    expect(screen.queryByText(/admin\.matching\.neverRun/i)).not.toBeInTheDocument()
+  })
+
+  it('updates the last-run summary after a manual run', async () => {
+    mockRunMatching.mockResolvedValue(RUN_RESULT)
+    renderMatching()
+    await waitFor(() => expect(mockFetchLastRun).toHaveBeenCalled())
+    expect(screen.getByText(/admin\.matching\.neverRun/i)).toBeInTheDocument()
+
+    await clickRunAndConfirm()
+    expect(await screen.findByText(/admin\.matching\.lastRunSummary/i)).toBeInTheDocument()
   })
 })

@@ -2,6 +2,8 @@ import { loadActiveApplicants, saveMatchProposals } from "../services/match.serv
 import { runFullMatchingPass } from "../matching/engine.js";
 import { generateCoupleProposals } from "../matching/proposals.js";
 import { transitionApplicantStatus } from "../services/match.service.js";
+import { setConfig } from "../services/appConfig.service.js";
+import { APP_CONFIG_KEYS, type MatchingLastRun } from "../models/appConfig.model.js";
 import { getDb } from "../db/connection.js";
 import { getMatchesCollection } from "../db/collections.js";
 import type { ObjectId } from "mongodb";
@@ -33,6 +35,16 @@ export async function runScheduledMatchingJob(): Promise<void> {
     // Transition applied applicants who now have at least one proposed match
     // above their score threshold to "matched"
     await promoteAppliedToMatched();
+
+    const lastRun: MatchingLastRun = {
+      at: new Date(),
+      algorithm: "embedding-cosine",
+      totalApplicants: applicants.length,
+      couplesProposed: saved,
+      durationMs: Date.now() - startedAt,
+      triggeredBy: "scheduler",
+    };
+    await setConfig(APP_CONFIG_KEYS.matchingLastRun, lastRun);
 
     const elapsed = ((Date.now() - startedAt) / 1000).toFixed(1);
     console.info(`[matching-job] Done in ${elapsed}s.`);

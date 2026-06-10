@@ -1,19 +1,10 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useTranslation, Trans } from 'react-i18next'
-import { runMatching } from '../api/client'
+import { runMatching, fetchMatchingLastRun } from '../api/client'
 import Button from '../../components/ui/Button'
 import { useTimeAgo } from '../utils/timeAgo'
-import type { MatchingRun } from '../types'
-
-// ── Types ──────────────────────────────────────────────────────────────────
-
-interface LastRun {
-  algorithm: string
-  durationMs: number
-  couplesProposed: number
-  timestamp: number
-}
+import type { MatchingRun, MatchingLastRun } from '../types'
 
 // ── Component ──────────────────────────────────────────────────────────────
 
@@ -25,12 +16,16 @@ export function Matching() {
   const [result, setResult]       = useState<MatchingRun | null>(null)
   const [error, setError]         = useState('')
   const [confirming, setConfirming] = useState(false)
-  const [lastRun, setLastRun]     = useState<LastRun | null>(null)
+  const [lastRun, setLastRun]     = useState<MatchingLastRun | null>(null)
+
+  useEffect(() => {
+    fetchMatchingLastRun().then(setLastRun).catch(() => {})
+  }, [])
 
   const ALGORITHMS = [
-    { value: 'baseline', label: t('admin.matching.baseline'), hint: t('admin.matching.baselineHint') },
-    { value: 'cosine', label: t('admin.matching.cosine'), hint: t('admin.matching.cosineHint') },
     { value: 'embedding-cosine', label: t('admin.matching.embedding'), hint: t('admin.matching.embeddingHint'), recommended: true },
+    { value: 'cosine', label: t('admin.matching.cosine'), hint: t('admin.matching.cosineHint') },
+    { value: 'baseline', label: t('admin.matching.baseline'), hint: t('admin.matching.baselineHint') },
   ]
 
   const selectedAlgorithm = ALGORITHMS.find(a => a.value === algorithm)
@@ -53,10 +48,12 @@ export function Matching() {
       const res = await runMatching(algorithm)
       setResult(res)
       setLastRun({
+        at: new Date().toISOString(),
         algorithm: res.algorithm,
+        totalApplicants: res.totalApplicants,
         durationMs: res.durationMs,
         couplesProposed: res.couplesProposed,
-        timestamp: Date.now(),
+        triggeredBy: 'admin',
       })
     } catch (err) {
       setError(err instanceof Error ? err.message : t('admin.matching.runError'))
@@ -77,41 +74,23 @@ export function Matching() {
       <div className="bg-surface border border-border rounded-2xl p-8 shadow-sm space-y-6">
         <h2 className="text-xl font-semibold text-primary mb-6">{t('admin.matching.title')}</h2>
 
-        {/* Algorithm toggle pills */}
+        {/* Algorithm dropdown */}
         <div className="space-y-3">
-          <p className="text-sm font-medium text-primary">{t('admin.matching.algorithm')}</p>
-          <div className="flex flex-wrap gap-2" role="group" aria-label={t('admin.matching.algorithm')}>
+          <label htmlFor="matching-algorithm" className="text-sm font-medium text-primary block">
+            {t('admin.matching.algorithm')}
+          </label>
+          <select
+            id="matching-algorithm"
+            value={algorithm}
+            onChange={e => handleAlgorithmChange(e.target.value)}
+            className="w-full max-w-xs rounded-xl border border-border bg-surface px-4 py-3 text-[15px] text-primary transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-accent/30 focus:border-accent cursor-pointer"
+          >
             {ALGORITHMS.map(a => (
-              <label key={a.value} className="cursor-pointer">
-                <input
-                  type="radio"
-                  name="algorithm"
-                  value={a.value}
-                  checked={algorithm === a.value}
-                  onChange={() => handleAlgorithmChange(a.value)}
-                  className="sr-only"
-                />
-                <span
-                  className={
-                    algorithm === a.value
-                      ? 'bg-accent text-white rounded-full px-4 py-2 text-sm font-medium inline-flex items-center gap-1.5'
-                      : 'bg-surface border border-border text-muted rounded-full px-4 py-2 text-sm hover:text-primary hover:border-accent/40 inline-flex items-center gap-1.5'
-                  }
-                >
-                  {a.label}
-                  {a.recommended && (
-                    <span className={
-                      algorithm === a.value
-                        ? 'text-[10px] uppercase tracking-wide opacity-80'
-                        : 'text-[10px] uppercase tracking-wide text-accent'
-                    }>
-                      {t('admin.matching.recommended')}
-                    </span>
-                  )}
-                </span>
-              </label>
+              <option key={a.value} value={a.value}>
+                {a.label}{a.recommended ? ` — ${t('admin.matching.recommended')}` : ''}
+              </option>
             ))}
-          </div>
+          </select>
           {selectedAlgorithm?.hint && (
             <p className="text-xs text-muted">{selectedAlgorithm.hint}</p>
           )}
@@ -134,7 +113,7 @@ export function Matching() {
         {/* Last run info */}
         <p className="text-sm text-muted">
           {lastRun
-            ? t('admin.matching.lastRunSummary', { time: timeAgo(lastRun.timestamp), count: lastRun.couplesProposed })
+            ? t('admin.matching.lastRunSummary', { time: timeAgo(new Date(lastRun.at).getTime()), count: lastRun.couplesProposed })
             : t('admin.matching.neverRun')}
         </p>
 

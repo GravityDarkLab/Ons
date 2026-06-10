@@ -35,6 +35,14 @@ mock.module("../../services/match.service.js", () => ({
   loadActiveApplicants: mockLoadActiveApplicants,
 }));
 
+const mockGetConfig = mock(async () => null as unknown);
+const mockSetConfig = mock(async () => {});
+
+mock.module("../../services/appConfig.service.js", () => ({
+  getConfig: mockGetConfig,
+  setConfig: mockSetConfig,
+}));
+
 import { Hono } from "hono";
 import { matchingRoutes } from "../../routes/matching.routes.js";
 import { signAdminToken } from "../../middleware/auth.middleware.js";
@@ -76,6 +84,10 @@ beforeEach(() => {
   mockRunFullMatchingPass.mockReset();
   mockSaveMatchProposals.mockReset();
   mockLoadActiveApplicants.mockReset();
+  mockGetConfig.mockReset();
+  mockSetConfig.mockReset();
+  mockGetConfig.mockResolvedValue(null);
+  mockSetConfig.mockResolvedValue(undefined);
   mockGetCandidates.mockResolvedValue(makeCandidates());
   mockRunFullMatchingPass.mockResolvedValue({
     "64b1234567890abcdef01234": makeCandidates(2),
@@ -204,5 +216,51 @@ describe("POST /matching/run", () => {
     const res = await post("/matching/run", { algorithm: "baseline" }, token);
     const body = await res.json() as any;
     expect(body.totalApplicants).toBe(3);
+  });
+});
+
+// ── GET /matching/last-run ────────────────────────────────────────────────────
+
+// tested: persisted last-run summary — auth gate, null when never run,
+// stored value passthrough, and write-through on POST /matching/run
+describe("GET /matching/last-run", () => {
+  it("returns 401 without a token", async () => {
+    const res = await get("/matching/last-run");
+    expect(res.status).toBe(401);
+  });
+
+  it("returns null data when matching has never run", async () => {
+    mockGetConfig.mockResolvedValue(null);
+    const res = await get("/matching/last-run", await adminToken());
+    expect(res.status).toBe(200);
+    const body = await res.json() as any;
+    expect(body.success).toBe(true);
+    expect(body.data).toBeNull();
+  });
+
+  it("returns the stored last-run summary", async () => {
+    const stored = {
+      at: new Date().toISOString(),
+      algorithm: "embedding-cosine",
+      totalApplicants: 12,
+      couplesProposed: 4,
+      durationMs: 850,
+      triggeredBy: "admin",
+    };
+    mockGetConfig.mockResolvedValue(stored);
+    const res = await get("/matching/last-run", await adminToken());
+    const body = await res.json() as any;
+    expect(body.data).toEqual(stored);
+  });
+
+  it("POST /matching/run persists the last-run summary", async () => {
+    const token = await adminToken();
+    await post("/matching/run", { algorithm: "baseline" }, token);
+    expect(mockSetConfig).toHaveBeenCalledTimes(1);
+    const [key, value] = mockSetConfig.mock.calls[0] as unknown as [string, any];
+    expect(key).toBe("matching.lastRun");
+    expect(value.algorithm).toBe("baseline");
+    expect(value.triggeredBy).toBe("admin");
+    expect(typeof value.durationMs).toBe("number");
   });
 });

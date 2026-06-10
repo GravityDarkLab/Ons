@@ -2,6 +2,8 @@ import { Context } from "hono";
 import { getCandidates, runFullMatchingPass } from "../matching/engine.js";
 import { generateCoupleProposals } from "../matching/proposals.js";
 import { saveMatchProposals, loadActiveApplicants } from "../services/match.service.js";
+import { getConfig, setConfig } from "../services/appConfig.service.js";
+import { APP_CONFIG_KEYS, type MatchingLastRun } from "../models/appConfig.model.js";
 
 /**
  * GET /api/v1/matching/candidates/:applicantId
@@ -56,6 +58,21 @@ export async function runMatching(c: Context): Promise<Response> {
       console.error("[matching] Couple generation/save failed:", coupleErr);
     }
 
+    // Non-fatal: the run result is returned even if the timestamp write fails
+    try {
+      const lastRun: MatchingLastRun = {
+        at: new Date(),
+        algorithm,
+        totalApplicants,
+        couplesProposed,
+        durationMs,
+        triggeredBy: "admin",
+      };
+      await setConfig(APP_CONFIG_KEYS.matchingLastRun, lastRun);
+    } catch (configErr) {
+      console.error("[matching] Failed to persist last-run info:", configErr);
+    }
+
     return c.json({
       success: true,
       algorithm,
@@ -66,6 +83,20 @@ export async function runMatching(c: Context): Promise<Response> {
     });
   } catch (err) {
     const message = err instanceof Error ? err.message : "Matching failed";
+    return c.json({ success: false, error: message }, 500);
+  }
+}
+
+/**
+ * GET /api/v1/matching/last-run
+ * Returns the persisted summary of the most recent matching pass, or null.
+ */
+export async function getMatchingLastRun(c: Context): Promise<Response> {
+  try {
+    const lastRun = await getConfig<MatchingLastRun>(APP_CONFIG_KEYS.matchingLastRun);
+    return c.json({ success: true, data: lastRun });
+  } catch (err) {
+    const message = err instanceof Error ? err.message : "Failed to load last run";
     return c.json({ success: false, error: message }, 500);
   }
 }

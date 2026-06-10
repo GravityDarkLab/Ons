@@ -45,6 +45,15 @@ export interface MatchingRun {
   results: Record<string, MatchCandidate[]>
 }
 
+export interface MatchingLastRun {
+  at: string
+  algorithm: string
+  totalApplicants: number
+  couplesProposed: number
+  durationMs: number
+  triggeredBy: 'admin' | 'scheduler'
+}
+
 export type MatchStatus = 'proposed' | 'in_progress' | 'dating' | 'success' | 'failed' | 'declined' | 'expired'
 
 export interface Match {

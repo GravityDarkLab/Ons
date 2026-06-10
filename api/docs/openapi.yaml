@@ -1624,6 +1624,58 @@ paths:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
 
+  /api/v1/matching/last-run:
+    get:
+      tags: [Matching]
+      summary: Get the most recent matching pass summary (admin only)
+      operationId: getMatchingLastRun
+      security:
+        - CookieAuth: []
+        - BearerAuth: []
+      description: |
+        Returns the persisted summary of the last matching pass (manual or
+        scheduled), or `null` if matching has never run. Stored in the
+        `app_config` collection under the `matching.lastRun` key.
+      responses:
+        '200':
+          description: Last-run summary, or null when matching has never run
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    nullable: true
+                    type: object
+                    properties:
+                      at:
+                        type: string
+                        format: date-time
+                      algorithm:
+                        type: string
+                      totalApplicants:
+                        type: integer
+                      couplesProposed:
+                        type: integer
+                      durationMs:
+                        type: integer
+                      triggeredBy:
+                        type: string
+                        enum: [admin, scheduler]
+              example:
+                success: true
+                data:
+                  at: "2026-06-10T09:03:55.643Z"
+                  algorithm: "embedding-cosine"
+                  totalApplicants: 97
+                  couplesProposed: 667
+                  durationMs: 25
+                  triggeredBy: "admin"
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
   /api/v1/matching/run:
     post:
       tags: [Matching]
