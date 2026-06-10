@@ -283,5 +283,80 @@
       "by": "by {{id}}",
       "targetAlias": "Alias: {{alias}}"
     }
+  },
+  "portal": {
+    "login": {
+      "yourProfile": "Your profile",
+      "magicLinkHint": "Please use your magic link to access your profile. Check the confirmation message you received after submitting your application.",
+      "backToHome": "Back to home",
+      "verifying": "Verifying your link…",
+      "linkInvalid": "Link invalid",
+      "invalidOrExpired": "Invalid or expired link.",
+      "welcome": "Welcome to Ons",
+      "firstTimeSetup": "You're setting up your profile for the first time.",
+      "choosePassword": "Choose a password",
+      "passwordTooShort": "Password must be at least 8 characters.",
+      "setPasswordFailed": "Failed to set password. Please try again.",
+      "suggest": "✨ Suggest one for me",
+      "generating": "Generating…",
+      "setPassword": "Set password",
+      "settingPassword": "Setting password…"
+    },
+    "dashboard": {
+      "loading": "Loading…",
+      "openSettings": "Open settings",
+      "hello": "Hello, {{alias}}",
+      "findingMatches": "We're finding your best matches. You'll be notified when they're ready.",
+      "threshold": "Threshold: {{percent}}%",
+      "submitted": "Submitted {{date}}",
+      "minScore": "Min. match score:",
+      "dormantTitle": "Your account is dormant",
+      "dormantBody": "Thank you for being part of Ons."
+    },
+    "matches": {
+      "empty": "No matches to show.",
+      "reachOut": "I want to reach out",
+      "wantsToMeet": "{{alias}} wants to meet you",
+      "requested": "requested {{time}}",
+      "accept": "Accept",
+      "decline": "Decline",
+      "waiting": "Waiting",
+      "dating": "You're dating {{alias}}",
+      "matchScore": "Match: {{percent}}%",
+      "howDidItGo": "How did it go?",
+      "workedOut": "It worked out ✓",
+      "didntWork": "It didn't",
+      "iceBreakers": "Ice-breakers",
+      "dateIdeas": "Date ideas",
+      "genericError": "Something went wrong. Please try again.",
+      "status": {
+        "success": "Success",
+        "failed": "Failed",
+        "declined": "Declined",
+        "expired": "Expired"
+      }
+    },
+    "settings": {
+      "title": "Settings",
+      "close": "Close settings",
+      "changePassword": "Change password",
+      "currentPassword": "Current password",
+      "newPassword": "New password",
+      "confirmPassword": "Confirm new password",
+      "currentRequired": "Current password is required.",
+      "newTooShort": "New password must be at least 8 characters.",
+      "noMatch": "Passwords do not match.",
+      "updateFailed": "Failed to update password.",
+      "updated": "Password updated ✓",
+      "saving": "Saving…",
+      "save": "Save new password",
+      "deactivateTitle": "Deactivate account",
+      "deactivateNote": "Once deactivated, your account will be scheduled for deletion in 180 days.",
+      "deactivateButton": "Deactivate my account",
+      "deactivateConfirm": "Are you sure? This cannot be undone. Your account will be scheduled for deletion in 180 days.",
+      "deactivateYes": "Yes, deactivate",
+      "cancel": "Cancel",
+      "deactivateFailed": "Failed to deactivate account."
+    }
   }
 }

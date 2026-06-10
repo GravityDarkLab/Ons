@@ -1,20 +1,9 @@
 import { useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import Badge from '../../components/ui/Badge'
 import { matchStatusTone } from '../../components/ui/statusTones'
+import { useTimeAgo } from '../../admin/utils/timeAgo'
 import type { MatchView, ContactResult } from '../../api/profile.client'
-
-// ── Helpers ───────────────────────────────────────────────────────────────────
-
-function timeAgo(iso: string): string {
-  const diffMs = Date.now() - new Date(iso).getTime()
-  const diffSec = Math.floor(diffMs / 1000)
-  if (diffSec < 60) return 'just now'
-  const diffMin = Math.floor(diffSec / 60)
-  if (diffMin < 60) return `${diffMin}m ago`
-  const diffHr = Math.floor(diffMin / 60)
-  if (diffHr < 24) return `${diffHr}h ago`
-  return `${Math.floor(diffHr / 24)}d ago`
-}
 
 // ── Props ─────────────────────────────────────────────────────────────────────
 
@@ -42,13 +31,14 @@ function ScoreBar({ score }: { score: number }) {
 }
 
 function IceBreakersSection({ iceBreakers, dateIdeas }: { iceBreakers?: string[]; dateIdeas?: string[] }) {
+  const { t } = useTranslation()
   if (!iceBreakers?.length && !dateIdeas?.length) return null
   return (
     <>
       {iceBreakers && iceBreakers.length > 0 && (
         <div className="mt-4">
           <p className="text-xs font-medium text-muted uppercase tracking-wider mb-2">
-            Ice-breakers
+            {t('portal.matches.iceBreakers')}
           </p>
           <ul className="space-y-1">
             {iceBreakers.map((item, i) => (
@@ -63,7 +53,7 @@ function IceBreakersSection({ iceBreakers, dateIdeas }: { iceBreakers?: string[]
       {dateIdeas && dateIdeas.length > 0 && (
         <div className="mt-4">
           <p className="text-xs font-medium text-muted uppercase tracking-wider mb-2">
-            Date ideas
+            {t('portal.matches.dateIdeas')}
           </p>
           <ul className="space-y-1">
             {dateIdeas.map((item, i) => (
@@ -82,6 +72,8 @@ function IceBreakersSection({ iceBreakers, dateIdeas }: { iceBreakers?: string[]
 // ── Main component ────────────────────────────────────────────────────────────
 
 export function MatchCard({ match, onContactRequest, onRespond, onOutcome }: MatchCardProps) {
+  const { t } = useTranslation()
+  const timeAgo = useTimeAgo()
   const [displayMatch, setDisplayMatch] = useState<MatchView>(match)
   const [loadingContact, setLoadingContact] = useState(false)
   const [loadingAccept, setLoadingAccept] = useState(false)
@@ -91,7 +83,7 @@ export function MatchCard({ match, onContactRequest, onRespond, onOutcome }: Mat
   const [actionError, setActionError] = useState('')
 
   function failAction(err: unknown) {
-    setActionError(err instanceof Error ? err.message : 'Something went wrong. Please try again.')
+    setActionError(err instanceof Error ? err.message : t('portal.matches.genericError'))
   }
 
   const { matchId, partnerAlias, score, status, perspective, contactRequestedAt } = displayMatch
@@ -104,7 +96,7 @@ export function MatchCard({ match, onContactRequest, onRespond, onOutcome }: Mat
         <div className="flex items-center justify-between gap-3">
           <span className="text-base font-medium text-muted">{partnerAlias}</span>
           <Badge tone={matchStatusTone(status)} size="sm">
-            {status}
+            {t(`portal.matches.status.${status}`)}
           </Badge>
         </div>
       </div>
@@ -135,11 +127,11 @@ export function MatchCard({ match, onContactRequest, onRespond, onOutcome }: Mat
     return (
       <div className="bg-surface border border-border rounded-2xl p-5 shadow-card hover-card transition-card">
         <p className="text-base font-medium text-primary">
-          {partnerAlias} wants to meet you
+          {t('portal.matches.wantsToMeet', { alias: partnerAlias })}
         </p>
         {contactRequestedAt && (
           <p className="text-sm text-muted mt-0.5">
-            requested {timeAgo(contactRequestedAt)}
+            {t('portal.matches.requested', { time: timeAgo(new Date(contactRequestedAt).getTime()) })}
           </p>
         )}
         <div className="flex gap-3 mt-4">
@@ -151,7 +143,7 @@ export function MatchCard({ match, onContactRequest, onRespond, onOutcome }: Mat
             {loadingAccept ? (
               <LoadingSpinner />
             ) : null}
-            Accept
+            {t('portal.matches.accept')}
           </button>
           <button
             onClick={() => handleRespond(false)}
@@ -161,7 +153,7 @@ export function MatchCard({ match, onContactRequest, onRespond, onOutcome }: Mat
             {loadingDecline ? (
               <LoadingSpinner />
             ) : null}
-            Decline
+            {t('portal.matches.decline')}
           </button>
         </div>
         {actionError && <p role="alert" className="text-sm text-error mt-3">{actionError}</p>}
@@ -176,7 +168,7 @@ export function MatchCard({ match, onContactRequest, onRespond, onOutcome }: Mat
         <div className="flex items-center justify-between gap-3">
           <span className="text-base font-medium text-primary">{partnerAlias}</span>
           <Badge tone="warning" size="sm">
-            Waiting
+            {t('portal.matches.waiting')}
           </Badge>
         </div>
         {displayMatch.targetInstagram && (
@@ -214,9 +206,9 @@ export function MatchCard({ match, onContactRequest, onRespond, onOutcome }: Mat
       <div className="bg-surface border border-border rounded-2xl p-5 shadow-card hover-card transition-card">
         <div className="flex items-center justify-between gap-3">
           <span className="text-base font-medium text-primary">
-            You're dating {partnerAlias}
+            {t('portal.matches.dating', { alias: partnerAlias })}
           </span>
-          <span className="text-sm text-muted">Match: {Math.round(score * 100)}%</span>
+          <span className="text-sm text-muted">{t('portal.matches.matchScore', { percent: Math.round(score * 100) })}</span>
         </div>
         {displayMatch.targetInstagram && (
           <p className="text-accent font-medium text-sm mt-1">
@@ -230,7 +222,7 @@ export function MatchCard({ match, onContactRequest, onRespond, onOutcome }: Mat
           />
         )}
         <div className="mt-4">
-          <p className="text-sm text-muted mb-3">How did it go?</p>
+          <p className="text-sm text-muted mb-3">{t('portal.matches.howDidItGo')}</p>
           <div className="flex gap-3">
             <button
               onClick={() => handleOutcome('success')}
@@ -238,7 +230,7 @@ export function MatchCard({ match, onContactRequest, onRespond, onOutcome }: Mat
               className="flex-1 inline-flex items-center justify-center gap-2 bg-success text-bg rounded-full px-4 py-2.5 text-sm font-medium transition-all duration-200 hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {loadingSuccess ? <LoadingSpinner /> : null}
-              It worked out ✓
+              {t('portal.matches.workedOut')}
             </button>
             <button
               onClick={() => handleOutcome('failed')}
@@ -246,7 +238,7 @@ export function MatchCard({ match, onContactRequest, onRespond, onOutcome }: Mat
               className="flex-1 inline-flex items-center justify-center gap-2 bg-surface border border-border text-muted rounded-xl px-4 py-2.5 text-sm font-medium transition-all duration-200 hover:bg-bg disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {loadingFailed ? <LoadingSpinner /> : null}
-              It didn't
+              {t('portal.matches.didntWork')}
             </button>
           </div>
           {actionError && <p role="alert" className="text-sm text-error mt-3">{actionError}</p>}
@@ -290,7 +282,7 @@ export function MatchCard({ match, onContactRequest, onRespond, onOutcome }: Mat
           className="inline-flex items-center justify-center gap-2 bg-accent text-bg rounded-full px-5 py-2.5 text-sm font-medium transition-all duration-200 hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed"
         >
           {loadingContact ? <LoadingSpinner /> : null}
-          I want to reach out
+          {t('portal.matches.reachOut')}
         </button>
         {actionError && <p role="alert" className="text-sm text-error mt-3">{actionError}</p>}
       </div>

@@ -1,4 +1,5 @@
 import { useEffect, useState, type FormEvent } from 'react'
+import { useTranslation } from 'react-i18next'
 import { useNavigate } from 'react-router-dom'
 import { changePassword, deactivateAccount } from '../../api/profile.client'
 import Input from '../../components/ui/Input'
@@ -38,6 +39,7 @@ interface Props {
 // ── Main component ────────────────────────────────────────────────────────────
 
 export default function ProfileSettingsDrawer({ onClose }: Props) {
+  const { t } = useTranslation()
   const navigate = useNavigate()
   const { success } = useToast()
   const trapRef = useFocusTrap<HTMLDivElement>(true)
@@ -71,27 +73,27 @@ export default function ProfileSettingsDrawer({ onClose }: Props) {
     setPasswordError(null)
 
     if (!currentPassword) {
-      setPasswordError('Current password is required.')
+      setPasswordError(t('portal.settings.currentRequired'))
       return
     }
     if (newPassword.length < 8) {
-      setPasswordError('New password must be at least 8 characters.')
+      setPasswordError(t('portal.settings.newTooShort'))
       return
     }
     if (newPassword !== confirmPassword) {
-      setPasswordError('Passwords do not match.')
+      setPasswordError(t('portal.settings.noMatch'))
       return
     }
 
     setPasswordLoading(true)
     try {
       await changePassword(currentPassword, newPassword)
-      success('Password updated ✓')
+      success(t('portal.settings.updated'))
       setCurrentPassword('')
       setNewPassword('')
       setConfirmPassword('')
     } catch (err) {
-      setPasswordError(err instanceof Error ? err.message : 'Failed to update password.')
+      setPasswordError(err instanceof Error ? err.message : t('portal.settings.updateFailed'))
     } finally {
       setPasswordLoading(false)
     }
@@ -105,7 +107,7 @@ export default function ProfileSettingsDrawer({ onClose }: Props) {
       onClose()
       navigate('/')
     } catch (err) {
-      setDeactivateError(err instanceof Error ? err.message : 'Failed to deactivate account.')
+      setDeactivateError(err instanceof Error ? err.message : t('portal.settings.deactivateFailed'))
       setDeactivateLoading(false)
       setShowDeactivateConfirm(false)
     }
@@ -132,11 +134,11 @@ export default function ProfileSettingsDrawer({ onClose }: Props) {
 
         {/* Header */}
         <div className="flex items-center justify-between mb-8">
-          <h2 id="settings-drawer-title" className="text-lg font-semibold text-primary">Settings</h2>
+          <h2 id="settings-drawer-title" className="text-lg font-semibold text-primary">{t('portal.settings.title')}</h2>
           <button
             onClick={onClose}
             className="p-2 rounded-xl text-muted hover:text-primary hover:bg-bg transition-colors"
-            aria-label="Close settings"
+            aria-label={t('portal.settings.close')}
           >
             <XIcon />
           </button>
@@ -145,7 +147,7 @@ export default function ProfileSettingsDrawer({ onClose }: Props) {
         {/* Section 1: Change password */}
         <section>
           <h3 className="text-sm font-medium text-primary uppercase tracking-wider mb-4">
-            Change password
+            {t('portal.settings.changePassword')}
           </h3>
 
           <form onSubmit={handleChangePassword} className="space-y-3" noValidate>
@@ -153,21 +155,21 @@ export default function ProfileSettingsDrawer({ onClose }: Props) {
               type="password"
               value={currentPassword}
               onChange={e => setCurrentPassword(e.target.value)}
-              placeholder="Current password"
+              placeholder={t('portal.settings.currentPassword')}
               autoComplete="current-password"
             />
             <Input
               type="password"
               value={newPassword}
               onChange={e => setNewPassword(e.target.value)}
-              placeholder="New password"
+              placeholder={t('portal.settings.newPassword')}
               autoComplete="new-password"
             />
             <Input
               type="password"
               value={confirmPassword}
               onChange={e => setConfirmPassword(e.target.value)}
-              placeholder="Confirm new password"
+              placeholder={t('portal.settings.confirmPassword')}
               autoComplete="new-password"
             />
 
@@ -181,7 +183,7 @@ export default function ProfileSettingsDrawer({ onClose }: Props) {
               className="inline-flex items-center justify-center gap-2 bg-accent text-bg rounded-full px-5 py-2.5 text-sm font-medium w-full hover:opacity-90 disabled:opacity-50 transition-all"
             >
               {passwordLoading && <Spinner />}
-              {passwordLoading ? 'Saving…' : 'Save new password'}
+              {passwordLoading ? t('portal.settings.saving') : t('portal.settings.save')}
             </button>
           </form>
         </section>
@@ -192,11 +194,11 @@ export default function ProfileSettingsDrawer({ onClose }: Props) {
         {/* Section 2: Deactivate account */}
         <section>
           <h3 className="text-sm font-medium text-primary uppercase tracking-wider mb-4">
-            Deactivate account
+            {t('portal.settings.deactivateTitle')}
           </h3>
 
           <p className="text-sm text-muted mb-4 leading-relaxed">
-            Once deactivated, your account will be scheduled for deletion in 180 days.
+            {t('portal.settings.deactivateNote')}
           </p>
 
           {deactivateError && (
@@ -207,15 +209,15 @@ export default function ProfileSettingsDrawer({ onClose }: Props) {
             onClick={() => setShowDeactivateConfirm(true)}
             className="bg-destructive text-bg rounded-xl px-4 py-2 text-sm hover:opacity-90 transition-all"
           >
-            Deactivate my account
+            {t('portal.settings.deactivateButton')}
           </button>
 
           <ConfirmDialog
             open={showDeactivateConfirm}
-            title="Deactivate my account"
-            description="Are you sure? This cannot be undone. Your account will be scheduled for deletion in 180 days."
-            confirmLabel="Yes, deactivate"
-            cancelLabel="Cancel"
+            title={t('portal.settings.deactivateButton')}
+            description={t('portal.settings.deactivateConfirm')}
+            confirmLabel={t('portal.settings.deactivateYes')}
+            cancelLabel={t('portal.settings.cancel')}
             tone="danger"
             loading={deactivateLoading}
             onConfirm={handleDeactivateConfirm}

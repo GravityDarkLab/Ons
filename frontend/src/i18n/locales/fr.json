@@ -283,5 +283,80 @@
       "by": "par {{id}}",
       "targetAlias": "Alias : {{alias}}"
     }
+  },
+  "portal": {
+    "login": {
+      "yourProfile": "Ton profil",
+      "magicLinkHint": "Utilise ton lien magique pour accéder à ton profil. Consulte le message de confirmation reçu après l'envoi de ta candidature.",
+      "backToHome": "Retour à l'accueil",
+      "verifying": "Vérification de ton lien…",
+      "linkInvalid": "Lien invalide",
+      "invalidOrExpired": "Lien invalide ou expiré.",
+      "welcome": "Bienvenue sur Ons",
+      "firstTimeSetup": "Tu configures ton profil pour la première fois.",
+      "choosePassword": "Choisis un mot de passe",
+      "passwordTooShort": "Le mot de passe doit contenir au moins 8 caractères.",
+      "setPasswordFailed": "Impossible de définir le mot de passe. Réessaie.",
+      "suggest": "✨ Suggère-m'en un",
+      "generating": "Génération…",
+      "setPassword": "Définir le mot de passe",
+      "settingPassword": "Définition du mot de passe…"
+    },
+    "dashboard": {
+      "loading": "Chargement…",
+      "openSettings": "Ouvrir les réglages",
+      "hello": "Bonjour, {{alias}}",
+      "findingMatches": "Nous recherchons tes meilleurs matchs. Tu seras notifié·e dès qu'ils seront prêts.",
+      "threshold": "Seuil : {{percent}}%",
+      "submitted": "Envoyé le {{date}}",
+      "minScore": "Score min. :",
+      "dormantTitle": "Ton compte est en sommeil",
+      "dormantBody": "Merci de faire partie d'Ons."
+    },
+    "matches": {
+      "empty": "Aucun match à afficher.",
+      "reachOut": "Je veux faire le premier pas",
+      "wantsToMeet": "{{alias}} veut te rencontrer",
+      "requested": "demandé {{time}}",
+      "accept": "Accepter",
+      "decline": "Refuser",
+      "waiting": "En attente",
+      "dating": "Tu sors avec {{alias}}",
+      "matchScore": "Match : {{percent}}%",
+      "howDidItGo": "Comment ça s'est passé ?",
+      "workedOut": "Ça a marché ✓",
+      "didntWork": "Pas cette fois",
+      "iceBreakers": "Brise-glace",
+      "dateIdeas": "Idées de rendez-vous",
+      "genericError": "Une erreur est survenue. Réessaie.",
+      "status": {
+        "success": "Réussi",
+        "failed": "Échoué",
+        "declined": "Refusé",
+        "expired": "Expiré"
+      }
+    },
+    "settings": {
+      "title": "Réglages",
+      "close": "Fermer les réglages",
+      "changePassword": "Changer le mot de passe",
+      "currentPassword": "Mot de passe actuel",
+      "newPassword": "Nouveau mot de passe",
+      "confirmPassword": "Confirmer le nouveau mot de passe",
+      "currentRequired": "Le mot de passe actuel est requis.",
+      "newTooShort": "Le nouveau mot de passe doit contenir au moins 8 caractères.",
+      "noMatch": "Les mots de passe ne correspondent pas.",
+      "updateFailed": "Impossible de mettre à jour le mot de passe.",
+      "updated": "Mot de passe mis à jour ✓",
+      "saving": "Enregistrement…",
+      "save": "Enregistrer le nouveau mot de passe",
+      "deactivateTitle": "Désactiver le compte",
+      "deactivateNote": "Une fois désactivé, ton compte sera programmé pour suppression dans 180 jours.",
+      "deactivateButton": "Désactiver mon compte",
+      "deactivateConfirm": "Es-tu sûr·e ? Cette action est irréversible. Ton compte sera programmé pour suppression dans 180 jours.",
+      "deactivateYes": "Oui, désactiver",
+      "cancel": "Annuler",
+      "deactivateFailed": "Impossible de désactiver le compte."
+    }
   }
 }

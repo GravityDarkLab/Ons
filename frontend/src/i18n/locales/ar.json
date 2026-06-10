@@ -295,5 +295,80 @@
       "by": "بواسطة {{id}}",
       "targetAlias": "الاسم المستعار: {{alias}}"
     }
+  },
+  "portal": {
+    "login": {
+      "yourProfile": "ملفك الشخصي",
+      "magicLinkHint": "يرجى استخدام رابطك السحري للوصول إلى ملفك الشخصي. راجع رسالة التأكيد التي تلقيتها بعد إرسال طلبك.",
+      "backToHome": "العودة إلى الرئيسية",
+      "verifying": "جارٍ التحقق من الرابط…",
+      "linkInvalid": "الرابط غير صالح",
+      "invalidOrExpired": "رابط غير صالح أو منتهي الصلاحية.",
+      "welcome": "مرحبًا بك في Ons",
+      "firstTimeSetup": "أنت تقوم بإعداد ملفك الشخصي لأول مرة.",
+      "choosePassword": "اختر كلمة مرور",
+      "passwordTooShort": "يجب أن تتكون كلمة المرور من 8 أحرف على الأقل.",
+      "setPasswordFailed": "تعذر تعيين كلمة المرور. حاول مرة أخرى.",
+      "suggest": "✨ اقترح لي واحدة",
+      "generating": "جارٍ الإنشاء…",
+      "setPassword": "تعيين كلمة المرور",
+      "settingPassword": "جارٍ تعيين كلمة المرور…"
+    },
+    "dashboard": {
+      "loading": "جارٍ التحميل…",
+      "openSettings": "فتح الإعدادات",
+      "hello": "مرحبًا، {{alias}}",
+      "findingMatches": "نبحث عن أفضل التوافقات لك. سيتم إشعارك عندما تكون جاهزة.",
+      "threshold": "الحد الأدنى: {{percent}}%",
+      "submitted": "تم الإرسال في {{date}}",
+      "minScore": "الحد الأدنى لنسبة التوافق:",
+      "dormantTitle": "حسابك في وضع السكون",
+      "dormantBody": "شكرًا لكونك جزءًا من Ons."
+    },
+    "matches": {
+      "empty": "لا توجد توافقات لعرضها.",
+      "reachOut": "أريد التواصل",
+      "wantsToMeet": "{{alias}} يرغب في لقائك",
+      "requested": "طُلب {{time}}",
+      "accept": "قبول",
+      "decline": "رفض",
+      "waiting": "في الانتظار",
+      "dating": "أنت تواعد {{alias}}",
+      "matchScore": "التوافق: {{percent}}%",
+      "howDidItGo": "كيف سارت الأمور؟",
+      "workedOut": "نجح الأمر ✓",
+      "didntWork": "لم ينجح",
+      "iceBreakers": "كاسرات الجليد",
+      "dateIdeas": "أفكار للمواعدة",
+      "genericError": "حدث خطأ ما. حاول مرة أخرى.",
+      "status": {
+        "success": "نجاح",
+        "failed": "فشل",
+        "declined": "مرفوض",
+        "expired": "منتهي"
+      }
+    },
+    "settings": {
+      "title": "الإعدادات",
+      "close": "إغلاق الإعدادات",
+      "changePassword": "تغيير كلمة المرور",
+      "currentPassword": "كلمة المرور الحالية",
+      "newPassword": "كلمة المرور الجديدة",
+      "confirmPassword": "تأكيد كلمة المرور الجديدة",
+      "currentRequired": "كلمة المرور الحالية مطلوبة.",
+      "newTooShort": "يجب أن تتكون كلمة المرور الجديدة من 8 أحرف على الأقل.",
+      "noMatch": "كلمتا المرور غير متطابقتين.",
+      "updateFailed": "تعذر تحديث كلمة المرور.",
+      "updated": "تم تحديث كلمة المرور ✓",
+      "saving": "جارٍ الحفظ…",
+      "save": "حفظ كلمة المرور الجديدة",
+      "deactivateTitle": "إلغاء تفعيل الحساب",
+      "deactivateNote": "بعد إلغاء التفعيل، سيُجدول حسابك للحذف خلال 180 يومًا.",
+      "deactivateButton": "إلغاء تفعيل حسابي",
+      "deactivateConfirm": "هل أنت متأكد؟ لا يمكن التراجع عن هذا. سيُجدول حسابك للحذف خلال 180 يومًا.",
+      "deactivateYes": "نعم، إلغاء التفعيل",
+      "cancel": "إلغاء",
+      "deactivateFailed": "تعذر إلغاء تفعيل الحساب."
+    }
   }
 }

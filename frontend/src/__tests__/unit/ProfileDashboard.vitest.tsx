@@ -55,7 +55,7 @@ describe('ProfileDashboard', () => {
     renderDashboard()
 
     await waitFor(() => {
-      expect(screen.getByText(/We're finding/i)).toBeInTheDocument()
+      expect(screen.getByText(/portal\.dashboard\.findingMatches/i)).toBeInTheDocument()
     })
     expect(screen.getByText('Test User')).toBeInTheDocument()
   })
@@ -91,7 +91,7 @@ describe('ProfileDashboard', () => {
     renderDashboard()
 
     await waitFor(() => {
-      expect(screen.getByText(/dormant/i)).toBeInTheDocument()
+      expect(screen.getByText(/portal\.dashboard\.dormantTitle/i)).toBeInTheDocument()
     })
   })
 })

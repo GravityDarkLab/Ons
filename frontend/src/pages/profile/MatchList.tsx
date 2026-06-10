@@ -1,3 +1,4 @@
+import { useTranslation } from 'react-i18next'
 import { MatchCard } from './MatchCard'
 import EmptyState from '../../components/ui/EmptyState'
 import type { MatchView, ContactResult } from '../../api/profile.client'
@@ -9,6 +10,7 @@ interface Props {
 }
 
 export default function MatchList({ matches, onMatchesChange }: Props) {
+  const { t } = useTranslation()
   async function handleContact(matchId: string): Promise<ContactResult> {
     const result = await requestContact(matchId)
     onMatchesChange(
@@ -45,7 +47,7 @@ export default function MatchList({ matches, onMatchesChange }: Props) {
   }
 
   if (matches.length === 0) {
-    return <EmptyState title="No matches to show." />
+    return <EmptyState title={t('portal.matches.empty')} />
   }
 
   return (

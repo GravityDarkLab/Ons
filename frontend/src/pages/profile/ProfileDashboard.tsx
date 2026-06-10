@@ -3,10 +3,12 @@ import { useNavigate } from 'react-router-dom'
 import type { ProfileView, MatchView, ApplicantStatus } from '../../api/profile.client'
 import { getMyProfile, getMyMatches } from '../../api/profile.client'
 import MatchList from './MatchList'
+import { useTranslation } from 'react-i18next'
 import ProfileSettingsDrawer from './ProfileSettingsDrawer'
 import Badge from '../../components/ui/Badge'
 import Skeleton from '../../components/ui/Skeleton'
 import ThemeToggle from '../../theme/ThemeToggle'
+import LanguageSwitcher from '../../components/LanguageSwitcher'
 import { applicantStatusTone } from '../../components/ui/statusTones'
 
 // ── Sub-components ────────────────────────────────────────────────────────────
@@ -23,6 +25,7 @@ function StatusBadge({ status }: { status: ApplicantStatus | undefined }) {
 // ── Main component ────────────────────────────────────────────────────────────
 
 export default function ProfileDashboard() {
+  const { t } = useTranslation()
   const navigate = useNavigate()
 
   const [profile, setProfile] = useState<ProfileView | null>(null)
@@ -68,7 +71,7 @@ export default function ProfileDashboard() {
           <Skeleton className="h-6 w-40" />
           <Skeleton className="h-28 w-full rounded-2xl" />
           <Skeleton className="h-28 w-full rounded-2xl" />
-          <span className="sr-only">Loading…</span>
+          <span className="sr-only">{t('portal.dashboard.loading')}</span>
         </div>
       </div>
     )
@@ -94,11 +97,12 @@ export default function ProfileDashboard() {
           <StatusBadge status={profile?.status} />
         </div>
         <div className="flex items-center gap-1.5">
+        <LanguageSwitcher />
         <ThemeToggle />
         <button
           onClick={() => setDrawerOpen(true)}
           className="p-2 rounded-xl text-muted hover:text-primary hover:bg-bg transition-colors"
-          aria-label="Open settings"
+          aria-label={t('portal.dashboard.openSettings')}
         >
           {/* Settings gear icon */}
           <svg
@@ -124,17 +128,17 @@ export default function ProfileDashboard() {
           <div className="max-w-lg mx-auto px-6 py-12 text-center space-y-6">
             <div className="bg-surface border border-border rounded-2xl p-8 shadow-sm">
               <h2 className="text-xl font-semibold text-primary mb-2">
-                Hello, {profile.alias}
+                {t('portal.dashboard.hello', { alias: profile.alias })}
               </h2>
               <p className="text-muted text-sm mb-6">
-                We're finding your best matches. You'll be notified when they're ready.
+                {t('portal.dashboard.findingMatches')}
               </p>
               <div className="flex items-center justify-center gap-3 text-xs text-muted">
-                <span className="bg-accent-light text-accent rounded-full px-2.5 py-1">
-                  Threshold: {Math.round((profile.scoreThreshold ?? 0.8) * 100)}%
+                <span className="bg-accent-light text-accent-ink rounded-full px-2.5 py-1">
+                  {t('portal.dashboard.threshold', { percent: Math.round((profile.scoreThreshold ?? 0.8) * 100) })}
                 </span>
                 <span>·</span>
-                <span>Submitted {new Date(profile.createdAt).toLocaleDateString()}</span>
+                <span>{t('portal.dashboard.submitted', { date: new Date(profile.createdAt).toLocaleDateString() })}</span>
               </div>
             </div>
           </div>
@@ -144,7 +148,7 @@ export default function ProfileDashboard() {
           <div className="max-w-2xl mx-auto px-6 py-8 space-y-6">
             {/* Threshold filter pills */}
             <div className="flex items-center gap-2">
-              <span className="text-sm text-muted">Min. match score:</span>
+              <span className="text-sm text-muted">{t('portal.dashboard.minScore')}</span>
               {[60, 70, 80].map(pct => (
                 <button
                   key={pct}
@@ -177,8 +181,8 @@ export default function ProfileDashboard() {
         {profile?.status === 'inactive' && (
           <div className="max-w-lg mx-auto px-6 py-12 text-center">
             <div className="bg-surface border border-border rounded-2xl p-8 shadow-sm space-y-4">
-              <h2 className="text-xl font-semibold text-primary">Your account is dormant</h2>
-              <p className="text-sm text-muted">Thank you for being part of Ons.</p>
+              <h2 className="text-xl font-semibold text-primary">{t('portal.dashboard.dormantTitle')}</h2>
+              <p className="text-sm text-muted">{t('portal.dashboard.dormantBody')}</p>
             </div>
           </div>
         )}

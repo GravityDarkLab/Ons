@@ -43,7 +43,7 @@ describe('ProfileLoginPage', () => {
   it('shows "use magic link" message when no token and no JWT', async () => {
     renderWithRouter()
     await waitFor(() => {
-      expect(screen.getByText(/Please use your magic link/i)).toBeInTheDocument()
+      expect(screen.getByText(/portal\.login\.magicLinkHint/i)).toBeInTheDocument()
     })
   })
 
@@ -51,7 +51,7 @@ describe('ProfileLoginPage', () => {
     mockProfileLogin.mockResolvedValue({ type: 'first_login' })
     renderWithRouter('?token=abc123')
     await waitFor(() => {
-      expect(screen.getByLabelText(/Choose a password/i)).toBeInTheDocument()
+      expect(screen.getByLabelText(/portal\.login\.choosePassword/i)).toBeInTheDocument()
     })
   })
 
@@ -62,9 +62,9 @@ describe('ProfileLoginPage', () => {
     renderWithRouter('?token=abc123')
 
     // Wait for the set-password form
-    const passwordInput = await screen.findByLabelText(/Choose a password/i)
+    const passwordInput = await screen.findByLabelText(/portal\.login\.choosePassword/i)
 
-    const suggestButton = screen.getByRole('button', { name: /Suggest one for me/i })
+    const suggestButton = screen.getByRole('button', { name: /portal\.login\.suggest/i })
     await userEvent.click(suggestButton)
 
     await waitFor(() => {
@@ -79,10 +79,10 @@ describe('ProfileLoginPage', () => {
     renderWithRouter('?token=abc123')
 
     // Wait for the set-password form
-    const passwordInput = await screen.findByLabelText(/Choose a password/i)
+    const passwordInput = await screen.findByLabelText(/portal\.login\.choosePassword/i)
     await userEvent.type(passwordInput, 'weakpass')
 
-    const submitButton = screen.getByRole('button', { name: /Set password/i })
+    const submitButton = screen.getByRole('button', { name: /portal\.login\.setPassword/i })
     await userEvent.click(submitButton)
 
     await waitFor(() => {

@@ -15,7 +15,7 @@ const base: MatchView = {
 describe('MatchCard', () => {
   it('renders "I want to reach out" button for proposed/none', () => {
     render(<MatchCard match={base} />)
-    expect(screen.getByRole('button', { name: /I want to reach out/i })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /portal\.matches\.reachOut/i })).toBeInTheDocument()
     expect(screen.getByText('Crescent River')).toBeInTheDocument()
   })
 
@@ -42,8 +42,8 @@ describe('MatchCard', () => {
       contactRequestedAt: new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString(),
     }
     render(<MatchCard match={match} />)
-    expect(screen.getByRole('button', { name: /Accept/i })).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: /Decline/i })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /portal\.matches\.accept/i })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /portal\.matches\.decline/i })).toBeInTheDocument()
   })
 
   it('shows relative time in target view (contactRequestedAt)', () => {
@@ -55,7 +55,9 @@ describe('MatchCard', () => {
       contactRequestedAt: twoHoursAgo,
     }
     render(<MatchCard match={match} />)
-    expect(screen.getByText(/2h ago/i)).toBeInTheDocument()
+    // t mock renders the key with opts: portal.matches.requested:{"time":"common.timeAgo.hoursAgo:{\"count\":2}"}
+    expect(screen.getByText(/portal\.matches\.requested/)).toBeInTheDocument()
+    expect(screen.getByText(/hoursAgo/)).toBeInTheDocument()
   })
 
   it('renders outcome buttons for dating status', () => {
@@ -65,8 +67,8 @@ describe('MatchCard', () => {
       perspective: 'none',
     }
     render(<MatchCard match={match} />)
-    expect(screen.getByRole('button', { name: /It worked out/i })).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: /It didn't/i })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /portal\.matches\.workedOut/i })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /portal\.matches\.didntWork/i })).toBeInTheDocument()
   })
 
   it('renders read-only status badge for terminal statuses (declined)', () => {
@@ -75,7 +77,7 @@ describe('MatchCard', () => {
       status: 'declined',
     }
     render(<MatchCard match={match} />)
-    expect(screen.getByText('declined')).toBeInTheDocument()
+    expect(screen.getByText('portal.matches.status.declined')).toBeInTheDocument()
     // No action buttons for terminal status
     expect(screen.queryByRole('button')).not.toBeInTheDocument()
   })
@@ -85,11 +87,11 @@ describe('MatchCard', () => {
     const onContactRequest = vi.fn().mockRejectedValue(new Error('Match is no longer available'))
     render(<MatchCard match={base} onContactRequest={onContactRequest} />)
 
-    await userEvent.click(screen.getByRole('button', { name: /I want to reach out/i }))
+    await userEvent.click(screen.getByRole('button', { name: /portal\.matches\.reachOut/i }))
 
     expect(await screen.findByRole('alert')).toHaveTextContent('Match is no longer available')
     // The optimistic transition must not have happened
-    expect(screen.getByRole('button', { name: /I want to reach out/i })).toBeEnabled()
+    expect(screen.getByRole('button', { name: /portal\.matches\.reachOut/i })).toBeEnabled()
   })
 
   it('shows an error when responding fails and does not flip the status', async () => {
@@ -101,11 +103,11 @@ describe('MatchCard', () => {
     }
     render(<MatchCard match={match} onRespond={onRespond} />)
 
-    await userEvent.click(screen.getByRole('button', { name: /Accept/i }))
+    await userEvent.click(screen.getByRole('button', { name: /portal\.matches\.accept/i }))
 
     expect(await screen.findByRole('alert')).toHaveTextContent('Match was already responded to')
-    expect(screen.getByRole('button', { name: /Accept/i })).toBeEnabled()
-    expect(screen.getByRole('button', { name: /Decline/i })).toBeEnabled()
+    expect(screen.getByRole('button', { name: /portal\.matches\.accept/i })).toBeEnabled()
+    expect(screen.getByRole('button', { name: /portal\.matches\.decline/i })).toBeEnabled()
   })
 
   it('shows an error when outcome reporting fails', async () => {
@@ -117,9 +119,9 @@ describe('MatchCard', () => {
     }
     render(<MatchCard match={match} onOutcome={onOutcome} />)
 
-    await userEvent.click(screen.getByRole('button', { name: /It worked out/i }))
+    await userEvent.click(screen.getByRole('button', { name: /portal\.matches\.workedOut/i }))
 
     expect(await screen.findByRole('alert')).toHaveTextContent('Outcome was already reported')
-    expect(screen.getByRole('button', { name: /It worked out/i })).toBeEnabled()
+    expect(screen.getByRole('button', { name: /portal\.matches\.workedOut/i })).toBeEnabled()
   })
 })

@@ -1,11 +1,14 @@
 import { useState, useEffect, type FormEvent } from 'react'
+import { useTranslation } from 'react-i18next'
 import ThemeToggle from '../../theme/ThemeToggle'
+import LanguageSwitcher from '../../components/LanguageSwitcher'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { profileLogin, setPassword, suggestPassword } from '../../api/profile.client'
 
 // ── Sub-components ────────────────────────────────────────────────────────────
 
 function SetPasswordForm({ magicToken }: { magicToken: string }) {
+  const { t } = useTranslation()
   const navigate = useNavigate()
   const [password, setPasswordValue] = useState('')
   const [suggesting, setSuggesting] = useState(false)
@@ -27,7 +30,7 @@ function SetPasswordForm({ magicToken }: { magicToken: string }) {
   async function handleSubmit(e: FormEvent) {
     e.preventDefault()
     if (password.length < 8) {
-      setError('Password must be at least 8 characters.')
+      setError(t('portal.login.passwordTooShort'))
       return
     }
     setError(null)
@@ -36,7 +39,7 @@ function SetPasswordForm({ magicToken }: { magicToken: string }) {
       await setPassword(magicToken, password) // server sets HttpOnly session cookie
       navigate('/profile', { replace: true })
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to set password. Please try again.')
+      setError(err instanceof Error ? err.message : t('portal.login.setPasswordFailed'))
     } finally {
       setLoading(false)
     }
@@ -46,7 +49,7 @@ function SetPasswordForm({ magicToken }: { magicToken: string }) {
     <form onSubmit={handleSubmit} className="space-y-4" noValidate>
       <div className="flex flex-col gap-1.5">
         <label htmlFor="new-password" className="text-sm font-medium text-primary">
-          Choose a password
+          {t('portal.login.choosePassword')}
         </label>
         <input
           id="new-password"
@@ -74,7 +77,7 @@ function SetPasswordForm({ magicToken }: { magicToken: string }) {
         disabled={suggesting}
         className="text-xs text-accent hover:underline cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed"
       >
-        {suggesting ? 'Generating…' : '✨ Suggest one for me'}
+        {suggesting ? t('portal.login.generating') : t('portal.login.suggest')}
       </button>
 
       {error && <p className="text-sm text-error">{error}</p>}
@@ -84,7 +87,7 @@ function SetPasswordForm({ magicToken }: { magicToken: string }) {
         disabled={loading || password.length === 0}
         className="bg-accent text-bg rounded-full px-5 py-2.5 text-sm font-medium hover:opacity-90 w-full disabled:opacity-50 disabled:cursor-not-allowed transition-opacity duration-200"
       >
-        {loading ? 'Setting password…' : 'Set password'}
+        {loading ? t('portal.login.settingPassword') : t('portal.login.setPassword')}
       </button>
     </form>
   )
@@ -93,6 +96,7 @@ function SetPasswordForm({ magicToken }: { magicToken: string }) {
 // ── Main component ─────────────────────────────────────────────────────────────
 
 export default function ProfileLoginPage() {
+  const { t } = useTranslation()
   const [searchParams] = useSearchParams()
   const navigate = useNavigate()
   const token = searchParams.get('token')
@@ -118,7 +122,7 @@ export default function ProfileLoginPage() {
         }
       })
       .catch(err => {
-        setErrorMessage(err instanceof Error ? err.message : 'Invalid or expired link.')
+        setErrorMessage(err instanceof Error ? err.message : t('portal.login.invalidOrExpired'))
         setMode('error')
       })
   }, [token, navigate])
@@ -128,19 +132,18 @@ export default function ProfileLoginPage() {
   if (mode === 'no-token') {
     return (
       <div className="min-h-screen bg-bg flex items-center justify-center px-4 relative">
-        <div className="absolute top-4 right-4"><ThemeToggle /></div>
+        <div className="absolute top-4 right-4 flex items-center gap-1.5"><LanguageSwitcher /><ThemeToggle /></div>
         <div className="w-full max-w-sm">
           <div className="bg-surface border border-border rounded-2xl p-8 shadow-card text-center space-y-4">
-            <h1 className="text-2xl font-semibold text-primary tracking-tight">Your profile</h1>
+            <h1 className="text-2xl font-semibold text-primary tracking-tight">{t('portal.login.yourProfile')}</h1>
             <p className="text-sm text-muted leading-relaxed">
-              Please use your magic link to access your profile. Check the confirmation message you
-              received after submitting your application.
+              {t('portal.login.magicLinkHint')}
             </p>
             <a
               href="/"
               className="inline-block text-xs text-accent hover:underline"
             >
-              Back to home
+              {t('portal.login.backToHome')}
             </a>
           </div>
         </div>
@@ -153,7 +156,7 @@ export default function ProfileLoginPage() {
   if (mode === 'probing' || mode === 'idle') {
     return (
       <div className="min-h-screen bg-bg flex items-center justify-center px-4 relative">
-        <div className="absolute top-4 right-4"><ThemeToggle /></div>
+        <div className="absolute top-4 right-4 flex items-center gap-1.5"><LanguageSwitcher /><ThemeToggle /></div>
         <div className="w-full max-w-sm">
           <div className="bg-surface border border-border rounded-2xl p-8 shadow-card flex flex-col items-center gap-4">
             <svg
@@ -166,7 +169,7 @@ export default function ProfileLoginPage() {
               <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
               <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
             </svg>
-            <p className="text-sm text-muted">Verifying your link…</p>
+            <p className="text-sm text-muted">{t('portal.login.verifying')}</p>
           </div>
         </div>
       </div>
@@ -178,13 +181,13 @@ export default function ProfileLoginPage() {
   if (mode === 'error') {
     return (
       <div className="min-h-screen bg-bg flex items-center justify-center px-4 relative">
-        <div className="absolute top-4 right-4"><ThemeToggle /></div>
+        <div className="absolute top-4 right-4 flex items-center gap-1.5"><LanguageSwitcher /><ThemeToggle /></div>
         <div className="w-full max-w-sm">
           <div className="bg-surface border border-border rounded-2xl p-8 shadow-card text-center space-y-4">
-            <h1 className="text-2xl font-semibold text-primary tracking-tight">Link invalid</h1>
+            <h1 className="text-2xl font-semibold text-primary tracking-tight">{t('portal.login.linkInvalid')}</h1>
             <p className="text-sm text-error">{errorMessage}</p>
             <a href="/" className="inline-block text-xs text-accent hover:underline">
-              Back to home
+              {t('portal.login.backToHome')}
             </a>
           </div>
         </div>
@@ -196,13 +199,13 @@ export default function ProfileLoginPage() {
 
   return (
     <div className="min-h-screen bg-bg flex items-center justify-center px-4 relative">
-        <div className="absolute top-4 right-4"><ThemeToggle /></div>
+        <div className="absolute top-4 right-4 flex items-center gap-1.5"><LanguageSwitcher /><ThemeToggle /></div>
       <div className="w-full max-w-sm">
         {/* Header */}
         <div className="mb-8 text-center">
-          <h1 className="text-2xl font-semibold text-primary tracking-tight">Welcome to Ons</h1>
+          <h1 className="text-2xl font-semibold text-primary tracking-tight">{t('portal.login.welcome')}</h1>
           <p className="text-sm text-muted mt-1 leading-relaxed">
-            You're setting up your profile for the first time.
+            {t('portal.login.firstTimeSetup')}
           </p>
         </div>
 
