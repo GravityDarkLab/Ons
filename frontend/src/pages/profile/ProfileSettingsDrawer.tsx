@@ -204,12 +204,25 @@ export default function ProfileSettingsDrawer({ onClose, applicantStatus }: Prop
         {/* Divider */}
         <div className="my-8 border-t border-border" />
 
-        {/* Section 2: Sign out */}
+        {/* Section 2: Session */}
         <section>
+          <h3 className="text-sm font-medium text-primary uppercase tracking-wider mb-4">
+            {t('portal.settings.sessionTitle')}
+          </h3>
+
+          <p className="text-sm text-muted mb-4 leading-relaxed">
+            {t('portal.settings.sessionNote')}
+          </p>
+
           <button
             onClick={handleLogout}
-            className="bg-surface border border-border text-primary rounded-xl px-4 py-2 text-sm hover:bg-bg transition-colors"
+            className="inline-flex items-center justify-center gap-2 w-full bg-surface border border-border text-primary rounded-xl px-4 py-2.5 text-sm font-medium hover:bg-bg transition-colors"
           >
+            <svg className="h-4 w-4 text-muted rtl:-scale-x-100" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+              <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
+              <polyline points="16 17 21 12 16 7" />
+              <line x1="21" y1="12" x2="9" y2="12" />
+            </svg>
             {t('portal.settings.signOut')}
           </button>
         </section>

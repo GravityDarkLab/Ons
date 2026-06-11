@@ -450,6 +450,8 @@
       "updated": "Mot de passe mis à jour ✓",
       "saving": "Enregistrement…",
       "save": "Enregistrer le nouveau mot de passe",
+      "sessionTitle": "Session",
+      "sessionNote": "Se déconnecter sur cet appareil. Ton lien magique et ton mot de passe restent valables.",
       "deactivateTitle": "Désactiver le compte",
       "deactivateNote": "Une fois désactivé, ton compte sera programmé pour suppression dans 180 jours.",
       "deactivateButton": "Désactiver mon compte",

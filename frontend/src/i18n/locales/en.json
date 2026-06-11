@@ -450,6 +450,8 @@
       "updated": "Password updated ✓",
       "saving": "Saving…",
       "save": "Save new password",
+      "sessionTitle": "Session",
+      "sessionNote": "Sign out on this device. Your magic link and password keep working.",
       "deactivateTitle": "Deactivate account",
       "deactivateNote": "Once deactivated, your account will be scheduled for deletion in 180 days.",
       "deactivateButton": "Deactivate my account",

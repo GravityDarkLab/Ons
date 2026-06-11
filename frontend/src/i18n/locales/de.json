@@ -450,6 +450,8 @@
       "updated": "Passwort aktualisiert ✓",
       "saving": "Wird gespeichert…",
       "save": "Neues Passwort speichern",
+      "sessionTitle": "Sitzung",
+      "sessionNote": "Auf diesem Gerät abmelden. Dein Magic-Link und dein Passwort bleiben gültig.",
       "deactivateTitle": "Konto deaktivieren",
       "deactivateNote": "Nach der Deaktivierung wird dein Konto in 180 Tagen zur Löschung vorgemerkt.",
       "deactivateButton": "Mein Konto deaktivieren",
