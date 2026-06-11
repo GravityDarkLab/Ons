@@ -112,20 +112,13 @@
   }
 }
 
-/* ─── Landing page (Home) ────────────────────────────────────────────────────
-   Display serif for the hero, lub-dub heartbeat synced with LifeBackground's
-   BEAT_MS (1875ms ≈ 64bpm), staggered entrance, and the gold gradient CTA. */
+/* ─── Public pages (Home, Apply) ─────────────────────────────────────────────
+   Display serif for the hero, staggered entrance, and the gold gradient CTA.
+   The bloodstream backdrop lives in LifeBackground.tsx. */
 
 @keyframes home-rise {
   from { opacity: 0; transform: translateY(16px); }
   to   { opacity: 1; transform: none; }
-}
-
-@keyframes heartbeat {
-  0%, 55%, 100% { transform: scale(1); }
-  8%  { transform: scale(1.06); }
-  16% { transform: scale(0.99); }
-  28% { transform: scale(1.11); }
 }
 
 @layer components {
@@ -136,11 +129,6 @@
   .home-rise {
     opacity: 0;
     animation: home-rise 0.7s cubic-bezier(0.2, 0.7, 0.3, 1) forwards;
-  }
-
-  .animate-heartbeat {
-    animation: heartbeat 1875ms ease-in-out infinite;
-    transform-origin: 50% 55%;
   }
 
   .cta-gold {
@@ -168,7 +156,6 @@
 
   @media (prefers-reduced-motion: reduce) {
     .home-rise { animation: none; opacity: 1; }
-    .animate-heartbeat { animation: none; }
     .cta-gold, .cta-gold:hover, .cta-gold:active { transform: none; }
   }
 }

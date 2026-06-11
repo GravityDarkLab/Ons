@@ -1,12 +1,12 @@
 import { useEffect, useRef } from 'react'
 
-/* Animated "alive" backdrop for the public landing page: a dimmed heart that
-   beats behind the hero, and a canvas bloodstream of warm gold particles whose
-   flow surges in sync with the heartbeat. Pointer parallax adds depth on
-   fine-pointer devices. Honors prefers-reduced-motion (single static frame,
-   no beat, no parallax) and pauses while the tab is hidden. */
+/* Animated "alive" backdrop for the public pages: a canvas bloodstream of
+   warm gold particles whose flow surges in a heartbeat rhythm. Pointer
+   parallax adds depth on fine-pointer devices. Honors prefers-reduced-motion
+   (single static frame, no surge, no parallax) and pauses while the tab is
+   hidden. `fixed` pins the layer to the viewport for long scrolling pages. */
 
-const BEAT_MS = 1875 // ~64 bpm, matches the .animate-heartbeat CSS keyframes
+const BEAT_MS = 1875 // ~64 bpm — the pulse driving the flow surges
 
 // lub-dub envelope over one beat cycle, phase ∈ [0,1) → pulse ∈ [0,1]
 function beatPulse(phase: number): number {
@@ -79,24 +79,23 @@ function makeParticles(count: number): Particle[] {
   return list
 }
 
-const HEART_PATH =
-  'M23.6,0c-3.4,0-6.3,2.7-7.6,5.6C14.7,2.7,11.8,0,8.4,0C3.8,0,0,3.8,0,8.4' +
-  'c0,9.4,9.5,11.9,16,21.2c6.1-9.3,16-12.1,16-21.2C32,3.8,28.2,0,23.6,0z'
-
 const GRAIN =
   "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E" +
   "%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2'/%3E%3C/filter%3E" +
   "%3Crect width='160' height='160' filter='url(%23n)' opacity='0.6'/%3E%3C/svg%3E"
 
-export default function LifeBackground() {
+interface Props {
+  /** Pin to the viewport instead of filling the nearest positioned ancestor */
+  fixed?: boolean
+}
+
+export default function LifeBackground({ fixed = false }: Props) {
   const wrapRef = useRef<HTMLDivElement>(null)
   const canvasRef = useRef<HTMLCanvasElement>(null)
-  const heartRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
     const wrap = wrapRef.current
     const canvas = canvasRef.current
-    const heart = heartRef.current
     if (!wrap || !canvas) return
     const ctx = canvas.getContext('2d')
     if (!ctx) return // jsdom / unsupported
@@ -164,9 +163,6 @@ export default function LifeBackground() {
 
       px += (targetPX - px) * 0.06
       py += (targetPY - py) * 0.06
-      if (heart) {
-        heart.style.transform = `translate3d(${px * 9}px, ${py * 6}px, 0)`
-      }
 
       for (const p of particles) {
         // blood is pushed in surges: flow speed follows the beat envelope
@@ -214,7 +210,11 @@ export default function LifeBackground() {
   }, [])
 
   return (
-    <div ref={wrapRef} aria-hidden="true" className="absolute inset-0 overflow-hidden pointer-events-none select-none">
+    <div
+      ref={wrapRef}
+      aria-hidden="true"
+      className={`${fixed ? 'fixed' : 'absolute'} inset-0 overflow-hidden pointer-events-none select-none`}
+    >
       {/* warm atmosphere */}
       <div
         className="absolute inset-0"
@@ -224,21 +224,6 @@ export default function LifeBackground() {
             'radial-gradient(50% 42% at 12% 88%, color-mix(in srgb, var(--t-accent) 9%, transparent), transparent 70%)',
         }}
       />
-
-      {/* dimmed beating heart behind the hero */}
-      <div
-        className="absolute left-1/2 -translate-x-1/2"
-        style={{ top: 'clamp(96px, 18vh, 220px)', width: 'min(74vmin, 560px)' }}
-      >
-        <div ref={heartRef}>
-          <svg className="w-full animate-heartbeat" viewBox="0 0 32 29.6" style={{ filter: 'blur(46px)', opacity: 0.17 }}>
-            <path d={HEART_PATH} fill="var(--t-accent)" />
-          </svg>
-          <svg className="absolute inset-0 w-full animate-heartbeat" viewBox="0 0 32 29.6" style={{ opacity: 0.07 }}>
-            <path d={HEART_PATH} fill="none" stroke="var(--t-accent-ink)" strokeWidth="0.45" />
-          </svg>
-        </div>
-      </div>
 
       {/* bloodstream particles */}
       <canvas ref={canvasRef} className="absolute inset-0 h-full w-full" />

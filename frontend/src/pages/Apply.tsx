@@ -8,6 +8,7 @@ import { formSchema } from '../types/form'
 import { fetchQuestionnaire, submitForm } from '../api/client'
 import ProgressBar from '../components/ui/ProgressBar'
 import Button from '../components/ui/Button'
+import LifeBackground from '../components/LifeBackground'
 
 import Step1Identity, { FIELDS as STEP1_FIELDS } from '../steps/Step1Identity'
 import Step2AboutYou, { FIELDS as STEP2_FIELDS } from '../steps/Step2AboutYou'
@@ -129,8 +130,9 @@ export default function Apply() {
   )
 
   return (
-    <div className="min-h-screen bg-bg">
-      <div className="mx-auto w-full max-w-form px-4 pt-8 pb-24">
+    <div className="relative min-h-screen bg-bg">
+      <LifeBackground fixed />
+      <div className="relative z-10 mx-auto w-full max-w-form px-4 pt-8 pb-24">
         <div className="mb-6">
           <div className="flex items-center gap-3 mb-6">
             <a href="/" className="flex items-center gap-1.5 text-sm text-muted hover:text-primary transition-colors duration-200" aria-label={t('apply.back')}>
