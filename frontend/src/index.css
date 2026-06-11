@@ -112,6 +112,67 @@
   }
 }
 
+/* ─── Landing page (Home) ────────────────────────────────────────────────────
+   Display serif for the hero, lub-dub heartbeat synced with LifeBackground's
+   BEAT_MS (1875ms ≈ 64bpm), staggered entrance, and the gold gradient CTA. */
+
+@keyframes home-rise {
+  from { opacity: 0; transform: translateY(16px); }
+  to   { opacity: 1; transform: none; }
+}
+
+@keyframes heartbeat {
+  0%, 55%, 100% { transform: scale(1); }
+  8%  { transform: scale(1.06); }
+  16% { transform: scale(0.99); }
+  28% { transform: scale(1.11); }
+}
+
+@layer components {
+  .font-display {
+    font-family: 'Fraunces', Georgia, 'Times New Roman', serif;
+  }
+
+  .home-rise {
+    opacity: 0;
+    animation: home-rise 0.7s cubic-bezier(0.2, 0.7, 0.3, 1) forwards;
+  }
+
+  .animate-heartbeat {
+    animation: heartbeat 1875ms ease-in-out infinite;
+    transform-origin: 50% 55%;
+  }
+
+  .cta-gold {
+    background: linear-gradient(
+      135deg,
+      color-mix(in srgb, var(--t-accent) 72%, white) 0%,
+      var(--t-accent) 45%,
+      color-mix(in srgb, var(--t-accent) 62%, var(--t-accent-ink)) 100%
+    );
+    box-shadow:
+      0 8px 24px color-mix(in srgb, var(--t-accent) 38%, transparent),
+      inset 0 1px 0 rgb(255 255 255 / 0.25);
+    transition: transform 0.2s, box-shadow 0.2s, filter 0.2s;
+  }
+  .cta-gold:hover {
+    transform: translateY(-2px);
+    filter: brightness(1.04);
+    box-shadow:
+      0 12px 32px color-mix(in srgb, var(--t-accent) 48%, transparent),
+      inset 0 1px 0 rgb(255 255 255 / 0.25);
+  }
+  .cta-gold:active {
+    transform: translateY(0) scale(0.98);
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .home-rise { animation: none; opacity: 1; }
+    .animate-heartbeat { animation: none; }
+    .cta-gold, .cta-gold:hover, .cta-gold:active { transform: none; }
+  }
+}
+
 @layer utilities {
   .scrollbar-hide {
     -ms-overflow-style: none;
