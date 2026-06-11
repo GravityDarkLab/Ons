@@ -365,20 +365,20 @@ function RowActions({ match, expanded, saving, onToggleExpand, onStatusChange, o
   const nextStatuses = STATUS_NEXT[match.status] ?? []
 
   return (
-    <div className="flex items-center gap-1.5 flex-wrap">
+    <div className="flex items-center gap-1.5 flex-nowrap overflow-x-auto pb-0.5">
       {nextStatuses.map(s => (
         <button key={s} disabled={saving}
           onClick={() => onStatusChange(s)}
-          className="px-2 py-1 rounded-lg border border-border text-xs text-muted hover:text-primary hover:bg-bg transition-colors disabled:opacity-40">
+          className="px-2 py-1 rounded-lg border border-border text-xs text-muted hover:text-primary hover:bg-bg transition-colors disabled:opacity-40 whitespace-nowrap shrink-0">
           {ACTION_LABEL[s]}
         </button>
       ))}
       <button onClick={onToggleExpand}
-        className="px-2 py-1 rounded-lg border border-border text-xs text-muted hover:text-primary hover:bg-bg transition-colors">
+        className="px-2 py-1 rounded-lg border border-border text-xs text-muted hover:text-primary hover:bg-bg transition-colors whitespace-nowrap shrink-0">
         {expanded ? t('admin.matches.cancelNotes') : t('admin.matches.editNotes')}
       </button>
       <button onClick={onDelete} disabled={saving}
-        className="p-1.5 rounded-lg text-error hover:bg-error-light transition-colors disabled:opacity-40"
+        className="p-1.5 rounded-lg text-error hover:bg-error-light transition-colors disabled:opacity-40 shrink-0"
         title={t('admin.matches.delete')}>
         <span className="sr-only">{t('admin.matches.delete')}</span>
         <TrashIcon />
@@ -460,7 +460,7 @@ function MatchRow(props: RowProps) {
         </td>
 
         {/* Actions */}
-        <td className="px-4 py-3.5">
+        <td className="px-4 py-3.5 max-w-[260px]">
           <RowActions {...props} />
         </td>
       </tr>
