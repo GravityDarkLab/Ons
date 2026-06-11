@@ -133,6 +133,69 @@ function SetPasswordForm({ magicToken }: { magicToken: string }) {
   )
 }
 
+function EnterPasswordForm({ magicToken }: { magicToken: string }) {
+  const { t } = useTranslation()
+  const navigate = useNavigate()
+  const [password, setPasswordValue] = useState('')
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+
+  async function handleSubmit(e: FormEvent) {
+    e.preventDefault()
+    setError(null)
+    setLoading(true)
+    try {
+      const result = await profileLogin(magicToken, password)
+      if (result.type === 'ok') {
+        navigate('/profile', { replace: true })
+      } else {
+        setError(t('portal.login.invalidCredentials'))
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : t('portal.login.invalidCredentials'))
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  return (
+    <form onSubmit={handleSubmit} className="space-y-4" noValidate>
+      <div className="flex flex-col gap-1.5">
+        <label htmlFor="login-password" className="text-sm font-medium text-primary">
+          {t('portal.login.password')}
+        </label>
+        <input
+          id="login-password"
+          type="password"
+          value={password}
+          onChange={e => setPasswordValue(e.target.value)}
+          required
+          autoFocus
+          autoComplete="current-password"
+          placeholder="••••••••"
+          className={[
+            'w-full rounded-xl border bg-surface px-4 py-3 text-[15px] text-primary',
+            'placeholder:text-muted',
+            'transition-all duration-200',
+            'focus:outline-none focus:ring-2 focus:ring-accent/30 focus:border-accent',
+            error ? 'border-error focus:ring-error/30 focus:border-error' : 'border-border',
+          ].join(' ')}
+        />
+      </div>
+
+      {error && <p className="text-sm text-error">{error}</p>}
+
+      <button
+        type="submit"
+        disabled={loading || password.length === 0}
+        className="bg-accent text-bg rounded-full px-5 py-2.5 text-sm font-medium hover:opacity-90 w-full disabled:opacity-50 disabled:cursor-not-allowed transition-opacity duration-200"
+      >
+        {loading ? t('portal.login.signingIn') : t('portal.login.signIn')}
+      </button>
+    </form>
+  )
+}
+
 // ── Main component ─────────────────────────────────────────────────────────────
 
 export default function ProfileLoginPage() {
@@ -141,8 +204,8 @@ export default function ProfileLoginPage() {
   const navigate = useNavigate()
   const token = searchParams.get('token')
 
-  // Mode: 'idle' | 'probing' | 'set-password' | 'error' | 'no-token'
-  const [mode, setMode] = useState<'idle' | 'probing' | 'set-password' | 'error' | 'no-token'>('idle')
+  // Mode: 'idle' | 'probing' | 'set-password' | 'enter-password' | 'error' | 'no-token'
+  const [mode, setMode] = useState<'idle' | 'probing' | 'set-password' | 'enter-password' | 'error' | 'no-token'>('idle')
   const [errorMessage, setErrorMessage] = useState<string | null>(null)
 
   useEffect(() => {
@@ -157,6 +220,8 @@ export default function ProfileLoginPage() {
       .then(result => {
         if (result.type === 'first_login') {
           setMode('set-password')
+        } else if (result.type === 'password_required') {
+          setMode('enter-password')
         } else {
           navigate('/profile', { replace: true })
         }
@@ -229,6 +294,30 @@ export default function ProfileLoginPage() {
             <a href="/" className="inline-block text-xs text-accent hover:underline">
               {t('portal.login.backToHome')}
             </a>
+          </div>
+        </div>
+      </div>
+    )
+  }
+
+  // ── Render: enter-password ────────────────────────────────────────────────────
+
+  if (mode === 'enter-password') {
+    return (
+      <div className="min-h-screen bg-bg flex items-center justify-center px-4 relative">
+        <div className="absolute top-4 right-4 flex items-center gap-1.5"><LanguageSwitcher /><ThemeToggle /></div>
+        <div className="w-full max-w-sm">
+          {/* Header */}
+          <div className="mb-8 text-center">
+            <h1 className="text-2xl font-semibold text-primary tracking-tight">{t('portal.login.welcomeBack')}</h1>
+            <p className="text-sm text-muted mt-1 leading-relaxed">
+              {t('portal.login.enterPasswordHint')}
+            </p>
+          </div>
+
+          {/* Card */}
+          <div className="bg-surface border border-border rounded-2xl p-8 shadow-card">
+            <EnterPasswordForm magicToken={token!} />
           </div>
         </div>
       </div>

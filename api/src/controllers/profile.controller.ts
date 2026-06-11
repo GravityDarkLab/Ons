@@ -43,6 +43,9 @@ export async function login(c: Context): Promise<Response> {
   if (result.status === "first_login") {
     return c.json({ success: true, firstLogin: true });
   }
+  if (result.status === "password_required") {
+    return c.json({ success: true, passwordRequired: true });
+  }
 
   const token = await signApplicantToken(
     result.applicant._id.toHexString(),

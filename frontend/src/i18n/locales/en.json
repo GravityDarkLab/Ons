@@ -312,7 +312,13 @@
       "settingPassword": "Setting password…",
       "suggestedPasswordHint": "Your suggested password — copy it somewhere safe before continuing:",
       "copy": "Copy",
-      "copied": "Copied ✓"
+      "copied": "Copied ✓",
+      "welcomeBack": "Welcome back",
+      "enterPasswordHint": "Enter your password to access your profile.",
+      "password": "Password",
+      "signIn": "Sign in",
+      "signingIn": "Signing in…",
+      "invalidCredentials": "Incorrect password. Please try again."
     },
     "dashboard": {
       "loading": "Loading…",

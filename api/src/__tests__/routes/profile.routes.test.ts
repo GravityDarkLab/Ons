@@ -129,6 +129,17 @@ describe("POST /profile/login", () => {
     expect(res.status).toBe(401);
   });
 
+  it("returns 200 + passwordRequired:true when password is omitted but already set", async () => {
+    mockLoginWithMagicToken.mockResolvedValue({ status: "password_required" });
+    const res = await post("/profile/login", { magicToken: VALID_MAGIC_TOKEN });
+    expect(res.status).toBe(200);
+    const body = await res.json() as any;
+    expect(body.success).toBe(true);
+    expect(body.passwordRequired).toBe(true);
+    expect(body.firstLogin).toBeUndefined();
+    expect(body.token).toBeUndefined();
+  });
+
   it("returns 422 when magicToken is the wrong length", async () => {
     const res = await post("/profile/login", { magicToken: "short", password: "some-pass" });
     expect(res.status).toBe(422);

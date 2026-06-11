@@ -27,7 +27,8 @@ import { generateIceBreakers } from "./icebreaker.service.js";
 export type LoginAttemptResult =
   | { status: "ok"; applicant: ApplicantDoc }
   | { status: "first_login" }
-  | null; // wrong token or wrong password
+  | { status: "password_required" }
+  | null; // unknown magic token, or wrong password
 
 export async function loginWithMagicToken(
   magicToken: string,
@@ -41,7 +42,7 @@ export async function loginWithMagicToken(
 
   if (doc.passwordHash === null) return { status: "first_login" };
 
-  if (!password) return null;
+  if (!password) return { status: "password_required" };
   const ok = await Bun.password.verify(password, doc.passwordHash);
   return ok ? { status: "ok", applicant: doc } : null;
 }

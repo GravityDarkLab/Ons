@@ -312,7 +312,13 @@
       "settingPassword": "Passwort wird festgelegt…",
       "suggestedPasswordHint": "Dein vorgeschlagenes Passwort — kopiere es an einen sicheren Ort, bevor du fortfährst:",
       "copy": "Kopieren",
-      "copied": "Kopiert ✓"
+      "copied": "Kopiert ✓",
+      "welcomeBack": "Willkommen zurück",
+      "enterPasswordHint": "Gib dein Passwort ein, um auf dein Profil zuzugreifen.",
+      "password": "Passwort",
+      "signIn": "Anmelden",
+      "signingIn": "Wird angemeldet…",
+      "invalidCredentials": "Falsches Passwort. Bitte versuche es erneut."
     },
     "dashboard": {
       "loading": "Wird geladen…",

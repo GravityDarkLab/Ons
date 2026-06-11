@@ -470,6 +470,15 @@ components:
             Present (and `true`) when the account has no password yet.
             The caller should redirect to `POST /api/v1/profile/set-password`.
             When absent, the session cookie has been set — proceed to the dashboard.
+        passwordRequired:
+          type: boolean
+          enum: [true]
+          description: |
+            Present (and `true`) when the magic token is valid, the account
+            already has a password set, but `password` was omitted from the
+            request. The caller should prompt for a password and resubmit
+            `POST /api/v1/profile/login` with both `magicToken` and `password`.
+            When absent, the session cookie has been set — proceed to the dashboard.
 
     ApplicantProfileView:
       type: object
@@ -1841,14 +1850,18 @@ paths:
       description: |
         Identifies an applicant by `magicToken` and verifies their password.
 
-        **Two possible success responses (both 200):**
+        **Three possible success responses (all 200):**
         - `{ success: true }` + `Set-Cookie: ons_applicant_session=<jwt>` — password
           verified, session cookie set, proceed to dashboard
         - `{ firstLogin: true }` — account has no password yet; redirect to
           `POST /api/v1/profile/set-password` before setting the cookie
+        - `{ passwordRequired: true }` — magic token is valid and a password is
+          already set, but `password` was omitted; prompt the user for their
+          password and resubmit with both fields
 
-        `password` is optional — omitting it is the idiomatic way to trigger a
-        first-login check without attempting verification.
+        `password` is optional — omitting it is the idiomatic way to probe a
+        magic link's state (first-login vs. returning user) without attempting
+        verification.
 
         **Rate limit:** 10 requests per minute per IP.
       requestBody:
@@ -1891,6 +1904,11 @@ paths:
                   value:
                     success: true
                     firstLogin: true
+                password_required:
+                  summary: Password already set — prompt for it
+                  value:
+                    success: true
+                    passwordRequired: true
         '401':
           description: Unknown magic token or wrong password
           content:

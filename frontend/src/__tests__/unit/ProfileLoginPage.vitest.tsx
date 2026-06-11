@@ -55,6 +55,52 @@ describe('ProfileLoginPage', () => {
     })
   })
 
+  it('shows enter-password form when API returns passwordRequired (type: password_required)', async () => {
+    mockProfileLogin.mockResolvedValue({ type: 'password_required' })
+    renderWithRouter('?token=abc123')
+    await waitFor(() => {
+      expect(screen.getByLabelText(/portal\.login\.password$/i)).toBeInTheDocument()
+    })
+  })
+
+  it('signs in and navigates to /profile when the password is correct', async () => {
+    mockProfileLogin
+      .mockResolvedValueOnce({ type: 'password_required' })
+      .mockResolvedValueOnce({ type: 'ok' })
+
+    renderWithRouter('?token=abc123')
+
+    const passwordInput = await screen.findByLabelText(/portal\.login\.password$/i)
+    await userEvent.type(passwordInput, 'correct-horse-battery-staple')
+
+    const submitButton = screen.getByRole('button', { name: /portal\.login\.signIn/i })
+    await userEvent.click(submitButton)
+
+    await waitFor(() => {
+      expect(mockNavigate).toHaveBeenCalledWith('/profile', { replace: true })
+    })
+    expect(mockProfileLogin).toHaveBeenLastCalledWith('abc123', 'correct-horse-battery-staple')
+  })
+
+  it('shows an error on the enter-password form when the password is wrong', async () => {
+    mockProfileLogin
+      .mockResolvedValueOnce({ type: 'password_required' })
+      .mockRejectedValueOnce(new Error('Invalid credentials'))
+
+    renderWithRouter('?token=abc123')
+
+    const passwordInput = await screen.findByLabelText(/portal\.login\.password$/i)
+    await userEvent.type(passwordInput, 'wrong-password')
+
+    const submitButton = screen.getByRole('button', { name: /portal\.login\.signIn/i })
+    await userEvent.click(submitButton)
+
+    await waitFor(() => {
+      expect(screen.getByText('Invalid credentials')).toBeInTheDocument()
+    })
+    expect(mockNavigate).not.toHaveBeenCalled()
+  })
+
   it('pre-fills suggestion when "Suggest" is clicked', async () => {
     mockProfileLogin.mockResolvedValue({ type: 'first_login' })
     mockSuggestPassword.mockResolvedValue({ suggestion: 'fluffy-cat-42' })

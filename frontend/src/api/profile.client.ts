@@ -35,7 +35,7 @@ export interface ProfileView {
   deletionScheduledAt: string | null
 }
 
-export type LoginResult = { type: 'first_login' } | { type: 'ok' }
+export type LoginResult = { type: 'first_login' } | { type: 'password_required' } | { type: 'ok' }
 
 export interface ContactResult {
   targetInstagram: string
@@ -78,12 +78,14 @@ export async function profileLogin(magicToken: string, password?: string): Promi
   const payload: { magicToken: string; password?: string } = { magicToken }
   if (password !== undefined) payload.password = password
 
-  const body = await profileRequest<{ firstLogin?: boolean }>(
+  const body = await profileRequest<{ firstLogin?: boolean; passwordRequired?: boolean }>(
     '/profile/login',
     { method: 'POST', body: JSON.stringify(payload) },
   )
 
-  return body.firstLogin ? { type: 'first_login' } : { type: 'ok' }
+  if (body.firstLogin) return { type: 'first_login' }
+  if (body.passwordRequired) return { type: 'password_required' }
+  return { type: 'ok' }
 }
 
 export async function setPassword(magicToken: string, newPassword: string): Promise<void> {

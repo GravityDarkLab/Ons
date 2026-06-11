@@ -312,7 +312,13 @@
       "settingPassword": "Définition du mot de passe…",
       "suggestedPasswordHint": "Votre mot de passe suggéré — copiez-le dans un endroit sûr avant de continuer :",
       "copy": "Copier",
-      "copied": "Copié ✓"
+      "copied": "Copié ✓",
+      "welcomeBack": "Bon retour",
+      "enterPasswordHint": "Entre ton mot de passe pour accéder à ton profil.",
+      "password": "Mot de passe",
+      "signIn": "Se connecter",
+      "signingIn": "Connexion…",
+      "invalidCredentials": "Mot de passe incorrect. Réessaie."
     },
     "dashboard": {
       "loading": "Chargement…",

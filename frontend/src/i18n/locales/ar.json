@@ -324,7 +324,13 @@
       "settingPassword": "جارٍ تعيين كلمة المرور…",
       "suggestedPasswordHint": "كلمة المرور المقترحة — انسخها في مكان آمن قبل المتابعة:",
       "copy": "نسخ",
-      "copied": "تم النسخ ✓"
+      "copied": "تم النسخ ✓",
+      "welcomeBack": "مرحبًا بعودتك",
+      "enterPasswordHint": "أدخل كلمة المرور للوصول إلى ملفك الشخصي.",
+      "password": "كلمة المرور",
+      "signIn": "تسجيل الدخول",
+      "signingIn": "جارٍ تسجيل الدخول…",
+      "invalidCredentials": "كلمة مرور غير صحيحة. حاول مرة أخرى."
     },
     "dashboard": {
       "loading": "جارٍ التحميل…",
