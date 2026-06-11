@@ -10,15 +10,38 @@ export default function Success() {
 
   const origin = typeof window !== 'undefined' ? window.location.origin : ''
   const profileUrl = token
-    ? `${origin}/profile/login?token=${token}`
+    ? `${origin}/profile/login?token=${encodeURIComponent(token)}`
     : `${origin}/profile/login?token=YOUR_TOKEN_HERE`
 
   const [copied, setCopied] = useState(false)
 
+  function fallbackCopy() {
+    const textarea = document.createElement('textarea')
+    textarea.value = profileUrl
+    textarea.style.position = 'fixed'
+    textarea.style.opacity = '0'
+    document.body.appendChild(textarea)
+    textarea.select()
+    try {
+      document.execCommand('copy')
+      setCopied(true)
+      setTimeout(() => setCopied(false), 2000)
+    } catch {
+      // Copying isn't supported in this context — user can still select the link manually
+    }
+    document.body.removeChild(textarea)
+  }
+
   function handleCopy() {
+    if (!navigator.clipboard?.writeText) {
+      fallbackCopy()
+      return
+    }
     navigator.clipboard.writeText(profileUrl).then(() => {
       setCopied(true)
       setTimeout(() => setCopied(false), 2000)
+    }).catch(() => {
+      fallbackCopy()
     })
   }
 

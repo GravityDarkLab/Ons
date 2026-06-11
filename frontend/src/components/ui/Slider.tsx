@@ -49,6 +49,10 @@ export default function Slider({
     ? { width: `${percentage}%`, marginLeft: 'auto' }
     : { width: `${percentage}%` }
 
+  // Always include `max` even if `step` doesn't evenly divide the range
+  const ticks = Array.from({ length: Math.floor((max - min) / step) + 1 }, (_, i) => min + i * step)
+  if (ticks[ticks.length - 1] !== max) ticks.push(max)
+
   return (
     <div className="flex flex-col gap-3">
       {label && (
@@ -96,7 +100,7 @@ export default function Slider({
 
       {/* Tick marks */}
       <div className="flex justify-between px-0.5 -mt-2">
-        {Array.from({ length: Math.floor((max - min) / step) + 1 }, (_, i) => min + i * step).map((tick) => (
+        {ticks.map((tick) => (
           <button
             key={tick}
             type="button"
