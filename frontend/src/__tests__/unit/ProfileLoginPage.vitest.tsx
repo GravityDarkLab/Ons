@@ -89,4 +89,63 @@ describe('ProfileLoginPage', () => {
       expect(screen.getByText('Password too weak')).toBeInTheDocument()
     })
   })
+
+  // tested: suggested password is revealed for copying (item 1)
+  describe('suggested password reveal', () => {
+    beforeEach(() => {
+      Object.defineProperty(navigator, 'clipboard', {
+        value: { writeText: vi.fn().mockResolvedValue(undefined) },
+        configurable: true,
+      })
+    })
+
+    it('reveals the suggested password with a copy button', async () => {
+      mockProfileLogin.mockResolvedValue({ type: 'first_login' })
+      mockSuggestPassword.mockResolvedValue({ suggestion: 'fluffy-cat-42' })
+
+      renderWithRouter('?token=abc123')
+      await screen.findByLabelText(/portal\.login\.choosePassword/i)
+
+      await userEvent.click(screen.getByRole('button', { name: /portal\.login\.suggest/i }))
+
+      expect(await screen.findByText('fluffy-cat-42')).toBeInTheDocument()
+      expect(screen.getByRole('button', { name: /portal\.login\.copy/i })).toBeInTheDocument()
+    })
+
+    it('copies the suggested password and shows "copied" feedback', async () => {
+      mockProfileLogin.mockResolvedValue({ type: 'first_login' })
+      mockSuggestPassword.mockResolvedValue({ suggestion: 'fluffy-cat-42' })
+
+      renderWithRouter('?token=abc123')
+      await screen.findByLabelText(/portal\.login\.choosePassword/i)
+
+      await userEvent.click(screen.getByRole('button', { name: /portal\.login\.suggest/i }))
+      await screen.findByText('fluffy-cat-42')
+
+      await userEvent.click(screen.getByRole('button', { name: /portal\.login\.copy/i }))
+
+      expect(navigator.clipboard.writeText).toHaveBeenCalledWith('fluffy-cat-42')
+      expect(screen.getByRole('button', { name: /portal\.login\.copied/i })).toBeInTheDocument()
+
+      await waitFor(() => {
+        expect(screen.getByRole('button', { name: /portal\.login\.copy/i })).toBeInTheDocument()
+      }, { timeout: 3000 })
+    })
+
+    it('hides the suggestion panel once the password is edited manually', async () => {
+      mockProfileLogin.mockResolvedValue({ type: 'first_login' })
+      mockSuggestPassword.mockResolvedValue({ suggestion: 'fluffy-cat-42' })
+
+      renderWithRouter('?token=abc123')
+      const passwordInput = await screen.findByLabelText(/portal\.login\.choosePassword/i)
+
+      await userEvent.click(screen.getByRole('button', { name: /portal\.login\.suggest/i }))
+      await screen.findByText('fluffy-cat-42')
+
+      await userEvent.type(passwordInput, '!')
+
+      expect(screen.queryByText('fluffy-cat-42')).not.toBeInTheDocument()
+      expect(screen.queryByRole('button', { name: /portal\.login\.copy/i })).not.toBeInTheDocument()
+    })
+  })
 })

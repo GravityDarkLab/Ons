@@ -17,6 +17,7 @@ export interface MatchView {
   matchId: string
   partnerAlias: string
   score: number // 0–1
+  breakdown?: Record<string, number> // per-dimension scores from the matching algorithm
   status: MatchStatus
   perspective: MatchPerspective
   contactRequestedAt?: string // ISO date string

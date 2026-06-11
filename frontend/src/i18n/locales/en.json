@@ -179,7 +179,10 @@
       "page": "Page {{current}} of {{total}}",
       "prev": "← Prev",
       "next": "Next →",
-      "deletedToast": "{{alias}} deleted"
+      "deletedToast": "{{alias}} deleted",
+      "scheduledDeletion": "Scheduled for deletion",
+      "colDeletesOn": "Deletes on",
+      "deleteDescription": "Deactivates this applicant immediately and schedules permanent deletion in 180 days."
     },
     "detail": {
       "back": "Applicants",
@@ -198,7 +201,13 @@
       "page": "Page {{current}} of {{total}}",
       "prev": "← Prev",
       "next": "Next →",
-      "withdrawn": "Applicant withdrawn"
+      "withdrawn": "Applicant withdrawn",
+      "magicLink": "Magic link",
+      "regenerateMagicLink": "Regenerate magic link",
+      "regenerateMagicLinkConfirm": "This invalidates the applicant's current magic link and clears their password — they'll set a new one. Generate a new link to share with them directly?",
+      "newMagicLinkHint": "New magic link — share it with the applicant directly. It won't be shown again.",
+      "copy": "Copy",
+      "copied": "Copied ✓"
     },
     "matching": {
       "title": "Matching",
@@ -300,7 +309,10 @@
       "suggest": "✨ Suggest one for me",
       "generating": "Generating…",
       "setPassword": "Set password",
-      "settingPassword": "Setting password…"
+      "settingPassword": "Setting password…",
+      "suggestedPasswordHint": "Your suggested password — copy it somewhere safe before continuing:",
+      "copy": "Copy",
+      "copied": "Copied ✓"
     },
     "dashboard": {
       "loading": "Loading…",
@@ -343,7 +355,58 @@
       "confirmContactBody": "{{alias}} is @{{handle}} on Instagram. Ready to reach out? If you pass now, this match closes for good and you will wait for the next matching phase for new matches.",
       "confirmContactYes": "Yes, connect us",
       "confirmContactNo": "No, pass",
-      "withdrawNotice": "Match closed. You will see new matches at the next matching phase — check back tomorrow."
+      "withdrawNotice": "Match closed. You will see new matches at the next matching phase — check back tomorrow.",
+      "whyThisMatch": "Why this match?",
+      "breakdown": {
+        "relationship_type": {
+          "label": "Relationship goals",
+          "description": "How well your relationship goals (long-term, short-term, etc.) line up."
+        },
+        "deal_breakers": {
+          "label": "Deal-breaker check",
+          "description": "Whether either person's deal-breakers show up in the other's lifestyle."
+        },
+        "religion_compatibility": {
+          "label": "Religion",
+          "description": "How compatible your religious backgrounds and openness are."
+        },
+        "affection_importance": {
+          "label": "Affection style",
+          "description": "How closely your views on physical affection match."
+        },
+        "long_distance": {
+          "label": "Long distance",
+          "description": "Whether you're both open to a long-distance relationship."
+        },
+        "lifestyle": {
+          "label": "Lifestyle",
+          "description": "How similar your day-to-day lifestyles are."
+        },
+        "numeric_compatibility": {
+          "label": "Core preferences",
+          "description": "How closely your relationship preferences line up structurally."
+        },
+        "lifestyle_similarity": {
+          "label": "Lifestyle",
+          "description": "How similar your lifestyles are based on what you wrote."
+        },
+        "character_cross_match": {
+          "label": "Personality fit",
+          "description": "How well your personalities match what each of you is looking for."
+        },
+        "character_a_wants_b": {
+          "label": "Their vibe vs. what you want",
+          "description": "How well their personality matches what you said you're looking for."
+        },
+        "character_b_wants_a": {
+          "label": "Your vibe vs. what they want",
+          "description": "How well your personality matches what they said they're looking for."
+        },
+        "deal_breaker_penalty": {
+          "label": "Deal-breaker check",
+          "description": "Whether either person's deal-breakers show up in the other's lifestyle."
+        }
+      }
     },
     "settings": {
       "title": "Settings",

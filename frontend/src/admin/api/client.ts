@@ -66,10 +66,12 @@ export async function fetchApplicants(
   limit: number,
   status?: string,
   search?: string,
+  scheduledDeletion?: boolean,
 ): Promise<Paginated<Applicant>> {
   const params = new URLSearchParams({ page: String(page), limit: String(limit) })
   if (status) params.set('status', status)
   if (search) params.set('search', search)
+  if (scheduledDeletion) params.set('scheduledDeletion', 'true')
   return request<Paginated<Applicant>>(`/api/v1/admin/applicants?${params}`)
 }
 
@@ -89,6 +91,14 @@ export async function fetchIdentity(
 
 export async function deactivateApplicant(id: string): Promise<void> {
   await request(`/api/v1/admin/applicants/${id}`, { method: 'DELETE' })
+}
+
+export async function regenerateMagicLink(id: string): Promise<{ alias: string; magicToken: string }> {
+  const res = await request<{ data: { alias: string; magicToken: string } }>(
+    `/api/v1/admin/applicants/${id}/regenerate-magic-link`,
+    { method: 'POST' },
+  )
+  return res.data
 }
 
 export const deleteApplicant = deactivateApplicant

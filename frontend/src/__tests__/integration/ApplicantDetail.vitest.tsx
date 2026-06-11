@@ -1,4 +1,4 @@
-import { render, screen, waitFor } from '@testing-library/react'
+import { render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { MemoryRouter, Route, Routes } from 'react-router-dom'
 import { vi } from 'vitest'
@@ -7,6 +7,7 @@ vi.mock('../../admin/api/client', () => ({
   fetchApplicant:      vi.fn(),
   fetchIdentity:       vi.fn(),
   deactivateApplicant: vi.fn(),
+  regenerateMagicLink: vi.fn(),
   fetchMatches:        vi.fn(),
 }))
 
@@ -17,6 +18,7 @@ import { ToastProvider } from '../../components/ui/Toast'
 const mockFetchApplicant      = vi.mocked(client.fetchApplicant)
 const mockFetchIdentity       = vi.mocked(client.fetchIdentity)
 const mockDeactivateApplicant = vi.mocked(client.deactivateApplicant)
+const mockRegenerateMagicLink = vi.mocked(client.regenerateMagicLink)
 const mockFetchMatches        = vi.mocked(client.fetchMatches)
 
 const APPLICANT_A = {
@@ -68,6 +70,7 @@ beforeEach(() => {
   mockFetchApplicant.mockReset()
   mockFetchIdentity.mockReset()
   mockDeactivateApplicant.mockReset()
+  mockRegenerateMagicLink.mockReset()
   mockFetchMatches.mockReset()
 
   mockFetchApplicant.mockImplementation(async (id) =>
@@ -176,5 +179,76 @@ describe('ApplicantDetail — answers section', () => {
     renderDetail()
     await waitFor(() => screen.getByText('Berlin, Germany'))
     expect(screen.getByText('25')).toBeInTheDocument()
+  })
+})
+
+// tested: admin "regenerate magic link" recovery action
+describe('ApplicantDetail — magic link regeneration', () => {
+  beforeEach(() => {
+    Object.defineProperty(navigator, 'clipboard', {
+      value: { writeText: vi.fn().mockResolvedValue(undefined) },
+      configurable: true,
+    })
+  })
+
+  it('shows the regenerate button and no link by default', async () => {
+    renderDetail()
+    await waitFor(() => screen.getByText('Lunar Ocean'))
+    expect(screen.getByRole('button', { name: /admin\.detail\.regenerateMagicLink/i })).toBeInTheDocument()
+  })
+
+  it('opens a confirm dialog before regenerating', async () => {
+    renderDetail()
+    await waitFor(() => screen.getByText('Lunar Ocean'))
+
+    await userEvent.click(screen.getByRole('button', { name: /admin\.detail\.regenerateMagicLink/i }))
+
+    const dialog = await screen.findByRole('alertdialog')
+    expect(dialog).toHaveTextContent('admin.detail.regenerateMagicLinkConfirm')
+    expect(mockRegenerateMagicLink).not.toHaveBeenCalled()
+  })
+
+  it('reveals the new magic link with a copy button after confirming', async () => {
+    mockRegenerateMagicLink.mockResolvedValue({ alias: 'Lunar Ocean', magicToken: 'abc123' })
+    renderDetail()
+    await waitFor(() => screen.getByText('Lunar Ocean'))
+
+    await userEvent.click(screen.getByRole('button', { name: /admin\.detail\.regenerateMagicLink/i }))
+    const dialog = await screen.findByRole('alertdialog')
+    await userEvent.click(within(dialog).getByRole('button', { name: /admin\.detail\.regenerateMagicLink/i }))
+
+    expect(mockRegenerateMagicLink).toHaveBeenCalledWith('id-a')
+    expect(await screen.findByText(/token=abc123/)).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /admin\.detail\.copy/i })).toBeInTheDocument()
+    expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument()
+  })
+
+  it('copies the new magic link and shows "copied" feedback', async () => {
+    mockRegenerateMagicLink.mockResolvedValue({ alias: 'Lunar Ocean', magicToken: 'abc123' })
+    renderDetail()
+    await waitFor(() => screen.getByText('Lunar Ocean'))
+
+    await userEvent.click(screen.getByRole('button', { name: /admin\.detail\.regenerateMagicLink/i }))
+    const dialog = await screen.findByRole('alertdialog')
+    await userEvent.click(within(dialog).getByRole('button', { name: /admin\.detail\.regenerateMagicLink/i }))
+
+    const link = await screen.findByText(/token=abc123/)
+    await userEvent.click(screen.getByRole('button', { name: /admin\.detail\.copy/i }))
+
+    expect(navigator.clipboard.writeText).toHaveBeenCalledWith(link.textContent)
+    expect(screen.getByRole('button', { name: /admin\.detail\.copied/i })).toBeInTheDocument()
+  })
+
+  it('shows an error when regeneration fails', async () => {
+    mockRegenerateMagicLink.mockRejectedValue(new Error('Applicant not found'))
+    renderDetail()
+    await waitFor(() => screen.getByText('Lunar Ocean'))
+
+    await userEvent.click(screen.getByRole('button', { name: /admin\.detail\.regenerateMagicLink/i }))
+    const dialog = await screen.findByRole('alertdialog')
+    await userEvent.click(within(dialog).getByRole('button', { name: /admin\.detail\.regenerateMagicLink/i }))
+
+    expect(await screen.findByText('Applicant not found')).toBeInTheDocument()
+    expect(screen.queryByText(/token=/)).not.toBeInTheDocument()
   })
 })

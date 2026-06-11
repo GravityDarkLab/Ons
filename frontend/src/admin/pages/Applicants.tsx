@@ -56,16 +56,25 @@ export function Applicants() {
   }, [search])
 
   const FILTERS = [
-    { value: '',         label: t('admin.applicants.all') },
-    { value: 'applied',  label: t('admin.applicants.applied') },
-    { value: 'matched',  label: t('admin.applicants.matched') },
-    { value: 'dating',   label: t('admin.applicants.dating') },
-    { value: 'inactive', label: t('admin.applicants.inactive') },
+    { value: '',          label: t('admin.applicants.all') },
+    { value: 'applied',   label: t('admin.applicants.applied') },
+    { value: 'matched',   label: t('admin.applicants.matched') },
+    { value: 'dating',    label: t('admin.applicants.dating') },
+    { value: 'inactive',  label: t('admin.applicants.inactive') },
+    { value: 'scheduled', label: t('admin.applicants.scheduledDeletion') },
   ]
+
+  const isScheduledTab = status === 'scheduled'
 
   function loadApplicants() {
     setLoading(true)
-    fetchApplicants(page, LIMIT, status || undefined, debouncedSearch || undefined)
+    fetchApplicants(
+      page,
+      LIMIT,
+      isScheduledTab ? undefined : (status || undefined),
+      debouncedSearch || undefined,
+      isScheduledTab,
+    )
       .then(res => { setApplicants(res.data); setTotal(res.total); setTotalPages(res.totalPages) })
       .finally(() => setLoading(false))
   }
@@ -148,7 +157,7 @@ export function Applicants() {
             <tr className="border-b border-border">
               <Th>{t('admin.applicants.colAlias')}</Th>
               <Th>{t('admin.applicants.colStatus')}</Th>
-              <Th>{t('admin.applicants.colVersion') ?? 'Version'}</Th>
+              <Th>{isScheduledTab ? t('admin.applicants.colDeletesOn') : (t('admin.applicants.colVersion') ?? 'Version')}</Th>
               <Th>{t('admin.applicants.colSubmitted')}</Th>
               <Th>{t('admin.applicants.colActions') ?? 'Actions'}</Th>
             </tr>
@@ -176,7 +185,11 @@ export function Applicants() {
                       {t(`admin.applicants.${a.status}`)}
                     </Badge>
                   </td>
-                  <td className="px-4 py-3.5 text-muted text-xs">{a.questionnaireVersion}</td>
+                  <td className="px-4 py-3.5 text-muted text-xs">
+                    {isScheduledTab && a.deletionScheduledAt
+                      ? new Date(a.deletionScheduledAt).toLocaleDateString()
+                      : a.questionnaireVersion}
+                  </td>
                   <td className="px-4 py-3.5 text-muted">{new Date(a.createdAt).toLocaleDateString()}</td>
                   <td className="px-4 py-3.5">
                     <div className="flex items-center gap-1">
@@ -240,7 +253,7 @@ export function Applicants() {
       <ConfirmDialog
         open={pendingDelete !== null}
         title={pendingDelete ? `Delete ${pendingDelete.alias}?` : ''}
-        description="This permanently removes the applicant, their encrypted identity, and all their matches."
+        description={t('admin.applicants.deleteDescription')}
         confirmLabel="Delete"
         cancelLabel="Cancel"
         tone="danger"

@@ -6,6 +6,7 @@ export interface Applicant {
   questionnaireVersion: string
   answers: Record<string, unknown>
   status: ApplicantStatus
+  deletionScheduledAt?: string
   createdAt: string
   updatedAt: string
 }

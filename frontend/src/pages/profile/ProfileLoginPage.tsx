@@ -14,16 +14,38 @@ function SetPasswordForm({ magicToken }: { magicToken: string }) {
   const [suggesting, setSuggesting] = useState(false)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [suggestedPassword, setSuggestedPassword] = useState<string | null>(null)
+  const [copied, setCopied] = useState(false)
 
   async function handleSuggest() {
     setSuggesting(true)
     try {
       const { suggestion } = await suggestPassword()
       setPasswordValue(suggestion)
+      setSuggestedPassword(suggestion)
+      setCopied(false)
     } catch {
       // non-critical — silently ignore
     } finally {
       setSuggesting(false)
+    }
+  }
+
+  function handlePasswordChange(value: string) {
+    setPasswordValue(value)
+    if (suggestedPassword !== null && value !== suggestedPassword) {
+      setSuggestedPassword(null)
+    }
+  }
+
+  async function handleCopy() {
+    if (!suggestedPassword) return
+    try {
+      await navigator.clipboard.writeText(suggestedPassword)
+      setCopied(true)
+      setTimeout(() => setCopied(false), 2000)
+    } catch {
+      // clipboard access denied — non-critical
     }
   }
 
@@ -55,7 +77,7 @@ function SetPasswordForm({ magicToken }: { magicToken: string }) {
           id="new-password"
           type="password"
           value={password}
-          onChange={e => setPasswordValue(e.target.value)}
+          onChange={e => handlePasswordChange(e.target.value)}
           minLength={8}
           required
           autoFocus
@@ -79,6 +101,24 @@ function SetPasswordForm({ magicToken }: { magicToken: string }) {
       >
         {suggesting ? t('portal.login.generating') : t('portal.login.suggest')}
       </button>
+
+      {suggestedPassword && (
+        <div className="flex flex-col gap-2 rounded-xl border border-border bg-surface-subtle p-3">
+          <p className="text-xs text-muted">{t('portal.login.suggestedPasswordHint')}</p>
+          <div className="flex items-center gap-2">
+            <code className="flex-1 select-all break-all rounded-lg bg-surface px-3 py-2 font-mono text-sm text-primary">
+              {suggestedPassword}
+            </code>
+            <button
+              type="button"
+              onClick={handleCopy}
+              className="shrink-0 rounded-lg border border-border px-3 py-2 text-xs font-medium text-primary hover:bg-surface transition-colors"
+            >
+              {copied ? t('portal.login.copied') : t('portal.login.copy')}
+            </button>
+          </div>
+        </div>
+      )}
 
       {error && <p className="text-sm text-error">{error}</p>}
 

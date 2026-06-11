@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useParams, useNavigate, Link } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
-import { fetchApplicant, fetchIdentity, deactivateApplicant, fetchMatches } from '../api/client'
+import { fetchApplicant, fetchIdentity, deactivateApplicant, regenerateMagicLink, fetchMatches } from '../api/client'
 import Button from '../../components/ui/Button'
 import Badge from '../../components/ui/Badge'
 import ConfirmDialog from '../../components/ui/ConfirmDialog'
@@ -152,6 +152,107 @@ function IdentityCard({ id, identity, setIdentity }: IdentityCardProps) {
         <LockIcon />
         <span className="text-sm">{t('admin.detail.superAdminRequired')}</span>
       </div>
+    </div>
+  )
+}
+
+// ── Magic link regeneration ──────────────────────────────────────────────────
+
+function MagicLinkCard({ id }: { id: string }) {
+  const { t } = useTranslation()
+  const auth = useOptionalAuth()
+  const role = auth?.role ?? null
+
+  const [confirmOpen, setConfirmOpen] = useState(false)
+  const [loading, setLoading]         = useState(false)
+  const [error, setError]             = useState('')
+  const [link, setLink]               = useState<string | null>(null)
+  const [copied, setCopied]           = useState(false)
+
+  async function handleRegenerate() {
+    setLoading(true); setError('')
+    try {
+      const { magicToken } = await regenerateMagicLink(id)
+      const origin = typeof window !== 'undefined' ? window.location.origin : ''
+      setLink(`${origin}/profile/login?token=${magicToken}`)
+      setConfirmOpen(false)
+    } catch (err) {
+      setError(err instanceof Error ? err.message : '')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  async function handleCopy() {
+    if (!link) return
+    try {
+      await navigator.clipboard.writeText(link)
+      setCopied(true)
+      setTimeout(() => setCopied(false), 2000)
+    } catch {
+      // clipboard access denied — non-critical
+    }
+  }
+
+  // super_admin or no auth context (fallback for tests / unauthenticated views)
+  if (role === 'admin') {
+    return (
+      <div>
+        <p className="text-xs font-semibold text-muted uppercase tracking-wider mb-2">
+          {t('admin.detail.magicLink')}
+        </p>
+        <div
+          style={{ backgroundColor: 'var(--t-surface-subtle)' }}
+          className="border border-border rounded-xl p-4 flex items-center gap-3 text-muted"
+        >
+          <LockIcon />
+          <span className="text-sm">{t('admin.detail.superAdminRequired')}</span>
+        </div>
+      </div>
+    )
+  }
+
+  return (
+    <div>
+      <p className="text-xs font-semibold text-muted uppercase tracking-wider mb-2">
+        {t('admin.detail.magicLink')}
+      </p>
+
+      {error && <p className="text-sm text-error mb-2">{error}</p>}
+
+      {link ? (
+        <div className="flex flex-col gap-2 rounded-xl border border-border bg-surface-subtle p-3">
+          <p className="text-xs text-muted">{t('admin.detail.newMagicLinkHint')}</p>
+          <div className="flex items-center gap-2">
+            <code className="flex-1 select-all break-all rounded-lg bg-surface px-3 py-2 font-mono text-xs text-primary">
+              {link}
+            </code>
+            <button
+              type="button"
+              onClick={handleCopy}
+              className="shrink-0 rounded-lg border border-border px-3 py-2 text-xs font-medium text-primary hover:bg-surface transition-colors"
+            >
+              {copied ? t('admin.detail.copied') : t('admin.detail.copy')}
+            </button>
+          </div>
+        </div>
+      ) : (
+        <Button variant="secondary" onClick={() => setConfirmOpen(true)} loading={loading}>
+          {t('admin.detail.regenerateMagicLink')}
+        </Button>
+      )}
+
+      <ConfirmDialog
+        open={confirmOpen}
+        title={t('admin.detail.regenerateMagicLink')}
+        description={t('admin.detail.regenerateMagicLinkConfirm')}
+        confirmLabel={t('admin.detail.regenerateMagicLink')}
+        cancelLabel={t('admin.matching.cancel')}
+        tone="danger"
+        loading={loading}
+        onConfirm={handleRegenerate}
+        onClose={() => setConfirmOpen(false)}
+      />
     </div>
   )
 }
@@ -321,6 +422,12 @@ export function ApplicantDetail() {
               identity={identity}
               setIdentity={setIdentity}
             />
+
+            {/* Divider */}
+            <div className="border-t border-border" />
+
+            {/* Magic link regeneration */}
+            <MagicLinkCard id={id!} />
 
             {/* Divider */}
             <div className="border-t border-border" />

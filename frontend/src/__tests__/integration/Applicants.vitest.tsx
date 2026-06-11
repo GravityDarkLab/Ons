@@ -97,4 +97,44 @@ describe('Applicants page', () => {
     // But not once per keystroke
     expect(mockFetchApplicants.mock.calls.length).toBeLessThan(6)
   })
+
+  // tested: "Scheduled for deletion" tab (item 5)
+  describe('scheduled-for-deletion tab', () => {
+    it('shows a "Scheduled for deletion" filter chip', async () => {
+      renderApplicants()
+      await waitFor(() => expect(mockFetchApplicants).toHaveBeenCalled())
+      expect(screen.getByRole('button', { name: 'admin.applicants.scheduledDeletion' })).toBeInTheDocument()
+    })
+
+    it('fetches with scheduledDeletion=true and no status when the tab is active', async () => {
+      renderApplicants('/admin/applicants?status=scheduled')
+      await waitFor(() => expect(mockFetchApplicants).toHaveBeenCalled())
+      const [, , status, , scheduledDeletion] = mockFetchApplicants.mock.calls[0]
+      expect(status).toBeUndefined()
+      expect(scheduledDeletion).toBe(true)
+    })
+
+    it('shows a "Deletes on" column with the deletion date instead of the version', async () => {
+      const deletionDate = new Date('2026-12-01T00:00:00.000Z')
+      mockFetchApplicants.mockResolvedValue(
+        page([{ ...APPLICANT_A, status: 'inactive', deletionScheduledAt: deletionDate.toISOString() }]),
+      )
+
+      renderApplicants('/admin/applicants?status=scheduled')
+
+      expect(await screen.findByText('admin.applicants.colDeletesOn')).toBeInTheDocument()
+      expect(screen.queryByText('admin.applicants.colVersion')).not.toBeInTheDocument()
+      expect(screen.getByText(deletionDate.toLocaleDateString())).toBeInTheDocument()
+    })
+  })
+
+  it('shows the soft-delete grace-period description in the delete confirm dialog', async () => {
+    renderApplicants()
+    await screen.findAllByText('Lunar Ocean')
+
+    await userEvent.click(screen.getByRole('button', { name: /Delete Lunar Ocean/i }))
+
+    const dialog = await screen.findByRole('alertdialog')
+    expect(dialog).toHaveTextContent('admin.applicants.deleteDescription')
+  })
 })

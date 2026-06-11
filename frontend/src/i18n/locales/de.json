@@ -179,7 +179,10 @@
       "page": "Seite {{current}} von {{total}}",
       "prev": "← Zurück",
       "next": "Weiter →",
-      "deletedToast": "{{alias}} gelöscht"
+      "deletedToast": "{{alias}} gelöscht",
+      "scheduledDeletion": "Zur Löschung vorgemerkt",
+      "colDeletesOn": "Löschung am",
+      "deleteDescription": "Deaktiviert diesen Bewerber sofort und plant die endgültige Löschung in 180 Tagen."
     },
     "detail": {
       "back": "Bewerber",
@@ -198,7 +201,13 @@
       "page": "Seite {{current}} von {{total}}",
       "prev": "← Zurück",
       "next": "Weiter →",
-      "withdrawn": "Bewerber zurückgezogen"
+      "withdrawn": "Bewerber zurückgezogen",
+      "magicLink": "Magic-Link",
+      "regenerateMagicLink": "Magic-Link erneuern",
+      "regenerateMagicLinkConfirm": "Dies macht den aktuellen Magic-Link des Bewerbers ungültig und setzt sein Passwort zurück — er muss ein neues festlegen. Einen neuen Link generieren und direkt mit ihm teilen?",
+      "newMagicLinkHint": "Neuer Magic-Link — teile ihn direkt mit dem Bewerber. Er wird nicht erneut angezeigt.",
+      "copy": "Kopieren",
+      "copied": "Kopiert ✓"
     },
     "matching": {
       "title": "Matching",
@@ -300,7 +309,10 @@
       "suggest": "✨ Schlag mir eins vor",
       "generating": "Wird generiert…",
       "setPassword": "Passwort festlegen",
-      "settingPassword": "Passwort wird festgelegt…"
+      "settingPassword": "Passwort wird festgelegt…",
+      "suggestedPasswordHint": "Dein vorgeschlagenes Passwort — kopiere es an einen sicheren Ort, bevor du fortfährst:",
+      "copy": "Kopieren",
+      "copied": "Kopiert ✓"
     },
     "dashboard": {
       "loading": "Wird geladen…",
@@ -343,7 +355,58 @@
       "confirmContactBody": "{{alias}} ist @{{handle}} auf Instagram. Bereit für den ersten Schritt? Wenn du jetzt passt, wird dieses Match endgültig geschlossen und du wartest auf die nächste Matching-Phase.",
       "confirmContactYes": "Ja, verbinde uns",
       "confirmContactNo": "Nein, passen",
-      "withdrawNotice": "Match geschlossen. Neue Matches gibt es in der nächsten Matching-Phase — schau morgen wieder vorbei."
+      "withdrawNotice": "Match geschlossen. Neue Matches gibt es in der nächsten Matching-Phase — schau morgen wieder vorbei.",
+      "whyThisMatch": "Warum dieses Match?",
+      "breakdown": {
+        "relationship_type": {
+          "label": "Beziehungsziele",
+          "description": "Wie gut eure Beziehungsziele (langfristig, kurzfristig usw.) übereinstimmen."
+        },
+        "deal_breakers": {
+          "label": "Ausschlusskriterien",
+          "description": "Ob die Ausschlusskriterien einer Person im Lebensstil der anderen vorkommen."
+        },
+        "religion_compatibility": {
+          "label": "Religion",
+          "description": "Wie kompatibel eure religiösen Hintergründe und eure Offenheit sind."
+        },
+        "affection_importance": {
+          "label": "Zärtlichkeit",
+          "description": "Wie nah eure Vorstellungen von körperlicher Zuneigung beieinander liegen."
+        },
+        "long_distance": {
+          "label": "Fernbeziehung",
+          "description": "Ob ihr beide offen für eine Fernbeziehung seid."
+        },
+        "lifestyle": {
+          "label": "Lebensstil",
+          "description": "Wie ähnlich eure Alltagsgestaltung ist."
+        },
+        "numeric_compatibility": {
+          "label": "Kernpräferenzen",
+          "description": "Wie gut eure Beziehungspräferenzen strukturell zusammenpassen."
+        },
+        "lifestyle_similarity": {
+          "label": "Lebensstil",
+          "description": "Wie ähnlich eure Lebensstile laut euren Angaben sind."
+        },
+        "character_cross_match": {
+          "label": "Persönlichkeit",
+          "description": "Wie gut eure Persönlichkeiten zu dem passen, was ihr jeweils sucht."
+        },
+        "character_a_wants_b": {
+          "label": "Ihre Art vs. was du suchst",
+          "description": "Wie gut die Persönlichkeit der anderen Person zu dem passt, was du suchst."
+        },
+        "character_b_wants_a": {
+          "label": "Deine Art vs. was sie suchen",
+          "description": "Wie gut deine Persönlichkeit zu dem passt, was die andere Person sucht."
+        },
+        "deal_breaker_penalty": {
+          "label": "Ausschlusskriterien",
+          "description": "Ob die Ausschlusskriterien einer Person im Lebensstil der anderen vorkommen."
+        }
+      }
     },
     "settings": {
       "title": "Einstellungen",

@@ -179,7 +179,10 @@
       "page": "Page {{current}} sur {{total}}",
       "prev": "← Préc.",
       "next": "Suiv. →",
-      "deletedToast": "{{alias}} supprimé"
+      "deletedToast": "{{alias}} supprimé",
+      "scheduledDeletion": "Suppression programmée",
+      "colDeletesOn": "Suppression le",
+      "deleteDescription": "Désactive ce candidat immédiatement et programme sa suppression définitive dans 180 jours."
     },
     "detail": {
       "back": "Candidats",
@@ -198,7 +201,13 @@
       "page": "Page {{current}} sur {{total}}",
       "prev": "← Préc.",
       "next": "Suiv. →",
-      "withdrawn": "Candidat retiré"
+      "withdrawn": "Candidat retiré",
+      "magicLink": "Lien magique",
+      "regenerateMagicLink": "Régénérer le lien magique",
+      "regenerateMagicLinkConfirm": "Cela invalide le lien magique actuel du candidat et réinitialise son mot de passe — il devra en définir un nouveau. Générer un nouveau lien à partager directement avec lui ?",
+      "newMagicLinkHint": "Nouveau lien magique — partagez-le directement avec le candidat. Il ne sera plus affiché.",
+      "copy": "Copier",
+      "copied": "Copié ✓"
     },
     "matching": {
       "title": "Matching",
@@ -300,7 +309,10 @@
       "suggest": "✨ Suggère-m'en un",
       "generating": "Génération…",
       "setPassword": "Définir le mot de passe",
-      "settingPassword": "Définition du mot de passe…"
+      "settingPassword": "Définition du mot de passe…",
+      "suggestedPasswordHint": "Votre mot de passe suggéré — copiez-le dans un endroit sûr avant de continuer :",
+      "copy": "Copier",
+      "copied": "Copié ✓"
     },
     "dashboard": {
       "loading": "Chargement…",
@@ -343,7 +355,58 @@
       "confirmContactBody": "{{alias}}, c'est @{{handle}} sur Instagram. Prêt·e à faire le premier pas ? Si vous passez maintenant, ce match sera définitivement fermé et vous attendrez la prochaine phase de matching.",
       "confirmContactYes": "Oui, on se lance",
       "confirmContactNo": "Non, je passe",
-      "withdrawNotice": "Match fermé. De nouveaux matchs arriveront à la prochaine phase de matching — revenez demain."
+      "withdrawNotice": "Match fermé. De nouveaux matchs arriveront à la prochaine phase de matching — revenez demain.",
+      "whyThisMatch": "Pourquoi ce match ?",
+      "breakdown": {
+        "relationship_type": {
+          "label": "Objectifs relationnels",
+          "description": "À quel point vos objectifs relationnels (long terme, court terme, etc.) correspondent."
+        },
+        "deal_breakers": {
+          "label": "Incompatibilités majeures",
+          "description": "Si les éléments rédhibitoires de l'un correspondent au mode de vie de l'autre."
+        },
+        "religion_compatibility": {
+          "label": "Religion",
+          "description": "À quel point vos convictions religieuses et votre ouverture sont compatibles."
+        },
+        "affection_importance": {
+          "label": "Affection physique",
+          "description": "À quel point vos attentes en matière d'affection physique se ressemblent."
+        },
+        "long_distance": {
+          "label": "Longue distance",
+          "description": "Si vous êtes tous les deux ouverts à une relation à distance."
+        },
+        "lifestyle": {
+          "label": "Mode de vie",
+          "description": "À quel point vos modes de vie au quotidien se ressemblent."
+        },
+        "numeric_compatibility": {
+          "label": "Préférences principales",
+          "description": "À quel point vos préférences relationnelles s'alignent structurellement."
+        },
+        "lifestyle_similarity": {
+          "label": "Mode de vie",
+          "description": "À quel point vos modes de vie se ressemblent d'après ce que vous avez écrit."
+        },
+        "character_cross_match": {
+          "label": "Compatibilité de personnalité",
+          "description": "À quel point vos personnalités correspondent à ce que chacun recherche."
+        },
+        "character_a_wants_b": {
+          "label": "Leur style vs ce que vous recherchez",
+          "description": "À quel point leur personnalité correspond à ce que vous recherchez."
+        },
+        "character_b_wants_a": {
+          "label": "Votre style vs ce qu'ils recherchent",
+          "description": "À quel point votre personnalité correspond à ce qu'ils recherchent."
+        },
+        "deal_breaker_penalty": {
+          "label": "Incompatibilités majeures",
+          "description": "Si les éléments rédhibitoires de l'un correspondent au mode de vie de l'autre."
+        }
+      }
     },
     "settings": {
       "title": "Réglages",

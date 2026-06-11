@@ -192,3 +192,87 @@ describe('MatchCard', () => {
     expect(screen.getByRole('button', { name: /portal\.matches\.workedOut/i })).toBeEnabled()
   })
 })
+
+// tested: score breakdown expand/collapse (item 2/3 — "why this score")
+describe('MatchCard score breakdown', () => {
+  it('does not show an expand toggle when breakdown is missing', () => {
+    render(<MatchCard match={base} />)
+    expect(screen.queryByRole('button', { name: /Crescent River/i })).not.toBeInTheDocument()
+    // The header is still rendered as a static, non-interactive row
+    expect(screen.getByText('Crescent River')).toBeInTheDocument()
+  })
+
+  it('does not show an expand toggle when breakdown is empty', () => {
+    render(<MatchCard match={{ ...base, breakdown: {} }} />)
+    expect(screen.queryByRole('button', { name: /Crescent River/i })).not.toBeInTheDocument()
+  })
+
+  it('expands to reveal labeled bars for each dimension when the header is clicked', async () => {
+    const match: MatchView = {
+      ...base,
+      breakdown: { numeric_compatibility: 0.9, lifestyle_similarity: 0.5 },
+    }
+    render(<MatchCard match={match} />)
+
+    const toggle = screen.getByRole('button', { name: /Crescent River/i })
+    expect(toggle).toHaveAttribute('aria-expanded', 'false')
+    expect(screen.queryByText('portal.matches.breakdown.numeric_compatibility.label')).not.toBeInTheDocument()
+
+    await userEvent.click(toggle)
+
+    expect(toggle).toHaveAttribute('aria-expanded', 'true')
+    expect(screen.getByText('portal.matches.breakdown.numeric_compatibility.label')).toBeInTheDocument()
+    expect(screen.getByText('portal.matches.breakdown.lifestyle_similarity.label')).toBeInTheDocument()
+  })
+
+  it('sorts breakdown entries by value descending', async () => {
+    const match: MatchView = {
+      ...base,
+      breakdown: { lifestyle_similarity: 0.3, numeric_compatibility: 0.9 },
+    }
+    render(<MatchCard match={match} />)
+    await userEvent.click(screen.getByRole('button', { name: /Crescent River/i }))
+
+    const labels = screen.getAllByText(/portal\.matches\.breakdown\..*\.label/)
+    expect(labels[0]).toHaveTextContent('numeric_compatibility')
+    expect(labels[1]).toHaveTextContent('lifestyle_similarity')
+  })
+
+  it('clicking again collapses the breakdown', async () => {
+    const match: MatchView = { ...base, breakdown: { numeric_compatibility: 0.9 } }
+    render(<MatchCard match={match} />)
+
+    const toggle = screen.getByRole('button', { name: /Crescent River/i })
+    await userEvent.click(toggle)
+    expect(screen.getByText('portal.matches.breakdown.numeric_compatibility.label')).toBeInTheDocument()
+
+    await userEvent.click(toggle)
+    expect(screen.queryByText('portal.matches.breakdown.numeric_compatibility.label')).not.toBeInTheDocument()
+  })
+
+  it('shows the breakdown toggle for in_progress/initiator cards too', async () => {
+    const match: MatchView = {
+      ...base,
+      status: 'in_progress',
+      perspective: 'initiator',
+      breakdown: { numeric_compatibility: 0.7 },
+    }
+    render(<MatchCard match={match} />)
+
+    await userEvent.click(screen.getByRole('button', { name: /Crescent River/i }))
+    expect(screen.getByText('portal.matches.breakdown.numeric_compatibility.label')).toBeInTheDocument()
+  })
+
+  it('shows the breakdown toggle for dating cards too', async () => {
+    const match: MatchView = {
+      ...base,
+      status: 'dating',
+      perspective: 'none',
+      breakdown: { numeric_compatibility: 0.7 },
+    }
+    render(<MatchCard match={match} />)
+
+    await userEvent.click(screen.getByRole('button', { name: /portal\.matches\.dating/i }))
+    expect(screen.getByText('portal.matches.breakdown.numeric_compatibility.label')).toBeInTheDocument()
+  })
+})

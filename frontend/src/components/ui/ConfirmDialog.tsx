@@ -1,4 +1,5 @@
 import { useEffect, useId } from 'react'
+import { createPortal } from 'react-dom'
 import { useFocusTrap } from './useFocusTrap'
 import Spinner from './Spinner'
 
@@ -52,7 +53,7 @@ export default function ConfirmDialog({
       ? 'bg-error text-bg hover:opacity-90'
       : 'bg-primary text-bg hover:opacity-90'
 
-  return (
+  return createPortal(
     <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-4">
       <div className="fixed inset-0 bg-overlay" onClick={onClose} aria-hidden="true" />
       <div
@@ -91,6 +92,7 @@ export default function ConfirmDialog({
           </button>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body,
   )
 }

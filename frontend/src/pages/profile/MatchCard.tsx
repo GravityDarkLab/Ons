@@ -4,6 +4,7 @@ import Badge from '../../components/ui/Badge'
 import ConfirmDialog from '../../components/ui/ConfirmDialog'
 import { matchStatusTone } from '../../components/ui/statusTones'
 import { useTimeAgo } from '../../admin/utils/timeAgo'
+import { getBreakdownEntry } from './matchBreakdownLabels'
 import type { MatchView, ContactResult } from '../../api/profile.client'
 
 // ── Props ─────────────────────────────────────────────────────────────────────
@@ -28,6 +29,86 @@ function ScoreBar({ score }: { score: number }) {
         />
       </div>
       <span className="text-sm text-muted">{Math.round(score * 100)}%</span>
+    </div>
+  )
+}
+
+function ChevronIcon({ expanded }: { expanded: boolean }) {
+  return (
+    <svg
+      className={`h-4 w-4 text-muted shrink-0 transition-transform duration-200 ${expanded ? 'rotate-180' : ''}`}
+      xmlns="http://www.w3.org/2000/svg"
+      fill="none"
+      viewBox="0 0 24 24"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+    >
+      <polyline points="6 9 12 15 18 9" />
+    </svg>
+  )
+}
+
+/**
+ * Card header row. When `hasBreakdown` is true the whole row becomes a toggle
+ * button (with a chevron) for the score breakdown; otherwise it's a static row.
+ */
+function ExpandableHeader({
+  expanded,
+  onToggle,
+  hasBreakdown,
+  left,
+  right,
+}: {
+  expanded: boolean
+  onToggle: () => void
+  hasBreakdown: boolean
+  left: React.ReactNode
+  right: React.ReactNode
+}) {
+  const content = (
+    <>
+      {left}
+      <div className="flex items-center gap-2">
+        {right}
+        {hasBreakdown && <ChevronIcon expanded={expanded} />}
+      </div>
+    </>
+  )
+
+  if (!hasBreakdown) {
+    return <div className="flex items-center justify-between gap-3">{content}</div>
+  }
+
+  return (
+    <button
+      type="button"
+      onClick={onToggle}
+      aria-expanded={expanded}
+      className="flex items-center justify-between gap-3 w-full text-left"
+    >
+      {content}
+    </button>
+  )
+}
+
+function MatchBreakdown({ breakdown }: { breakdown: Record<string, number> }) {
+  const { t } = useTranslation()
+  const entries = Object.entries(breakdown)
+    .map(([key, value]) => ({ key, value, ...getBreakdownEntry(t, key) }))
+    .sort((a, b) => b.value - a.value)
+
+  return (
+    <div className="mt-4 pt-4 border-t border-border space-y-3">
+      {entries.map(({ key, value, label, description }) => (
+        <div key={key}>
+          <p className="text-sm font-medium text-primary mb-1">{label}</p>
+          <ScoreBar score={value} />
+          {description && <p className="text-xs text-muted mt-1">{description}</p>}
+        </div>
+      ))}
     </div>
   )
 }
@@ -87,12 +168,15 @@ export function MatchCard({ match, onContactRequest, onRespond, onWithdraw, onOu
   const [loadingSuccess, setLoadingSuccess] = useState(false)
   const [loadingFailed, setLoadingFailed] = useState(false)
   const [actionError, setActionError] = useState('')
+  const [expanded, setExpanded] = useState(false)
 
   function failAction(err: unknown) {
     setActionError(err instanceof Error ? err.message : t('portal.matches.genericError'))
   }
 
-  const { matchId, partnerAlias, score, status, perspective, contactRequestedAt } = displayMatch
+  const { matchId, partnerAlias, score, status, perspective, contactRequestedAt, breakdown } = displayMatch
+  const hasBreakdown = !!breakdown && Object.keys(breakdown).length > 0
+  const toggleExpanded = () => setExpanded(prev => !prev)
 
   // ── Case 5: Terminal statuses ──────────────────────────────────────────────
   if (status === 'declined' || status === 'failed' || status === 'success' || status === 'expired') {
@@ -171,12 +255,13 @@ export function MatchCard({ match, onContactRequest, onRespond, onWithdraw, onOu
   if (status === 'in_progress' && perspective === 'initiator') {
     return (
       <div className="bg-surface border border-border rounded-2xl p-5 shadow-card hover-card transition-card">
-        <div className="flex items-center justify-between gap-3">
-          <span className="text-base font-medium text-primary">{partnerAlias}</span>
-          <Badge tone="warning" size="sm">
-            {t('portal.matches.waiting')}
-          </Badge>
-        </div>
+        <ExpandableHeader
+          expanded={expanded}
+          onToggle={toggleExpanded}
+          hasBreakdown={hasBreakdown}
+          left={<span className="text-base font-medium text-primary">{partnerAlias}</span>}
+          right={<Badge tone="warning" size="sm">{t('portal.matches.waiting')}</Badge>}
+        />
         {displayMatch.targetInstagram && (
           <p className="text-accent font-medium text-sm mt-1">
             @{displayMatch.targetInstagram}
@@ -186,6 +271,7 @@ export function MatchCard({ match, onContactRequest, onRespond, onWithdraw, onOu
           iceBreakers={displayMatch.iceBreakers}
           dateIdeas={displayMatch.dateIdeas}
         />
+        {expanded && hasBreakdown && <MatchBreakdown breakdown={breakdown!} />}
       </div>
     )
   }
@@ -210,12 +296,18 @@ export function MatchCard({ match, onContactRequest, onRespond, onWithdraw, onOu
 
     return (
       <div className="bg-surface border border-border rounded-2xl p-5 shadow-card hover-card transition-card">
-        <div className="flex items-center justify-between gap-3">
-          <span className="text-base font-medium text-primary">
-            {t('portal.matches.dating', { alias: partnerAlias })}
-          </span>
-          <span className="text-sm text-muted">{t('portal.matches.matchScore', { percent: Math.round(score * 100) })}</span>
-        </div>
+        <ExpandableHeader
+          expanded={expanded}
+          onToggle={toggleExpanded}
+          hasBreakdown={hasBreakdown}
+          left={
+            <span className="text-base font-medium text-primary">
+              {t('portal.matches.dating', { alias: partnerAlias })}
+            </span>
+          }
+          right={<span className="text-sm text-muted">{t('portal.matches.matchScore', { percent: Math.round(score * 100) })}</span>}
+        />
+        {expanded && hasBreakdown && <MatchBreakdown breakdown={breakdown!} />}
         {displayMatch.targetInstagram && (
           <p className="text-accent font-medium text-sm mt-1">
             @{displayMatch.targetInstagram}
@@ -306,10 +398,14 @@ export function MatchCard({ match, onContactRequest, onRespond, onWithdraw, onOu
 
   return (
     <div className="bg-surface border border-border rounded-2xl p-5 shadow-card hover-card transition-card">
-      <div className="flex items-center justify-between gap-3">
-        <span className="text-base font-medium text-primary">{partnerAlias}</span>
-        <ScoreBar score={score} />
-      </div>
+      <ExpandableHeader
+        expanded={expanded}
+        onToggle={toggleExpanded}
+        hasBreakdown={hasBreakdown}
+        left={<span className="text-base font-medium text-primary">{partnerAlias}</span>}
+        right={<ScoreBar score={score} />}
+      />
+      {expanded && hasBreakdown && <MatchBreakdown breakdown={breakdown!} />}
       <div className="mt-4">
         <button
           onClick={handleContactRequest}
