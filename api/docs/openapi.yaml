@@ -185,7 +185,7 @@ components:
         instagram_handle:
           type: string
           pattern: '^@?[\w.]+$'
-          example: "@johndoe"
+          example: "@example_user"
           description: "Sensitive — stored encrypted, never appears in matching profile."
         location:
           type: string
@@ -340,7 +340,7 @@ components:
                 HMAC-SHA256 of the version string, signed with a server secret.
                 Must be included verbatim in the `submissionKey` field of POST /submit.
                 Prevents version enumeration — a key for v1.0.0 cannot be forged or reused for another version.
-              example: "a3f9d2c1e4b7089f..."
+              example: "0000000000000000000000000000000000000000000000000000000000000000"
 
     QuestionnaireListResponse:
       description: "Returned by GET /questionnaire?filter=all"
@@ -422,7 +422,7 @@ components:
           format: hex
           minLength: 64
           maxLength: 64
-          example: "a3f9d2c1e4b7089f..."
+          example: "0000000000000000000000000000000000000000000000000000000000000000"
           description: |
             64-character hex token used as the login identifier for the applicant portal.
             Append to the portal URL as `?token=<value>` so the login form is pre-filled.
@@ -445,11 +445,11 @@ components:
           format: hex
           minLength: 64
           maxLength: 64
-          example: "a3f9d2c1e4b7089f..."
+          example: "0000000000000000000000000000000000000000000000000000000000000000"
           description: "64-char hex token from the form submission response."
         password:
           type: string
-          example: "amber-river-silent-fox"
+          example: "example-passphrase-123"
           description: |
             The applicant's password. Optional — omit to probe for first-login state
             without attempting password verification. If the account has no password set,
@@ -562,7 +562,7 @@ components:
       properties:
         targetInstagram:
           type: string
-          example: "@partner_handle"
+          example: "@example_partner"
           description: "Decrypted Instagram handle of the match partner. Triggers an `APPLICANT_REVEAL_IDENTITY` audit log entry."
         iceBreakers:
           type: array
@@ -586,7 +586,7 @@ components:
         password:
           type: string
           format: password
-          example: "s3cr3t"
+          example: "example-password-123"
 
     AdminLoginResponse:
       type: object
@@ -719,7 +719,7 @@ components:
               example: "Blue Falcon"
             instagramHandle:
               type: string
-              example: "@johndoe"
+              example: "@example_user"
               description: "Decrypted Instagram handle. This response is audit-logged."
             applicantId:
               type: string
@@ -742,7 +742,7 @@ components:
             magicToken:
               type: string
               description: "Raw magic-link token. Returned only once and never stored — relay it to the applicant."
-              example: "9f1c2e7b4a6d8f0c..."
+              example: "0000000000000000000000000000000000000000000000000000000000000000"
 
     # ── Audit log ─────────────────────────────────────────────────────────────
     AuditLogEntry:
@@ -1014,7 +1014,7 @@ paths:
                       version: "1.0.0"
                       name: "Matching Form v1"
                       isActive: true
-                      submissionKey: "<64-hex-hmac-key>"
+                      submissionKey: "0000000000000000000000000000000000000000000000000000000000000000"
                       sections:
                         - id: "identity"
                           title: "Your Identity"
@@ -1096,7 +1096,7 @@ paths:
             example:
               questionnaireVersion: "1.0.0"
               answers:
-                instagram_handle: "@johndoe"
+                instagram_handle: "@example_user"
                 location: "Paris, France"
                 age: 27
                 height_cm: 178
@@ -1127,7 +1127,7 @@ paths:
                 success: true
                 alias: "Blue Falcon"
                 applicantId: "64f1a2b3c4d5e6f7a8b9c0d1"
-                magicToken: "a3f9d2c1e4b7089f4a2c8d1e6f3b9a0c..."
+                magicToken: "0000000000000000000000000000000000000000000000000000000000000000"
                 message: "Your profile has been submitted successfully. Save your magic link — you will set your password on first login."
         '409':
           description: Instagram handle already registered
@@ -1445,7 +1445,7 @@ paths:
                 success: true
                 data:
                   alias: "Blue Falcon"
-                  instagramHandle: "@johndoe"
+                  instagramHandle: "@example_user"
                   applicantId: "64f1a2b3c4d5e6f7a8b9c0d1"
         '401':
           $ref: '#/components/responses/Unauthorized'
@@ -1500,7 +1500,7 @@ paths:
                 success: true
                 data:
                   alias: "Blue Falcon"
-                  magicToken: "9f1c2e7b4a6d8f0c..."
+                  magicToken: "0000000000000000000000000000000000000000000000000000000000000000"
         '401':
           $ref: '#/components/responses/Unauthorized'
         '403':
@@ -1852,12 +1852,12 @@ paths:
               with_password:
                 summary: Returning user with password set
                 value:
-                  magicToken: "a3f9d2c1e4b7089f4a2c8d1e6f3b9a0c..."
-                  password: "amber-river-silent-fox"
+                  magicToken: "0000000000000000000000000000000000000000000000000000000000000000"
+                  password: "example-passphrase-123"
               first_login_check:
                 summary: First-login check (no password yet)
                 value:
-                  magicToken: "a3f9d2c1e4b7089f4a2c8d1e6f3b9a0c..."
+                  magicToken: "0000000000000000000000000000000000000000000000000000000000000000"
       responses:
         '200':
           description: Session cookie set, or first-login detected
@@ -2047,7 +2047,7 @@ paths:
               example:
                 success: true
                 data:
-                  targetInstagram: "@partner_handle"
+                  targetInstagram: "@example_partner"
                   iceBreakers:
                     - "What's the most spontaneous trip you've taken?"
                     - "What does your ideal Sunday look like?"
@@ -2332,11 +2332,11 @@ paths:
                   format: hex
                   minLength: 64
                   maxLength: 64
-                  example: "a3f9d2c1e4b7089f4a2c8d1e6f3b9a0c..."
+                  example: "0000000000000000000000000000000000000000000000000000000000000000"
                 newPassword:
                   type: string
                   minLength: 8
-                  example: "amber-river-silent-fox"
+                  example: "example-passphrase-123"
       responses:
         '200':
           description: Password set — session cookie set
@@ -2404,7 +2404,7 @@ paths:
                     enum: [true]
                   suggestion:
                     type: string
-                    example: "amber-river-silent-fox"
+                    example: "example-generated-passphrase"
 
   /api/v1/profile/change-password:
     post:
@@ -2429,11 +2429,11 @@ paths:
               properties:
                 currentPassword:
                   type: string
-                  example: "amber-river-silent-fox"
+                  example: "example-current-passphrase-123"
                 newPassword:
                   type: string
                   minLength: 8
-                  example: "cascade-stone-swift-oak"
+                  example: "example-new-passphrase-123"
       responses:
         '200':
           description: Password updated
