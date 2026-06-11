@@ -453,7 +453,8 @@
       "deactivateConfirm": "Are you sure? This cannot be undone. Your account will be scheduled for deletion in 180 days.",
       "deactivateYes": "Yes, deactivate",
       "cancel": "Cancel",
-      "deactivateFailed": "Failed to deactivate account."
+      "deactivateFailed": "Failed to deactivate account.",
+      "alreadyDeactivated": "Your account is already deactivated. You can cancel or speed up the scheduled deletion from your dashboard."
     }
   }
 }

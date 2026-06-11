@@ -453,7 +453,8 @@
       "deactivateConfirm": "Es-tu sûr·e ? Cette action est irréversible. Ton compte sera programmé pour suppression dans 180 jours.",
       "deactivateYes": "Oui, désactiver",
       "cancel": "Annuler",
-      "deactivateFailed": "Impossible de désactiver le compte."
+      "deactivateFailed": "Impossible de désactiver le compte.",
+      "alreadyDeactivated": "Ton compte est déjà désactivé. Tu peux annuler ou accélérer la suppression programmée depuis ton tableau de bord."
     }
   }
 }

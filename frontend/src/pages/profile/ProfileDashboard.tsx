@@ -224,7 +224,9 @@ export default function ProfileDashboard() {
       </main>
 
       {/* Settings drawer */}
-      {drawerOpen && <ProfileSettingsDrawer onClose={() => setDrawerOpen(false)} />}
+      {drawerOpen && (
+        <ProfileSettingsDrawer onClose={() => setDrawerOpen(false)} applicantStatus={profile?.status} />
+      )}
     </div>
   )
 }

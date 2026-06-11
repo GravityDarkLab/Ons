@@ -17,12 +17,13 @@ vi.mock('react-router-dom', async (importOriginal) => {
 import * as profileClient from '../../api/profile.client'
 import ProfileSettingsDrawer from '../../pages/profile/ProfileSettingsDrawer'
 import { ToastProvider } from '../../components/ui/Toast'
+import type { ApplicantStatus } from '../../api/profile.client'
 
-function renderDrawer(onClose = vi.fn()) {
+function renderDrawer(onClose = vi.fn(), applicantStatus?: ApplicantStatus) {
   return render(
     <ToastProvider>
       <MemoryRouter>
-        <ProfileSettingsDrawer onClose={onClose} />
+        <ProfileSettingsDrawer onClose={onClose} applicantStatus={applicantStatus} />
       </MemoryRouter>
     </ToastProvider>,
   )
@@ -59,5 +60,19 @@ describe('ProfileSettingsDrawer', () => {
       expect(mockNavigate).toHaveBeenCalledWith('/profile/login')
     })
     expect(onClose).toHaveBeenCalled()
+  })
+
+  it('shows the deactivate button for an active account', () => {
+    renderDrawer(vi.fn(), 'applied')
+
+    expect(screen.getByText(/portal\.settings\.deactivateButton/i)).toBeInTheDocument()
+    expect(screen.queryByText(/portal\.settings\.alreadyDeactivated/i)).not.toBeInTheDocument()
+  })
+
+  it('hides the deactivate button and shows a note when the account is already inactive', () => {
+    renderDrawer(vi.fn(), 'inactive')
+
+    expect(screen.queryByText(/portal\.settings\.deactivateButton/i)).not.toBeInTheDocument()
+    expect(screen.getByText(/portal\.settings\.alreadyDeactivated/i)).toBeInTheDocument()
   })
 })

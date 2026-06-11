@@ -453,7 +453,8 @@
       "deactivateConfirm": "Bist du sicher? Das kann nicht rückgängig gemacht werden. Dein Konto wird in 180 Tagen zur Löschung vorgemerkt.",
       "deactivateYes": "Ja, deaktivieren",
       "cancel": "Abbrechen",
-      "deactivateFailed": "Konto konnte nicht deaktiviert werden."
+      "deactivateFailed": "Konto konnte nicht deaktiviert werden.",
+      "alreadyDeactivated": "Dein Konto ist bereits deaktiviert. Du kannst die geplante Löschung über dein Dashboard abbrechen oder vorziehen."
     }
   }
 }

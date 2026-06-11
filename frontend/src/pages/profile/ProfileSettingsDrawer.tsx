@@ -1,7 +1,7 @@
 import { useEffect, useState, type FormEvent } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useNavigate } from 'react-router-dom'
-import { changePassword, deactivateAccount, logout } from '../../api/profile.client'
+import { changePassword, deactivateAccount, logout, type ApplicantStatus } from '../../api/profile.client'
 import Input from '../../components/ui/Input'
 import ConfirmDialog from '../../components/ui/ConfirmDialog'
 import Spinner from '../../components/ui/Spinner'
@@ -34,11 +34,12 @@ function XIcon() {
 
 interface Props {
   onClose: () => void
+  applicantStatus?: ApplicantStatus
 }
 
 // ── Main component ────────────────────────────────────────────────────────────
 
-export default function ProfileSettingsDrawer({ onClose }: Props) {
+export default function ProfileSettingsDrawer({ onClose, applicantStatus }: Props) {
   const { t } = useTranslation()
   const navigate = useNavigate()
   const { success } = useToast()
@@ -216,38 +217,48 @@ export default function ProfileSettingsDrawer({ onClose }: Props) {
         {/* Divider */}
         <div className="my-8 border-t border-border" />
 
-        {/* Section 3: Deactivate account */}
+        {/* Section 3: Deactivate account — hidden once the account is already
+            inactive; deletion is managed from the dashboard countdown instead,
+            and re-deactivating would silently push back the deletion date. */}
         <section>
           <h3 className="text-sm font-medium text-primary uppercase tracking-wider mb-4">
             {t('portal.settings.deactivateTitle')}
           </h3>
 
-          <p className="text-sm text-muted mb-4 leading-relaxed">
-            {t('portal.settings.deactivateNote')}
-          </p>
+          {applicantStatus === 'inactive' ? (
+            <p className="text-sm text-muted leading-relaxed">
+              {t('portal.settings.alreadyDeactivated')}
+            </p>
+          ) : (
+            <>
+              <p className="text-sm text-muted mb-4 leading-relaxed">
+                {t('portal.settings.deactivateNote')}
+              </p>
 
-          {deactivateError && (
-            <p className="text-error text-sm mb-3" role="alert">{deactivateError}</p>
+              {deactivateError && (
+                <p className="text-error text-sm mb-3" role="alert">{deactivateError}</p>
+              )}
+
+              <button
+                onClick={() => setShowDeactivateConfirm(true)}
+                className="bg-destructive text-bg rounded-xl px-4 py-2 text-sm hover:opacity-90 transition-all"
+              >
+                {t('portal.settings.deactivateButton')}
+              </button>
+
+              <ConfirmDialog
+                open={showDeactivateConfirm}
+                title={t('portal.settings.deactivateButton')}
+                description={t('portal.settings.deactivateConfirm')}
+                confirmLabel={t('portal.settings.deactivateYes')}
+                cancelLabel={t('portal.settings.cancel')}
+                tone="danger"
+                loading={deactivateLoading}
+                onConfirm={handleDeactivateConfirm}
+                onClose={() => setShowDeactivateConfirm(false)}
+              />
+            </>
           )}
-
-          <button
-            onClick={() => setShowDeactivateConfirm(true)}
-            className="bg-destructive text-bg rounded-xl px-4 py-2 text-sm hover:opacity-90 transition-all"
-          >
-            {t('portal.settings.deactivateButton')}
-          </button>
-
-          <ConfirmDialog
-            open={showDeactivateConfirm}
-            title={t('portal.settings.deactivateButton')}
-            description={t('portal.settings.deactivateConfirm')}
-            confirmLabel={t('portal.settings.deactivateYes')}
-            cancelLabel={t('portal.settings.cancel')}
-            tone="danger"
-            loading={deactivateLoading}
-            onConfirm={handleDeactivateConfirm}
-            onClose={() => setShowDeactivateConfirm(false)}
-          />
         </section>
       </div>
     </>
