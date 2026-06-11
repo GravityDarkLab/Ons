@@ -25,6 +25,13 @@ A privacy-first couple matching platform. Applicants fill out a form, an admin r
 
 ## Quick start
 
+### 0. Use supported runtimes
+
+- Bun ≥ 1.2
+- Node.js 22 LTS or 24 LTS for frontend tooling
+
+Node 26 currently triggers a Tailwind CSS deprecation warning from `@tailwindcss/node`.
+
 ### 1. Install dependencies
 
 ```bash

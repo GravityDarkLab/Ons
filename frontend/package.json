@@ -5,6 +5,10 @@
   "author": "Achraf Labidi <labidiachraf6@gmail.com> (https://github.com/GravityDarkLab)",
   "license": "SEE LICENSE IN LICENSE",
   "type": "module",
+  "engines": {
+    "bun": ">=1.2.0",
+    "node": ">=22.12 <26"
+  },
   "scripts": {
     "dev": "vite",
     "build": "tsc && vite build",

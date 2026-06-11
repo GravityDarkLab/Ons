@@ -7,6 +7,7 @@ React frontend for the Ons matching platform — built with [Vite](https://vitej
 ## Requirements
 
 - [Bun](https://bun.sh) ≥ 1.2
+- Node.js 22 LTS or 24 LTS. Node 26 currently triggers a Tailwind CSS deprecation warning from `@tailwindcss/node`.
 - `ons-api` running (see [`../api/README.md`](../api/README.md))
 
 ---

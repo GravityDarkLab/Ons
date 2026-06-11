@@ -4,6 +4,10 @@
   "private": true,
   "author": "Achraf Labidi <labidiachraf6@gmail.com> (https://github.com/GravityDarkLab)",
   "license": "SEE LICENSE IN LICENSE",
+  "engines": {
+    "bun": ">=1.2.0",
+    "node": ">=22.12 <26"
+  },
   "workspaces": [
     "api",
     "frontend"

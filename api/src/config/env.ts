@@ -38,16 +38,22 @@ function validateEncryptionKey(key: string): string {
   return key;
 }
 
+export function parseAllowedOrigins(value: string): string[] {
+  return value
+    .split(/[;,]/)
+    .map((origin) => origin.trim().replace(/\/+$/, ""))
+    .filter(Boolean);
+}
+
 export const env = {
   mongodbUri: required("MONGODB_URI"),
   mongodbDbName: optional("MONGODB_DB_NAME", "ons"),
   encryptionKey: validateEncryptionKey(required("ENCRYPTION_KEY")),
   jwtSecret: required("JWT_SECRET"),
   jwtExpiry: optional("JWT_EXPIRY", "8h"),
-  allowedOrigins: optional("ALLOWED_ORIGINS", "http://localhost:3000")
-    .split(",")
-    .map((o) => o.trim())
-    .filter(Boolean),
+  allowedOrigins: parseAllowedOrigins(
+    optional("ALLOWED_ORIGINS", "http://localhost:3000")
+  ),
   // HMAC secret used to sign per-version submission keys — prevents version enumeration.
   // Generate with: openssl rand -hex 32
   formSecret: required("FORM_SECRET"),
