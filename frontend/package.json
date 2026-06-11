@@ -10,7 +10,7 @@
     "node": ">=22.12 <26"
   },
   "scripts": {
-    "dev": "vite",
+    "dev": "NODE_OPTIONS=--no-deprecation vite",
     "build": "tsc && vite build",
     "preview": "vite preview",
     "typecheck": "tsc --noEmit",
