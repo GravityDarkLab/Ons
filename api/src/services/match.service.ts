@@ -33,6 +33,7 @@ export interface ApplicantMatchView {
   matchId: string;
   partnerAlias: string;
   score: number;
+  breakdown?: Record<string, number>;
   status: MatchStatus;
   perspective: MatchPerspective;
   contactRequestedAt?: Date; // when the initiator clicked "contact" — shown to target
@@ -60,6 +61,8 @@ export function toMatchView(doc: MatchDoc, actorId: ObjectId): ApplicantMatchVie
     status: doc.status,
     perspective,
   };
+
+  if (doc.breakdown) view.breakdown = doc.breakdown;
 
   if (doc.status === "in_progress") {
     if (doc.contactRequestedAt) view.contactRequestedAt = doc.contactRequestedAt;
@@ -170,6 +173,9 @@ export async function expireConflictingMatches(
 
 /** Portal slider floor — matches below this score are never shown to applicants. */
 export const PORTAL_MIN_SCORE = 0.6;
+
+/** Grace period before personal data of inactive accounts is purged. */
+export const DELETION_GRACE_MS = 180 * 24 * 60 * 60 * 1000;
 
 /**
  * Promotes "applied" applicants to "matched" when they have at least one
@@ -332,6 +338,7 @@ export async function saveMatchProposals(
         {
           $set: {
             score:     p.score,
+            breakdown: p.breakdown,
             algorithm,
             status:    "proposed",
             updatedAt: now,
@@ -357,6 +364,7 @@ export async function saveMatchProposals(
         applicantBId:    p.applicantBId,
         applicantBAlias: p.applicantBAlias,
         score:           p.score,
+        breakdown:       p.breakdown,
         algorithm,
         status:          "proposed",
         createdAt:       now,

@@ -18,6 +18,8 @@ export interface MatchDoc {
   applicantBAlias: string;
   /** Symmetric score: average of A→B and B→A scores */
   score: number;
+  /** Per-dimension scores from the algorithm that produced this match */
+  breakdown?: Record<string, number>;
   algorithm: string;
   status: MatchStatus;
   initiatorId?: ObjectId;       // who clicked "I want to contact"

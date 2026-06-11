@@ -10,6 +10,7 @@ import {
   getApplicant,
   getApplicantIdentityHandler,
   deleteApplicant,
+  regenerateMagicLinkHandler,
   getAuditLogs,
   createQuestionnaireHandler,
 } from "../controllers/admin.controller.js";
@@ -53,6 +54,12 @@ adminRoutes.get(
   getApplicantIdentityHandler
 );
 adminRoutes.delete("/applicants/:id", requireAdmin, deleteApplicant);
+adminRoutes.post(
+  "/applicants/:id/regenerate-magic-link",
+  requireAdmin,
+  requireRole("super_admin"),
+  regenerateMagicLinkHandler
+);
 adminRoutes.get("/audit-logs", requireAdmin, getAuditLogs);
 adminRoutes.post(
   "/questionnaires",

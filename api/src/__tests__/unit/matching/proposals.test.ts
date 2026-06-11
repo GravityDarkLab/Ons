@@ -23,12 +23,12 @@ function makeApplicant(alias: string): ApplicantDoc {
   };
 }
 
-function candidate(of: ApplicantDoc, score: number): RankedCandidate {
+function candidate(of: ApplicantDoc, score: number, breakdown: Record<string, number> = {}): RankedCandidate {
   return {
     alias: of.alias,
     applicantId: of._id.toHexString(),
     score,
-    breakdown: {},
+    breakdown,
   };
 }
 
@@ -108,6 +108,36 @@ describe("generateCoupleProposals", () => {
 
     // ghost not passed in applicants — proposal must be skipped, not emitted with blanks
     expect(generateCoupleProposals([a], results)).toEqual([]);
+  });
+
+  it("uses the canonical (A→B) direction's breakdown when both directions exist", () => {
+    const a = makeApplicant("Alpha One");
+    const b = makeApplicant("Beta Two");
+    const [firstId] = [a._id.toHexString(), b._id.toHexString()].sort();
+    const first = a._id.toHexString() === firstId ? a : b;
+    const second = first === a ? b : a;
+
+    const breakdownAB = { numeric_compatibility: 0.9 };
+    const breakdownBA = { numeric_compatibility: 0.5 };
+    const results = {
+      [first._id.toHexString()]:  [candidate(second, 0.8, breakdownAB)],
+      [second._id.toHexString()]: [candidate(first, 0.6, breakdownBA)],
+    };
+
+    const [proposal] = generateCoupleProposals([a, b], results);
+    expect(proposal.breakdown).toEqual(breakdownAB);
+  });
+
+  it("falls back to the only available direction's breakdown", () => {
+    const a = makeApplicant("Alpha One");
+    const b = makeApplicant("Beta Two");
+    const breakdown = { lifestyle_similarity: 0.7 };
+    const results = {
+      [a._id.toHexString()]: [candidate(b, 0.9, breakdown)],
+    };
+
+    const [proposal] = generateCoupleProposals([a, b], results);
+    expect(proposal.breakdown).toEqual(breakdown);
   });
 
   it("sorts proposals by symmetric score descending", () => {

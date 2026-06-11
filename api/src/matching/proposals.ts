@@ -10,6 +10,8 @@ export interface CoupleProposal {
   applicantBAlias: string;
   /** Symmetric score: average of A→B and B→A when both exist */
   score: number;
+  /** Per-dimension breakdown from whichever direction was scored */
+  breakdown: Record<string, number>;
 }
 
 export type ProposalPairAction = "insert" | "revive" | "skip";
@@ -49,11 +51,13 @@ export function generateCoupleProposals(
     applicantMap.set(a._id.toHexString(), a);
   }
 
-  // Build directed score map: "aId→bId" → score
+  // Build directed score/breakdown maps: "aId→bId" → value
   const scoreMap = new Map<string, number>();
+  const breakdownMap = new Map<string, Record<string, number>>();
   for (const [aId, candidates] of Object.entries(results)) {
     for (const cand of candidates) {
       scoreMap.set(`${aId}→${cand.applicantId}`, cand.score);
+      breakdownMap.set(`${aId}→${cand.applicantId}`, cand.breakdown);
     }
   }
 
@@ -78,12 +82,18 @@ export function generateCoupleProposals(
       const applicantB = applicantMap.get(secondId);
       if (!applicantA || !applicantB) continue;
 
+      const breakdown =
+        breakdownMap.get(`${firstId}→${secondId}`) ??
+        breakdownMap.get(`${secondId}→${firstId}`) ??
+        {};
+
       proposals.push({
         applicantAId:    applicantA._id,
         applicantAAlias: applicantA.alias,
         applicantBId:    applicantB._id,
         applicantBAlias: applicantB.alias,
         score:           symScore,
+        breakdown,
       });
     }
   }

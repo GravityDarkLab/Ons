@@ -9,15 +9,13 @@ import {
   assertMatchTransition,
   expireConflictingMatches,
   transitionApplicantStatus,
+  DELETION_GRACE_MS,
   type ApplicantMatchView,
 } from "./match.service.js";
 import { resolveIdentityById } from "../privacy/identity.service.js";
 import { hashMagicToken } from "../privacy/magic-token.js";
 import { writeAuditLog } from "../middleware/audit.middleware.js";
 import { generateIceBreakers } from "./icebreaker.service.js";
-
-/** Grace period before personal data of inactive accounts is purged. */
-const DELETION_GRACE_MS = 180 * 24 * 60 * 60 * 1000;
 
 // ── Auth ──────────────────────────────────────────────────────────────────────
 

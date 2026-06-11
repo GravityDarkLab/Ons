@@ -7,6 +7,7 @@ import {
   getApplicantById,
   getApplicantIdentity,
   deactivateApplicant,
+  regenerateMagicLink,
   listAuditLogs,
   createQuestionnaire,
 } from "../services/admin.service.js";
@@ -79,16 +80,17 @@ export async function getApplicants(c: Context): Promise<Response> {
   const limit  = Math.min(100, Math.max(1, parseInt(query.limit ?? "20", 10)));
   const status = query.status as ApplicantStatus | undefined;
   const search = query.search?.trim() || undefined;
+  const scheduledDeletion = query.scheduledDeletion === "true";
 
   const adminId = c.get("adminId") as string;
   const auditCtx = extractAuditContext(adminId, c);
 
   await writeAuditLog(auditCtx, "LIST_APPLICANTS", {
-    metadata: { page, limit, status },
+    metadata: { page, limit, status, scheduledDeletion },
   });
 
   try {
-    const result = await listApplicants(page, limit, status, search);
+    const result = await listApplicants(page, limit, status, search, scheduledDeletion);
     return c.json({ success: true, ...result });
   } catch (err) {
     const message = err instanceof Error ? err.message : "Failed to list applicants";
@@ -190,6 +192,38 @@ export async function deleteApplicant(c: Context): Promise<Response> {
     return c.json({ success: true, message: "Applicant deactivated" });
   } catch (err) {
     const message = err instanceof Error ? err.message : "Failed to deactivate applicant";
+    return c.json({ success: false, error: message }, 500);
+  }
+}
+
+/**
+ * POST /api/v1/admin/applicants/:id/regenerate-magic-link
+ * Issues a fresh magic link, invalidating the old one. Audit logged.
+ */
+export async function regenerateMagicLinkHandler(c: Context): Promise<Response> {
+  const id = c.req.param("id") ?? "";
+  const adminId = c.get("adminId") as string;
+
+  const auditCtx = extractAuditContext(adminId, c);
+
+  try {
+    const result = await regenerateMagicLink(id);
+
+    if (!result) {
+      return c.json({ success: false, error: "Applicant not found" }, 404);
+    }
+
+    await writeAuditLog(auditCtx, "REGENERATE_MAGIC_LINK", {
+      targetAlias: result.alias,
+      targetApplicantId: new ObjectId(id),
+    });
+
+    return c.json({
+      success: true,
+      data: { alias: result.alias, magicToken: result.magicToken },
+    });
+  } catch (err) {
+    const message = err instanceof Error ? err.message : "Failed to regenerate magic link";
     return c.json({ success: false, error: message }, 500);
   }
 }

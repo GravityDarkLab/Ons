@@ -725,6 +725,25 @@ components:
               type: string
               example: "64f1a2b3c4d5e6f7a8b9c0d1"
 
+    RegenerateMagicLinkResponse:
+      type: object
+      required: [success, data]
+      properties:
+        success:
+          type: boolean
+          enum: [true]
+        data:
+          type: object
+          required: [alias, magicToken]
+          properties:
+            alias:
+              type: string
+              example: "Blue Falcon"
+            magicToken:
+              type: string
+              description: "Raw magic-link token. Returned only once and never stored — relay it to the applicant."
+              example: "9f1c2e7b4a6d8f0c1e3b5a7d9f1c2e7b4a6d8f0c1e3b5a7d9f1c2e7b4a6d8f0c"
+
     # ── Audit log ─────────────────────────────────────────────────────────────
     AuditLogEntry:
       type: object
@@ -1441,6 +1460,60 @@ paths:
                 error: "Forbidden"
         '404':
           description: Identity record not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /api/v1/admin/applicants/{id}/regenerate-magic-link:
+    post:
+      tags: [Admin – Applicants]
+      summary: Regenerate an applicant's magic link
+      operationId: regenerateMagicLink
+      security:
+        - CookieAuth: []
+        - BearerAuth: []
+      description: |
+        Issues a fresh magic link for an applicant who lost theirs, invalidating
+        the previous one. Their password is also cleared, so the new link takes
+        them through first-login set-password again.
+
+        🔒 **Requires `super_admin` role.** Regular `admin` and `viewer` roles receive 403.
+
+        ⚠️ **The raw token is returned only in this response and is never stored** —
+        relay it to the applicant out-of-band. Audit-logged as REGENERATE_MAGIC_LINK.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+          example: "64f1a2b3c4d5e6f7a8b9c0d1"
+      responses:
+        '200':
+          description: New magic link issued
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RegenerateMagicLinkResponse'
+              example:
+                success: true
+                data:
+                  alias: "Blue Falcon"
+                  magicToken: "9f1c2e7b4a6d8f0c1e3b5a7d9f1c2e7b4a6d8f0c1e3b5a7d9f1c2e7b4a6d8f0c"
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          description: Insufficient role — super_admin required
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                success: false
+                error: "Forbidden"
+        '404':
+          description: Applicant not found
           content:
             application/json:
               schema:

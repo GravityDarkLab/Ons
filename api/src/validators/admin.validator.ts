@@ -22,6 +22,7 @@ export const applicantFilterSchema = paginationSchema.extend({
   status: z
     .enum(["applied", "matched", "dating", "inactive"])
     .optional(),
+  scheduledDeletion: z.enum(["true", "false"]).optional(),
 });
 
 export const matchingRunSchema = z.object({
