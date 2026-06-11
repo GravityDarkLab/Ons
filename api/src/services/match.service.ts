@@ -168,6 +168,40 @@ export async function expireConflictingMatches(
   await col.updateMany(filter, { $set: { status: "expired", updatedAt: now } });
 }
 
+/** Portal slider floor — matches below this score are never shown to applicants. */
+export const PORTAL_MIN_SCORE = 0.6;
+
+/**
+ * Promotes "applied" applicants to "matched" when they have at least one
+ * proposed match visible in the portal (score ≥ PORTAL_MIN_SCORE).
+ * Called after every matching pass (admin-triggered and scheduled).
+ */
+export async function promoteAppliedToMatched(): Promise<number> {
+  const db       = await getDb();
+  const matchCol = getMatchesCollection(db);
+  const appCol   = getApplicantsCollection(db);
+
+  const proposed = await matchCol
+    .find(
+      { status: "proposed", score: { $gte: PORTAL_MIN_SCORE } },
+      { projection: { applicantAId: 1, applicantBId: 1 } },
+    )
+    .toArray();
+  if (proposed.length === 0) return 0;
+
+  const ids = new Map<string, ObjectId>();
+  for (const m of proposed) {
+    ids.set(m.applicantAId.toHexString(), m.applicantAId);
+    ids.set(m.applicantBId.toHexString(), m.applicantBId);
+  }
+
+  const res = await appCol.updateMany(
+    { _id: { $in: [...ids.values()] }, status: "applied" },
+    { $set: { status: "matched", updatedAt: new Date() } },
+  );
+  return res.modifiedCount;
+}
+
 /**
  * Transitions multiple applicants to a new status in a single updateMany.
  */

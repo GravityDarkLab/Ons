@@ -1,7 +1,7 @@
 import { Context } from "hono";
 import { getCandidates, runFullMatchingPass } from "../matching/engine.js";
 import { generateCoupleProposals } from "../matching/proposals.js";
-import { saveMatchProposals, loadActiveApplicants } from "../services/match.service.js";
+import { saveMatchProposals, loadActiveApplicants, promoteAppliedToMatched } from "../services/match.service.js";
 import { getConfig, setConfig } from "../services/appConfig.service.js";
 import { APP_CONFIG_KEYS, type MatchingLastRun } from "../models/appConfig.model.js";
 
@@ -53,6 +53,8 @@ export async function runMatching(c: Context): Promise<Response> {
         const applicants = await loadActiveApplicants();
         const proposals  = generateCoupleProposals(applicants, results);
         couplesProposed  = await saveMatchProposals(proposals, algorithm);
+        // Applicants with portal-visible proposals can now see their matches
+        await promoteAppliedToMatched();
       }
     } catch (coupleErr) {
       console.error("[matching] Couple generation/save failed:", coupleErr);

@@ -31,8 +31,9 @@ mock.module("../../matching/engine.js", () => ({
 // match.service is used by the matching controller to persist couple proposals.
 // Mock it so tests never attempt a real MongoDB connection.
 mock.module("../../services/match.service.js", () => ({
-  saveMatchProposals:   mockSaveMatchProposals,
-  loadActiveApplicants: mockLoadActiveApplicants,
+  saveMatchProposals:       mockSaveMatchProposals,
+  loadActiveApplicants:     mockLoadActiveApplicants,
+  promoteAppliedToMatched:  mock(async () => 0),
 }));
 
 const mockGetConfig = mock(async () => null as unknown);
