@@ -20,6 +20,7 @@ const mockGetMyProfile        = mock(async () => null as any);
 const mockGetMyMatches        = mock(async () => [] as any[]);
 const mockRequestContact      = mock(async () => ({ targetInstagram: "@partner", iceBreakers: [] as string[], dateIdeas: [] as string[] }));
 const mockRespondToContact    = mock(async () => {});
+const mockWithdrawContact     = mock(async () => {});
 const mockReportOutcome       = mock(async () => {});
 const mockDeactivateMyAccount = mock(async () => {});
 
@@ -31,6 +32,7 @@ mock.module("../../services/profile.service.js", () => ({
   getMyMatches:        mockGetMyMatches,
   requestContact:      mockRequestContact,
   respondToContact:    mockRespondToContact,
+  withdrawContact:     mockWithdrawContact,
   reportOutcome:       mockReportOutcome,
   deactivateMyAccount: mockDeactivateMyAccount,
 }));
@@ -76,6 +78,7 @@ beforeEach(() => {
   mockGetMyMatches.mockReset();
   mockRequestContact.mockReset();
   mockRespondToContact.mockReset();
+  mockWithdrawContact.mockReset();
   mockReportOutcome.mockReset();
   mockDeactivateMyAccount.mockReset();
 
@@ -287,6 +290,15 @@ describe("GET /profile/matches", () => {
     expect(threshold).toBe(0.7);
     expect(limit).toBe(5);
   });
+
+  it("accepts limit up to 50 and clamps beyond", async () => {
+    const token = await applicantToken();
+    await get("/profile/matches?limit=50", token);
+    expect((mockGetMyMatches.mock.calls[0] as any[])[2]).toBe(50);
+
+    await get("/profile/matches?limit=120", token);
+    expect((mockGetMyMatches.mock.calls[1] as any[])[2]).toBe(50);
+  });
 });
 
 // ── POST /profile/matches/:id/contact ────────────────────────────────────────
@@ -337,6 +349,42 @@ describe("POST /profile/matches/:id/respond", () => {
     const token = await applicantToken();
     const res = await post("/profile/matches/abc123/respond", {}, token);
     expect(res.status).toBe(422);
+  });
+});
+
+// ── POST /profile/matches/:id/withdraw ───────────────────────────────────────
+
+describe("POST /profile/matches/:id/withdraw", () => {
+  it("returns 401 without token", async () => {
+    const res = await post("/profile/matches/abc123/withdraw", {});
+    expect(res.status).toBe(401);
+  });
+
+  it("returns 200 and calls the service with applicant + match ids", async () => {
+    const token = await applicantToken();
+    const res = await post("/profile/matches/abc123/withdraw", {}, token);
+    expect(res.status).toBe(200);
+    const [applicantId, matchId] = mockWithdrawContact.mock.calls[0] as any[];
+    expect(applicantId).toBe(VALID_APPLICANT_ID);
+    expect(matchId).toBe("abc123");
+  });
+
+  it("maps a 403 service error (target cannot withdraw)", async () => {
+    mockWithdrawContact.mockRejectedValue(
+      Object.assign(new Error("Only the initiator can withdraw their contact request"), { statusCode: 403 })
+    );
+    const token = await applicantToken();
+    const res = await post("/profile/matches/abc123/withdraw", {}, token);
+    expect(res.status).toBe(403);
+  });
+
+  it("maps a 409 service error (not in_progress)", async () => {
+    mockWithdrawContact.mockRejectedValue(
+      Object.assign(new Error('Match status is "declined" — nothing to withdraw'), { statusCode: 409 })
+    );
+    const token = await applicantToken();
+    const res = await post("/profile/matches/abc123/withdraw", {}, token);
+    expect(res.status).toBe(409);
   });
 });
 

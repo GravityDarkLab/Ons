@@ -30,7 +30,7 @@ export const matchQuerySchema = z.object({
     .optional()
     .transform((v) => {
       const n = parseInt(v ?? "10", 10);
-      return Math.min(10, Math.max(1, isNaN(n) ? 10 : n));
+      return Math.min(50, Math.max(1, isNaN(n) ? 10 : n));
     }),
 });
 

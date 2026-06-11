@@ -70,6 +70,35 @@ describe("assertMatchTransition – respond", () => {
   });
 });
 
+describe("assertMatchTransition – withdraw", () => {
+  it("allows the initiator to withdraw an in_progress contact", () => {
+    const match = makeMatch({ status: "in_progress" });
+    match.initiatorId = match.applicantAId;
+    expect(() => assertMatchTransition(match, "withdraw", match.applicantAId)).not.toThrow();
+  });
+
+  it("throws when the target tries to withdraw", () => {
+    const match = makeMatch({ status: "in_progress" });
+    match.initiatorId = match.applicantAId;
+    expect(() => assertMatchTransition(match, "withdraw", match.applicantBId)).toThrow(
+      /Only the initiator/
+    );
+  });
+
+  it("throws when match is not in_progress", () => {
+    const match = makeMatch({ status: "proposed" });
+    expect(() => assertMatchTransition(match, "withdraw", match.applicantAId)).toThrow(
+      /nothing to withdraw/
+    );
+  });
+
+  it("throws when actor is not a participant", () => {
+    const match = makeMatch({ status: "in_progress" });
+    match.initiatorId = match.applicantAId;
+    expect(() => assertMatchTransition(match, "withdraw", new ObjectId())).toThrow();
+  });
+});
+
 describe("assertMatchTransition – outcome", () => {
   it("allows outcome on dating match by participant", () => {
     const match = makeMatch({ status: "dating" });

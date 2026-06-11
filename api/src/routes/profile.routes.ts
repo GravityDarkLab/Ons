@@ -18,6 +18,7 @@ import {
   matches,
   contact,
   respond,
+  withdraw,
   outcome,
   deactivate,
 } from "../controllers/profile.controller.js";
@@ -68,6 +69,8 @@ profileRoutes.post(
   zValidator("json", respondSchema, validationHook),
   respond
 );
+
+profileRoutes.post("/matches/:id/withdraw", requireApplicant, withdraw);
 
 profileRoutes.post(
   "/matches/:id/outcome",

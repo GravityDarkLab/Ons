@@ -4,7 +4,7 @@ import { getDb } from "../db/connection.js";
 import { getMatchesCollection, getApplicantsCollection } from "../db/collections.js";
 import type { MatchDoc, MatchStatus } from "../models/match.model.js";
 import type { ApplicantDoc, ApplicantStatus } from "../models/applicant.model.js";
-import type { CoupleProposal } from "../matching/proposals.js";
+import { proposalPairAction, type CoupleProposal } from "../matching/proposals.js";
 import type { PaginatedResult } from "./admin.service.js";
 
 // ── Admin view (ObjectIds serialised to strings) ──────────────────────────────
@@ -74,7 +74,7 @@ export function toMatchView(doc: MatchDoc, actorId: ObjectId): ApplicantMatchVie
 
 // ── State-machine guard ────────────────────────────────────────────────────────
 
-type MatchAction = "contact" | "respond" | "outcome";
+type MatchAction = "contact" | "respond" | "withdraw" | "outcome";
 
 /**
  * Asserts that `actorId` may perform `action` on `match`.
@@ -116,6 +116,19 @@ export function assertMatchTransition(
     return;
   }
 
+  if (action === "withdraw") {
+    if (!isParticipant) {
+      throw new AppError("Not a participant in this match", 403);
+    }
+    if (match.status !== "in_progress") {
+      throw new AppError(`Match status is "${match.status}" — nothing to withdraw`, 409);
+    }
+    if (!match.initiatorId?.equals(actorId)) {
+      throw new AppError("Only the initiator can withdraw their contact request", 403);
+    }
+    return;
+  }
+
   if (action === "outcome") {
     if (!isParticipant) {
       throw new AppError("Not a participant in this match", 403);
@@ -131,23 +144,28 @@ export function assertMatchTransition(
 
 /**
  * Expires all proposed/in_progress matches for the given applicant IDs.
- * Called when someone accepts contact (other proposed matches expire) or deactivates.
+ * Called when someone contacts a match (their other matches expire), accepts
+ * contact, or deactivates. `excludeMatchId` keeps the match being acted on
+ * out of its own sweep.
  */
-export async function expireConflictingMatches(applicantIds: ObjectId[]): Promise<void> {
+export async function expireConflictingMatches(
+  applicantIds: ObjectId[],
+  excludeMatchId?: ObjectId
+): Promise<void> {
   const db  = await getDb();
   const col = getMatchesCollection(db);
   const now = new Date();
 
-  await col.updateMany(
-    {
-      $or: [
-        { applicantAId: { $in: applicantIds } },
-        { applicantBId: { $in: applicantIds } },
-      ],
-      status: { $in: ["proposed", "in_progress"] },
-    },
-    { $set: { status: "expired", updatedAt: now } }
-  );
+  const filter: Record<string, unknown> = {
+    $or: [
+      { applicantAId: { $in: applicantIds } },
+      { applicantBId: { $in: applicantIds } },
+    ],
+    status: { $in: ["proposed", "in_progress"] },
+  };
+  if (excludeMatchId) filter._id = { $ne: excludeMatchId };
+
+  await col.updateMany(filter, { $set: { status: "expired", updatedAt: now } });
 }
 
 /**
@@ -269,9 +287,33 @@ export async function saveMatchProposals(
     const existing = await col.findOne({
       applicantAId: p.applicantAId,
       applicantBId: p.applicantBId,
-      status: { $nin: ["failed", "success", "expired", "declined"] },
     });
-    if (existing) continue;
+
+    const action = proposalPairAction(existing?.status);
+    if (action === "skip") continue;
+
+    if (action === "revive" && existing) {
+      const revived = await col.updateOne(
+        { _id: existing._id, status: "expired" },
+        {
+          $set: {
+            score:     p.score,
+            algorithm,
+            status:    "proposed",
+            updatedAt: now,
+          },
+          $unset: {
+            initiatorId:        "",
+            iceBreakers:        "",
+            dateIdeas:          "",
+            contactRequestedAt: "",
+            contactRespondedAt: "",
+          },
+        }
+      );
+      if (revived.modifiedCount > 0) saved++;
+      continue;
+    }
 
     try {
       await col.insertOne({

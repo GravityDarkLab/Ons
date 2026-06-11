@@ -8,6 +8,7 @@ import {
   getMyMatches,
   requestContact,
   respondToContact,
+  withdrawContact,
   reportOutcome,
   deactivateMyAccount,
 } from "../services/profile.service.js";
@@ -135,6 +136,18 @@ export async function respond(c: Context): Promise<Response> {
 
   try {
     await respondToContact(applicantId, matchId, accept);
+    return c.json({ success: true });
+  } catch (err: unknown) {
+    return matchErrorResponse(c, err);
+  }
+}
+
+export async function withdraw(c: Context): Promise<Response> {
+  const applicantId = c.get("applicantId") as string;
+  const matchId     = c.req.param("id") as string;
+
+  try {
+    await withdrawContact(applicantId, matchId);
     return c.json({ success: true });
   } catch (err: unknown) {
     return matchErrorResponse(c, err);

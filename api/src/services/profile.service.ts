@@ -219,6 +219,11 @@ export async function requestContact(
     throw new AppError("Match is no longer available for contact — it may have been claimed concurrently", 409);
   }
 
+  // Exclusive contact: committing to one match expires the initiator's other
+  // proposed/in_progress matches. The target's other matches are untouched —
+  // they haven't acted yet. (Accept later expires both sides as before.)
+  await expireConflictingMatches([actorId], matchOid);
+
   // Write audit log after winning the race (identity was pre-fetched without side-effects)
   await writeAuditLog(
     { adminId: applicantId, ipAddress: audit.ipAddress, userAgent: audit.userAgent },
@@ -282,6 +287,51 @@ export async function respondToContact(
     const ids = [match.applicantAId, match.applicantBId];
     await transitionApplicantStatus(ids, "dating");
     await expireConflictingMatches(ids);
+  }
+}
+
+/**
+ * Initiator backs out after the identity reveal. The match becomes "declined"
+ * (terminal) so the pair is permanently excluded from future matching runs —
+ * the applicant waits for the next matching phase for fresh matches.
+ */
+export async function withdrawContact(
+  applicantId: string,
+  matchId: string
+): Promise<void> {
+  const db       = await getDb();
+  const matchCol = getMatchesCollection(db);
+
+  const actorId = new ObjectId(applicantId);
+
+  let matchOid: ObjectId;
+  try { matchOid = new ObjectId(matchId); } catch {
+    throw new AppError("Match not found", 404);
+  }
+
+  const match = await matchCol.findOne({ _id: matchOid });
+  if (!match) throw new AppError("Match not found", 404);
+
+  assertMatchTransition(match, "withdraw", actorId);
+
+  const now = new Date();
+
+  // Atomic claim — a concurrent accept/decline from the target wins or loses
+  // the race cleanly instead of both transitions applying
+  const claimed = await matchCol.findOneAndUpdate(
+    { _id: matchOid, status: "in_progress" },
+    {
+      $set: {
+        status:             "declined",
+        contactRespondedAt: now,
+        updatedAt:          now,
+      },
+    },
+    { returnDocument: "after" },
+  );
+
+  if (!claimed) {
+    throw new AppError("Match was already responded to", 409);
   }
 }
 

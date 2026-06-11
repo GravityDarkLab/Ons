@@ -1,5 +1,6 @@
 import type { ObjectId } from "mongodb";
 import type { ApplicantDoc } from "../models/applicant.model.js";
+import type { MatchStatus } from "../models/match.model.js";
 import type { RankedCandidate } from "./engine.js";
 
 export interface CoupleProposal {
@@ -9,6 +10,24 @@ export interface CoupleProposal {
   applicantBAlias: string;
   /** Symmetric score: average of A→B and B→A when both exist */
   score: number;
+}
+
+export type ProposalPairAction = "insert" | "revive" | "skip";
+
+/**
+ * Policy for persisting a proposal given the pair's prior match (if any).
+ *
+ * - no prior match            → insert a fresh proposal
+ * - `expired` (collateral of someone's exclusive contact or a deactivation)
+ *                             → revive: the pair gets another chance next phase
+ * - `declined`                → skip forever: someone said no to this pairing
+ * - `failed` / `success`      → skip forever: they already dated
+ * - active (proposed/in_progress/dating) → skip: leave the live match alone
+ */
+export function proposalPairAction(existingStatus: MatchStatus | undefined): ProposalPairAction {
+  if (!existingStatus) return "insert";
+  if (existingStatus === "expired") return "revive";
+  return "skip";
 }
 
 /**

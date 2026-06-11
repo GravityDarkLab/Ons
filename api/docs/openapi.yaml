@@ -1898,7 +1898,7 @@ paths:
           schema:
             type: integer
             minimum: 1
-            maximum: 10
+            maximum: 50
             default: 10
           description: "Maximum number of matches to return."
       responses:
@@ -1941,6 +1941,9 @@ paths:
         1. Decrypts the partner's Instagram handle (audit-logged as `APPLICANT_REVEAL_IDENTITY`)
         2. Generates AI ice-breakers and date ideas tailored to both profiles
         3. Transitions match → `in_progress`; sets the authenticated applicant as `initiatorId`
+        4. Expires all other `proposed`/`in_progress` matches of the initiator —
+           contact is exclusive; expired matches become eligible again in the
+           next matching phase
 
         The partner's Instagram is returned **only** to the initiator in this response —
         it is never exposed to the target or in any other endpoint.
@@ -2066,6 +2069,64 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ValidationErrorResponse'
+
+  /api/v1/profile/matches/{id}/withdraw:
+    post:
+      tags: [Profile]
+      summary: Withdraw a contact request
+      operationId: withdrawContact
+      security:
+        - ApplicantCookieAuth: []
+        - ApplicantBearerAuth: []
+      description: |
+        Called by the **initiator** of a contact request to back out after the
+        identity reveal. The match → `declined` (terminal) and the pair is
+        permanently excluded from future matching runs. The initiator's other
+        matches were already expired at contact time, so they wait for the next
+        matching phase to receive fresh matches.
+
+        Returns 403 if called by a non-participant or by the target;
+        409 if the match is not in `in_progress` state.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+          example: "64f1a2b3c4d5e6f7a8b9c0d5"
+      responses:
+        '200':
+          description: Contact request withdrawn
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    enum: [true]
+              example:
+                success: true
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          description: Not a participant, or called by the target instead of the initiator
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Match not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '409':
+          description: Match is not in `in_progress` state
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
 
   /api/v1/profile/matches/{id}/outcome:
     post:
