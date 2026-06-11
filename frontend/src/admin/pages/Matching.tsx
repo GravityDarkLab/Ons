@@ -109,27 +109,50 @@ export function Matching() {
         </div>
 
         <div className="p-8 pt-6 space-y-6">
-          {/* Algorithm dropdown */}
+          {/* Algorithm picker — radio cards instead of a native select */}
           <div className="space-y-3">
-            <label htmlFor="matching-algorithm" className="text-xs font-medium uppercase tracking-wider text-muted block">
+            <span id="matching-algorithm-label" className="text-xs font-medium uppercase tracking-wider text-muted block">
               {t('admin.matching.algorithm')}
-            </label>
-            <select
-              id="matching-algorithm"
-              value={algorithm}
-              onChange={e => handleAlgorithmChange(e.target.value)}
-              disabled={loading}
-              className="w-full max-w-xs rounded-xl border border-border bg-surface px-4 py-3 text-[15px] text-primary transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-accent/30 focus:border-accent cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              {ALGORITHMS.map(a => (
-                <option key={a.value} value={a.value}>
-                  {a.label}{a.recommended ? ` — ${t('admin.matching.recommended')}` : ''}
-                </option>
-              ))}
-            </select>
-            {selectedAlgorithm?.hint && (
-              <p className="text-xs text-faint">{selectedAlgorithm.hint}</p>
-            )}
+            </span>
+            <div role="radiogroup" aria-labelledby="matching-algorithm-label" className="grid gap-2.5 sm:grid-cols-3">
+              {ALGORITHMS.map(a => {
+                const selected = algorithm === a.value
+                return (
+                  <label
+                    key={a.value}
+                    className={`relative flex flex-col gap-1.5 rounded-xl border p-4 transition-all duration-200
+                      ${selected
+                        ? 'border-accent bg-accent-light/50 shadow-card'
+                        : 'border-border hover:border-accent/50 hover:bg-bg'}
+                      ${loading ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}
+                      has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-accent/40`}
+                  >
+                    <input
+                      type="radio"
+                      name="matching-algorithm"
+                      value={a.value}
+                      checked={selected}
+                      disabled={loading}
+                      onChange={() => handleAlgorithmChange(a.value)}
+                      className="sr-only"
+                    />
+                    {/* selection dot */}
+                    <span
+                      aria-hidden="true"
+                      className={`absolute top-3.5 end-3.5 h-3.5 w-3.5 rounded-full border-2 transition-all duration-200
+                        ${selected ? 'border-accent bg-accent' : 'border-border bg-transparent'}`}
+                    />
+                    <span className="text-sm font-semibold text-primary pe-6">{a.label}</span>
+                    {a.recommended && (
+                      <span className="self-start text-[10px] font-medium uppercase tracking-wide text-accent-ink bg-accent-light rounded-full px-2 py-0.5">
+                        {t('admin.matching.recommended')}
+                      </span>
+                    )}
+                    <span className="text-xs text-muted leading-relaxed">{a.hint}</span>
+                  </label>
+                )
+              })}
+            </div>
           </div>
 
           {/* Multilingual warning */}

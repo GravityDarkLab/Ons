@@ -36,8 +36,8 @@ beforeEach(() => {
   mockFetchLastRun.mockResolvedValue(null)
 })
 
-function getAlgorithmSelect() {
-  return screen.getByRole('combobox') as HTMLSelectElement
+function getAlgorithmRadio(name: RegExp) {
+  return screen.getByRole('radio', { name }) as HTMLInputElement
 }
 
 /** Click "Run Matching" then confirm via the inline confirm dialog */
@@ -49,17 +49,17 @@ async function clickRunAndConfirm() {
 describe('Matching page — algorithm selector', () => {
   it('renders all three algorithm options', () => {
     renderMatching()
-    expect(screen.getAllByRole('option')).toHaveLength(3)
+    expect(screen.getAllByRole('radio')).toHaveLength(3)
   })
 
   it('selects Embedding by default', () => {
     renderMatching()
-    expect(getAlgorithmSelect().value).toBe('embedding-cosine')
+    expect(getAlgorithmRadio(/admin\.matching\.embedding/i)).toBeChecked()
   })
 
   it('shows multilingual warning when non-embedding algorithm is selected', async () => {
     renderMatching()
-    await userEvent.selectOptions(getAlgorithmSelect(), 'baseline')
+    await userEvent.click(getAlgorithmRadio(/admin\.matching\.baseline/i))
     // Trans renders the i18nKey as text when the component is a stub
     expect(screen.getByText(/admin\.matching\.multilingualWarning/i)).toBeInTheDocument()
   })
@@ -74,7 +74,7 @@ describe('Matching page — run button', () => {
   it('calls runMatching with the selected algorithm', async () => {
     mockRunMatching.mockResolvedValue(RUN_RESULT)
     renderMatching()
-    await userEvent.selectOptions(getAlgorithmSelect(), 'baseline')
+    await userEvent.click(getAlgorithmRadio(/admin\.matching\.baseline/i))
     await clickRunAndConfirm()
     expect(mockRunMatching).toHaveBeenCalledWith('baseline')
   })
@@ -166,7 +166,7 @@ describe('Matching page — result summary card', () => {
     await waitFor(() => screen.getByText(/admin\.matching\.runComplete/i))
 
     // Switch algorithm — result card should disappear
-    await userEvent.selectOptions(getAlgorithmSelect(), 'baseline')
+    await userEvent.click(getAlgorithmRadio(/admin\.matching\.baseline/i))
     expect(screen.queryByText(/admin\.matching\.runComplete/i)).not.toBeInTheDocument()
   })
 })
