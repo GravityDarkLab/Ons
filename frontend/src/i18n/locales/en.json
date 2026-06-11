@@ -327,7 +327,25 @@
       "nextPhaseTitle": "No matches right now",
       "nextPhaseBody": "New matches arrive with the next matching phase — check back tomorrow.",
       "noneAtThresholdTitle": "No matches at this score",
-      "noneAtThresholdBody": "Lower the slider to see more matches."
+      "noneAtThresholdBody": "Lower the slider to see more matches.",
+      "deletion": {
+        "title": "Time until deletion",
+        "body": "Your account and data will be permanently deleted when this reaches zero.",
+        "days": "Days",
+        "hours": "Hours",
+        "minutes": "Min",
+        "seconds": "Sec",
+        "cancelButton": "Keep my account",
+        "cancelTitle": "Keep my account",
+        "cancelConfirm": "This cancels the scheduled deletion and restores your account to the matching pool.",
+        "cancelYes": "Yes, keep my account",
+        "cancelFailed": "Failed to cancel deletion.",
+        "deleteNowButton": "Delete my account now",
+        "deleteNowTitle": "Delete account now",
+        "deleteNowConfirm": "This immediately and permanently deletes your account and all associated data. This cannot be undone.",
+        "deleteNowYes": "Yes, delete now",
+        "deleteNowFailed": "Failed to delete account."
+      }
     },
     "matches": {
       "empty": "No matches to show.",

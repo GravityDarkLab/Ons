@@ -327,7 +327,25 @@
       "nextPhaseTitle": "Aucun match pour le moment",
       "nextPhaseBody": "De nouveaux matchs arriveront à la prochaine phase de matching — revenez demain.",
       "noneAtThresholdTitle": "Aucun match à ce score",
-      "noneAtThresholdBody": "Baissez le curseur pour voir plus de matchs."
+      "noneAtThresholdBody": "Baissez le curseur pour voir plus de matchs.",
+      "deletion": {
+        "title": "Temps avant suppression",
+        "body": "Ton compte et tes données seront définitivement supprimés lorsque ce compteur atteindra zéro.",
+        "days": "Jours",
+        "hours": "Heures",
+        "minutes": "Min",
+        "seconds": "Sec",
+        "cancelButton": "Garder mon compte",
+        "cancelTitle": "Garder mon compte",
+        "cancelConfirm": "Cela annule la suppression programmée et restaure ton compte dans le bassin de matching.",
+        "cancelYes": "Oui, garder mon compte",
+        "cancelFailed": "Échec de l'annulation de la suppression.",
+        "deleteNowButton": "Supprimer mon compte maintenant",
+        "deleteNowTitle": "Supprimer le compte maintenant",
+        "deleteNowConfirm": "Cela supprime immédiatement et définitivement ton compte et toutes les données associées. Cette action est irréversible.",
+        "deleteNowYes": "Oui, supprimer maintenant",
+        "deleteNowFailed": "Échec de la suppression du compte."
+      }
     },
     "matches": {
       "empty": "Aucun match à afficher.",

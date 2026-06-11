@@ -21,6 +21,8 @@ import {
   withdraw,
   outcome,
   deactivate,
+  cancelDeletion,
+  deleteNow,
 } from "../controllers/profile.controller.js";
 import { requireApplicant } from "../middleware/applicant.auth.middleware.js";
 import {
@@ -87,3 +89,7 @@ profileRoutes.post(
 );
 
 profileRoutes.post("/deactivate", requireApplicant, deactivate);
+
+profileRoutes.post("/cancel-deletion", requireApplicant, cancelDeletion);
+
+profileRoutes.post("/delete-now", requireApplicant, deleteNow);

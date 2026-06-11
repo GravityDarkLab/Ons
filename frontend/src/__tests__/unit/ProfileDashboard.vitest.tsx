@@ -9,6 +9,8 @@ vi.mock('../../api/profile.client', () => ({
   respondToContact: vi.fn(),
   withdrawContact: vi.fn(),
   reportOutcome: vi.fn(),
+  cancelAccountDeletion: vi.fn(),
+  deleteAccountNow: vi.fn(),
 }))
 
 const mockNavigate = vi.fn()
@@ -51,6 +53,7 @@ describe('ProfileDashboard', () => {
       status: 'applied',
       scoreThreshold: 0.8,
       createdAt: '2026-01-01',
+      deletionScheduledAt: null,
     })
 
     renderDashboard()
@@ -68,6 +71,7 @@ describe('ProfileDashboard', () => {
       status: 'matched',
       scoreThreshold: 0.8,
       createdAt: '2026-01-01',
+      deletionScheduledAt: null,
     })
     mockGetMyMatches.mockResolvedValue([
       { matchId: 'm1', partnerAlias: 'High Score', score: 0.86, status: 'proposed', perspective: 'none' },
@@ -101,6 +105,7 @@ describe('ProfileDashboard', () => {
       status: 'matched',
       scoreThreshold: 0.8,
       createdAt: '2026-01-01',
+      deletionScheduledAt: null,
     })
     mockGetMyMatches.mockResolvedValue([])
 
@@ -120,12 +125,97 @@ describe('ProfileDashboard', () => {
       status: 'inactive',
       scoreThreshold: 0.8,
       createdAt: '2026-01-01',
+      deletionScheduledAt: null,
     })
 
     renderDashboard()
 
     await waitFor(() => {
       expect(screen.getByText(/portal\.dashboard\.dormantTitle/i)).toBeInTheDocument()
+    })
+  })
+
+  it('shows a deletion countdown when a deletion is scheduled', async () => {
+    mockGetMyProfile.mockResolvedValue({
+      applicantId: '4',
+      alias: 'Quiet Harbor',
+      status: 'inactive',
+      scoreThreshold: 0.8,
+      createdAt: '2026-01-01',
+      deletionScheduledAt: new Date(Date.now() + 5 * 24 * 60 * 60 * 1000).toISOString(),
+    })
+
+    renderDashboard()
+
+    await waitFor(() => {
+      expect(screen.getByText(/portal\.dashboard\.deletion\.title/i)).toBeInTheDocument()
+    })
+    expect(screen.getByText(/portal\.dashboard\.deletion\.cancelButton/i)).toBeInTheDocument()
+    expect(screen.getByText(/portal\.dashboard\.deletion\.deleteNowButton/i)).toBeInTheDocument()
+  })
+
+  it('cancels a scheduled deletion and reloads the profile', async () => {
+    mockGetMyProfile
+      .mockResolvedValueOnce({
+        applicantId: '5',
+        alias: 'Quiet Harbor',
+        status: 'inactive',
+        scoreThreshold: 0.8,
+        createdAt: '2026-01-01',
+        deletionScheduledAt: new Date(Date.now() + 5 * 24 * 60 * 60 * 1000).toISOString(),
+      })
+      .mockResolvedValueOnce({
+        applicantId: '5',
+        alias: 'Quiet Harbor',
+        status: 'applied',
+        scoreThreshold: 0.8,
+        createdAt: '2026-01-01',
+        deletionScheduledAt: null,
+      })
+    vi.mocked(profileClient.cancelAccountDeletion).mockResolvedValue(undefined)
+
+    renderDashboard()
+
+    await waitFor(() => {
+      expect(screen.getByText(/portal\.dashboard\.deletion\.cancelButton/i)).toBeInTheDocument()
+    })
+
+    fireEvent.click(screen.getByText(/portal\.dashboard\.deletion\.cancelButton/i))
+    fireEvent.click(screen.getByText(/portal\.dashboard\.deletion\.cancelYes/i))
+
+    await waitFor(() => {
+      expect(profileClient.cancelAccountDeletion).toHaveBeenCalled()
+    })
+    await waitFor(() => {
+      expect(screen.getByText(/portal\.dashboard\.findingMatches/i)).toBeInTheDocument()
+    })
+  })
+
+  it('deletes the account immediately and navigates home', async () => {
+    mockGetMyProfile.mockResolvedValue({
+      applicantId: '6',
+      alias: 'Quiet Harbor',
+      status: 'inactive',
+      scoreThreshold: 0.8,
+      createdAt: '2026-01-01',
+      deletionScheduledAt: new Date(Date.now() + 5 * 24 * 60 * 60 * 1000).toISOString(),
+    })
+    vi.mocked(profileClient.deleteAccountNow).mockResolvedValue(undefined)
+
+    renderDashboard()
+
+    await waitFor(() => {
+      expect(screen.getByText(/portal\.dashboard\.deletion\.deleteNowButton/i)).toBeInTheDocument()
+    })
+
+    fireEvent.click(screen.getByText(/portal\.dashboard\.deletion\.deleteNowButton/i))
+    fireEvent.click(screen.getByText(/portal\.dashboard\.deletion\.deleteNowYes/i))
+
+    await waitFor(() => {
+      expect(profileClient.deleteAccountNow).toHaveBeenCalled()
+    })
+    await waitFor(() => {
+      expect(mockNavigate).toHaveBeenCalledWith('/')
     })
   })
 })

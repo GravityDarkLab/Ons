@@ -32,6 +32,7 @@ export interface ProfileView {
   status: ApplicantStatus
   scoreThreshold: number
   createdAt: string
+  deletionScheduledAt: string | null
 }
 
 export type LoginResult = { type: 'first_login' } | { type: 'ok' }
@@ -157,4 +158,14 @@ export async function reportOutcome(
 
 export async function deactivateAccount(): Promise<void> {
   await profileRequest<unknown>('/profile/deactivate', { method: 'POST' })
+}
+
+/** Cancels a pending deletion and restores the account to the matching pool. */
+export async function cancelAccountDeletion(): Promise<void> {
+  await profileRequest<unknown>('/profile/cancel-deletion', { method: 'POST' })
+}
+
+/** Immediately and irreversibly deletes the account, bypassing the grace period. */
+export async function deleteAccountNow(): Promise<void> {
+  await profileRequest<unknown>('/profile/delete-now', { method: 'POST' })
 }

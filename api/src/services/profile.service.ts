@@ -1,7 +1,12 @@
 import { ObjectId } from "mongodb";
 import { AppError } from "../errors.js";
 import { getDb } from "../db/connection.js";
-import { getApplicantsCollection, getMatchesCollection } from "../db/collections.js";
+import {
+  getApplicantsCollection,
+  getMatchesCollection,
+  getIdentitiesCollection,
+  getEmbeddingsCollection,
+} from "../db/collections.js";
 import type { ApplicantDoc } from "../models/applicant.model.js";
 import type { MatchDoc } from "../models/match.model.js";
 import {
@@ -92,6 +97,7 @@ export interface ApplicantProfileView {
   status: ApplicantDoc["status"];
   scoreThreshold: number;
   createdAt: Date;
+  deletionScheduledAt: Date | null;
 }
 
 export async function getMyProfile(applicantId: string): Promise<ApplicantProfileView | null> {
@@ -107,6 +113,7 @@ export async function getMyProfile(applicantId: string): Promise<ApplicantProfil
     status:         doc.status,
     scoreThreshold: doc.scoreThreshold ?? 0.8,
     createdAt:      doc.createdAt,
+    deletionScheduledAt: doc.deletionScheduledAt ?? null,
   };
 }
 
@@ -381,4 +388,56 @@ export async function deactivateMyAccount(applicantId: string): Promise<void> {
   const deletionScheduledAt = new Date(Date.now() + DELETION_GRACE_MS);
   await transitionApplicantStatus([oid], "inactive", { deletionScheduledAt });
   await expireConflictingMatches([oid]);
+}
+
+/**
+ * Cancels a pending account deletion and restores the applicant to the
+ * matching pool. Only valid while a deletion is actually scheduled.
+ */
+export async function cancelAccountDeletion(applicantId: string): Promise<void> {
+  const db  = await getDb();
+  const col = getApplicantsCollection(db);
+  const oid = new ObjectId(applicantId);
+
+  const result = await col.findOneAndUpdate(
+    { _id: oid, status: "inactive", deletionScheduledAt: { $exists: true } },
+    { $set: { status: "applied", updatedAt: new Date() }, $unset: { deletionScheduledAt: "" } },
+  );
+
+  if (!result) throw new AppError("No deletion is scheduled for this account", 409);
+}
+
+/**
+ * Immediate, irreversible self-deletion — bypasses the 180-day grace period.
+ * Removes the applicant document, their identity record, embeddings, and
+ * any matches involving them.
+ */
+export async function deleteMyAccountNow(
+  applicantId: string,
+  audit: { ipAddress: string; userAgent: string } = { ipAddress: "unknown", userAgent: "unknown" },
+): Promise<void> {
+  const db  = await getDb();
+  const oid = new ObjectId(applicantId);
+
+  const appCol        = getApplicantsCollection(db);
+  const matchCol      = getMatchesCollection(db);
+  const identitiesCol = getIdentitiesCollection(db);
+  const embeddingsCol = getEmbeddingsCollection(db);
+
+  const doc = await appCol.findOne({ _id: oid });
+  if (!doc) throw new AppError("Not found", 404);
+
+  // Audit before the data it references is removed
+  await writeAuditLog(
+    { adminId: applicantId, ipAddress: audit.ipAddress, userAgent: audit.userAgent },
+    "APPLICANT_SELF_DELETE",
+    { targetApplicantId: oid, targetAlias: doc.alias, metadata: { actorType: "applicant" } },
+  );
+
+  await Promise.all([
+    appCol.deleteOne({ _id: oid }),
+    identitiesCol.deleteOne({ applicantId: oid }),
+    embeddingsCol.deleteOne({ applicantId: oid }),
+    matchCol.deleteMany({ $or: [{ applicantAId: oid }, { applicantBId: oid }] }),
+  ]);
 }

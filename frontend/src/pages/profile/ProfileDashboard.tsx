@@ -1,10 +1,11 @@
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import type { ProfileView, MatchView, ApplicantStatus } from '../../api/profile.client'
 import { getMyProfile, getMyMatches } from '../../api/profile.client'
 import MatchList from './MatchList'
 import { useTranslation } from 'react-i18next'
 import ProfileSettingsDrawer from './ProfileSettingsDrawer'
+import DeletionCountdown from './DeletionCountdown'
 import Badge from '../../components/ui/Badge'
 import EmptyState from '../../components/ui/EmptyState'
 import Skeleton from '../../components/ui/Skeleton'
@@ -37,32 +38,32 @@ export default function ProfileDashboard() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
-  useEffect(() => {
-    async function load() {
-      try {
-        // Fetch at the server's minimum threshold so the slider can reveal
-        // lower-scored matches client-side without refetching
-        const [prof, matchList] = await Promise.all([
-          getMyProfile(),
-          getMyMatches(0.6, 50),
-        ])
-        setProfile(prof)
-        setThreshold(prof.scoreThreshold ?? 0.8)
-        setMatches(matchList)
-      } catch (err) {
-        const message = err instanceof Error ? err.message : 'Failed to load profile'
-        if (message === 'Session expired') {
-          navigate('/profile/login', { replace: true })
-          return
-        }
-        setError(message)
-      } finally {
-        setLoading(false)
+  const load = useCallback(async () => {
+    try {
+      // Fetch at the server's minimum threshold so the slider can reveal
+      // lower-scored matches client-side without refetching
+      const [prof, matchList] = await Promise.all([
+        getMyProfile(),
+        getMyMatches(0.6, 50),
+      ])
+      setProfile(prof)
+      setThreshold(prof.scoreThreshold ?? 0.8)
+      setMatches(matchList)
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Failed to load profile'
+      if (message === 'Session expired') {
+        navigate('/profile/login', { replace: true })
+        return
       }
+      setError(message)
+    } finally {
+      setLoading(false)
     }
-
-    void load()
   }, [navigate])
+
+  useEffect(() => {
+    void load()
+  }, [load])
 
   // Only undecided proposals are score-filtered — an active contact or dating
   // match stays visible regardless of where the slider sits
@@ -206,11 +207,18 @@ export default function ProfileDashboard() {
         )}
 
         {profile?.status === 'inactive' && (
-          <div className="max-w-lg mx-auto px-6 py-12 text-center">
-            <div className="bg-surface border border-border rounded-2xl p-8 shadow-sm space-y-4">
+          <div className="max-w-lg mx-auto px-6 py-12 space-y-6">
+            <div className="bg-surface border border-border rounded-2xl p-8 shadow-sm space-y-4 text-center">
               <h2 className="text-xl font-semibold text-primary">{t('portal.dashboard.dormantTitle')}</h2>
               <p className="text-sm text-muted">{t('portal.dashboard.dormantBody')}</p>
             </div>
+
+            {profile.deletionScheduledAt && (
+              <DeletionCountdown
+                deletionScheduledAt={profile.deletionScheduledAt}
+                onCancelled={() => void load()}
+              />
+            )}
           </div>
         )}
       </main>

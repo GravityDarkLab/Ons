@@ -23,6 +23,8 @@ const mockRespondToContact    = mock(async () => {});
 const mockWithdrawContact     = mock(async () => {});
 const mockReportOutcome       = mock(async () => {});
 const mockDeactivateMyAccount = mock(async () => {});
+const mockCancelAccountDeletion = mock(async () => {});
+const mockDeleteMyAccountNow  = mock(async () => {});
 
 mock.module("../../services/profile.service.js", () => ({
   loginWithMagicToken: mockLoginWithMagicToken,
@@ -35,6 +37,8 @@ mock.module("../../services/profile.service.js", () => ({
   withdrawContact:     mockWithdrawContact,
   reportOutcome:       mockReportOutcome,
   deactivateMyAccount: mockDeactivateMyAccount,
+  cancelAccountDeletion: mockCancelAccountDeletion,
+  deleteMyAccountNow:    mockDeleteMyAccountNow,
 }));
 
 mock.module("../../middleware/audit.middleware.js", () => ({
@@ -47,6 +51,7 @@ import { profileRoutes } from "../../routes/profile.routes.js";
 import { signApplicantToken } from "../../middleware/applicant.auth.middleware.js";
 import { signAdminToken } from "../../middleware/auth.middleware.js";
 import { ObjectId } from "mongodb";
+import { AppError } from "../../errors.js";
 
 const app = new Hono();
 app.route("/profile", profileRoutes);
@@ -81,6 +86,8 @@ beforeEach(() => {
   mockWithdrawContact.mockReset();
   mockReportOutcome.mockReset();
   mockDeactivateMyAccount.mockReset();
+  mockCancelAccountDeletion.mockReset();
+  mockDeleteMyAccountNow.mockReset();
 
   // Restore defaults
   mockLoginWithMagicToken.mockResolvedValue(null);
@@ -427,5 +434,60 @@ describe("POST /profile/deactivate", () => {
     const token = await applicantToken();
     const res = await post("/profile/deactivate", {}, token);
     expect(res.status).toBe(200);
+  });
+});
+
+// ── POST /profile/cancel-deletion ───────────────────────────────────────────────
+
+describe("POST /profile/cancel-deletion", () => {
+  it("returns 401 without token", async () => {
+    const res = await post("/profile/cancel-deletion", {});
+    expect(res.status).toBe(401);
+  });
+
+  it("returns 200 when a deletion is scheduled", async () => {
+    const token = await applicantToken();
+    const res = await post("/profile/cancel-deletion", {}, token);
+    expect(res.status).toBe(200);
+    const body = await res.json() as any;
+    expect(body.success).toBe(true);
+    expect(mockCancelAccountDeletion).toHaveBeenCalledWith(VALID_APPLICANT_ID);
+  });
+
+  it("returns 409 when no deletion is scheduled", async () => {
+    mockCancelAccountDeletion.mockRejectedValue(
+      new AppError("No deletion is scheduled for this account", 409)
+    );
+    const token = await applicantToken();
+    const res = await post("/profile/cancel-deletion", {}, token);
+    expect(res.status).toBe(409);
+    const body = await res.json() as any;
+    expect(body.success).toBe(false);
+  });
+});
+
+// ── POST /profile/delete-now ────────────────────────────────────────────────────
+
+describe("POST /profile/delete-now", () => {
+  it("returns 401 without token", async () => {
+    const res = await post("/profile/delete-now", {});
+    expect(res.status).toBe(401);
+  });
+
+  it("returns 200 and clears the session cookie", async () => {
+    const token = await applicantToken();
+    const res = await post("/profile/delete-now", {}, token);
+    expect(res.status).toBe(200);
+    const body = await res.json() as any;
+    expect(body.success).toBe(true);
+    expect(mockDeleteMyAccountNow).toHaveBeenCalled();
+    expect(res.headers.get("set-cookie")).toMatch(/ons_applicant_session=;/);
+  });
+
+  it("returns 404 when applicant no longer exists", async () => {
+    mockDeleteMyAccountNow.mockRejectedValue(new AppError("Not found", 404));
+    const token = await applicantToken();
+    const res = await post("/profile/delete-now", {}, token);
+    expect(res.status).toBe(404);
   });
 });

@@ -327,7 +327,25 @@
       "nextPhaseTitle": "Gerade keine Matches",
       "nextPhaseBody": "Neue Matches kommen mit der nächsten Matching-Phase — schau morgen wieder vorbei.",
       "noneAtThresholdTitle": "Keine Matches bei diesem Score",
-      "noneAtThresholdBody": "Schiebe den Regler nach unten, um mehr Matches zu sehen."
+      "noneAtThresholdBody": "Schiebe den Regler nach unten, um mehr Matches zu sehen.",
+      "deletion": {
+        "title": "Zeit bis zur Löschung",
+        "body": "Dein Konto und deine Daten werden unwiderruflich gelöscht, sobald dies null erreicht.",
+        "days": "Tage",
+        "hours": "Std",
+        "minutes": "Min",
+        "seconds": "Sek",
+        "cancelButton": "Konto behalten",
+        "cancelTitle": "Konto behalten",
+        "cancelConfirm": "Dies storniert die geplante Löschung und stellt dein Konto im Matching-Pool wieder her.",
+        "cancelYes": "Ja, Konto behalten",
+        "cancelFailed": "Löschung konnte nicht storniert werden.",
+        "deleteNowButton": "Konto jetzt löschen",
+        "deleteNowTitle": "Konto jetzt löschen",
+        "deleteNowConfirm": "Dies löscht dein Konto und alle zugehörigen Daten sofort und dauerhaft. Dies kann nicht rückgängig gemacht werden.",
+        "deleteNowYes": "Ja, jetzt löschen",
+        "deleteNowFailed": "Konto konnte nicht gelöscht werden."
+      }
     },
     "matches": {
       "empty": "Keine Matches vorhanden.",

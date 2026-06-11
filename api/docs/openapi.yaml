@@ -473,7 +473,7 @@ components:
 
     ApplicantProfileView:
       type: object
-      required: [applicantId, alias, status, scoreThreshold, createdAt]
+      required: [applicantId, alias, status, scoreThreshold, createdAt, deletionScheduledAt]
       properties:
         applicantId:
           type: string
@@ -494,6 +494,15 @@ components:
         createdAt:
           type: string
           format: date-time
+        deletionScheduledAt:
+          type: string
+          format: date-time
+          nullable: true
+          description: |
+            Set when `status` is `inactive` — the timestamp at which the account
+            and its data will be permanently deleted. `null` when no deletion
+            is scheduled. Use `POST /api/v1/profile/cancel-deletion` to clear it,
+            or `POST /api/v1/profile/delete-now` to delete immediately.
 
     MatchStatus:
       type: string
@@ -2302,6 +2311,82 @@ paths:
                 success: true
         '401':
           $ref: '#/components/responses/Unauthorized'
+
+  /api/v1/profile/cancel-deletion:
+    post:
+      tags: [Profile]
+      summary: Cancel a scheduled account deletion
+      operationId: cancelAccountDeletion
+      security:
+        - ApplicantCookieAuth: []
+        - ApplicantBearerAuth: []
+      description: |
+        Cancels a pending deletion scheduled by `POST /api/v1/profile/deactivate`
+        (or by a successful match outcome):
+        - Status → `applied`; `deletionScheduledAt` is cleared
+        - The applicant re-enters the matching pool
+
+        Returns `409` if the account has no deletion currently scheduled.
+      responses:
+        '200':
+          description: Deletion cancelled
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    enum: [true]
+              example:
+                success: true
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '409':
+          description: No deletion is currently scheduled for this account
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /api/v1/profile/delete-now:
+    post:
+      tags: [Profile]
+      summary: Permanently delete my account immediately
+      operationId: deleteMyAccountNow
+      security:
+        - ApplicantCookieAuth: []
+        - ApplicantBearerAuth: []
+      description: |
+        Immediately and irreversibly deletes the authenticated applicant's
+        account, bypassing the 180-day grace period:
+        - The applicant document, identity record, and embeddings are deleted
+        - Any matches involving the applicant are removed
+        - An audit log entry is written before deletion
+        - Clears the `ons_applicant_session` cookie
+
+        This action cannot be undone.
+      responses:
+        '200':
+          description: Account permanently deleted
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    enum: [true]
+              example:
+                success: true
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          description: Applicant not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
 
   /api/v1/profile/set-password:
     post:

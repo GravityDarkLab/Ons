@@ -11,6 +11,8 @@ import {
   withdrawContact,
   reportOutcome,
   deactivateMyAccount,
+  cancelAccountDeletion,
+  deleteMyAccountNow,
 } from "../services/profile.service.js";
 import { signApplicantToken, APPLICANT_COOKIE } from "../middleware/applicant.auth.middleware.js";
 import { generateReadablePassword } from "../privacy/magic-token.js";
@@ -174,4 +176,33 @@ export async function deactivate(c: Context): Promise<Response> {
   await deactivateMyAccount(applicantId);
   deleteCookie(c, APPLICANT_COOKIE, { path: "/" });
   return c.json({ success: true });
+}
+
+export async function cancelDeletion(c: Context): Promise<Response> {
+  const applicantId = c.get("applicantId") as string;
+
+  try {
+    await cancelAccountDeletion(applicantId);
+    return c.json({ success: true });
+  } catch (err: unknown) {
+    const e = err as { message?: string; statusCode?: number };
+    const code = (e.statusCode ?? 500) as Parameters<typeof c.json>[1];
+    return c.json({ success: false, error: e.message ?? "Error" }, code);
+  }
+}
+
+export async function deleteNow(c: Context): Promise<Response> {
+  const applicantId = c.get("applicantId") as string;
+  const ipAddress   = c.req.header("X-Forwarded-For") ?? c.req.header("X-Real-IP") ?? "unknown";
+  const userAgent   = c.req.header("User-Agent") ?? "unknown";
+
+  try {
+    await deleteMyAccountNow(applicantId, { ipAddress, userAgent });
+    deleteCookie(c, APPLICANT_COOKIE, { path: "/" });
+    return c.json({ success: true });
+  } catch (err: unknown) {
+    const e = err as { message?: string; statusCode?: number };
+    const code = (e.statusCode ?? 500) as Parameters<typeof c.json>[1];
+    return c.json({ success: false, error: e.message ?? "Error" }, code);
+  }
 }
