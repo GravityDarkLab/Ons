@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useTranslation, Trans } from 'react-i18next'
 import { runMatching, fetchMatchingLastRun } from '../api/client'
-import Button from '../../components/ui/Button'
+import Spinner from '../../components/ui/Spinner'
 import ConfirmDialog from '../../components/ui/ConfirmDialog'
 import MatchingPulse, { type PulseState } from '../components/MatchingPulse'
 import { useTimeAgo } from '../utils/timeAgo'
@@ -111,7 +111,7 @@ export function Matching() {
         <div className="p-8 pt-6 space-y-6">
           {/* Algorithm dropdown */}
           <div className="space-y-3">
-            <label htmlFor="matching-algorithm" className="text-sm font-medium text-primary block">
+            <label htmlFor="matching-algorithm" className="text-xs font-medium uppercase tracking-wider text-muted block">
               {t('admin.matching.algorithm')}
             </label>
             <select
@@ -128,7 +128,7 @@ export function Matching() {
               ))}
             </select>
             {selectedAlgorithm?.hint && (
-              <p className="text-xs text-muted">{selectedAlgorithm.hint}</p>
+              <p className="text-xs text-faint">{selectedAlgorithm.hint}</p>
             )}
           </div>
 
@@ -146,20 +146,31 @@ export function Matching() {
             </div>
           )}
 
-          {/* Last run info */}
-          <p className="text-sm text-muted">
-            {lastRun
-              ? t('admin.matching.lastRunSummary', { time: timeAgo(new Date(lastRun.at).getTime()), count: lastRun.couplesProposed })
-              : t('admin.matching.neverRun')}
-          </p>
-
           {/* Error message */}
           {error && <p className="match-fade text-sm text-error" role="alert">{error}</p>}
 
-          {/* Confirm dialog */}
-          <Button onClick={() => setConfirming(true)} loading={loading}>
-            {t('admin.matching.run')}
-          </Button>
+          {/* Footer row: last-run info + gold CTA */}
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 border-t border-border pt-6">
+            <p className="inline-flex items-center gap-2 text-xs text-muted">
+              <svg className="h-3.5 w-3.5 text-faint shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                <circle cx="12" cy="12" r="10" />
+                <polyline points="12 6 12 12 16 14" />
+              </svg>
+              {lastRun
+                ? t('admin.matching.lastRunSummary', { time: timeAgo(new Date(lastRun.at).getTime()), count: lastRun.couplesProposed })
+                : t('admin.matching.neverRun')}
+            </p>
+
+            <button
+              onClick={() => setConfirming(true)}
+              disabled={loading}
+              className="cta-gold inline-flex items-center justify-center gap-2 rounded-full text-white px-6 py-3 text-[15px] font-semibold focus:outline-none focus-visible:ring-2 focus-visible:ring-accent/50 focus-visible:ring-offset-2 disabled:opacity-60 disabled:cursor-not-allowed"
+            >
+              {loading && <Spinner />}
+              {t('admin.matching.run')}
+            </button>
+          </div>
+
           <ConfirmDialog
             open={confirming}
             title={t('admin.matching.confirmTitle', { algorithm: selectedAlgorithm?.label ?? algorithm })}
