@@ -14,7 +14,7 @@ import {
   cancelAccountDeletion,
   deleteMyAccountNow,
 } from "../services/profile.service.js";
-import { signApplicantToken, APPLICANT_COOKIE } from "../middleware/applicant.auth.middleware.js";
+import { signApplicantToken, tryGetApplicantSession, APPLICANT_COOKIE } from "../middleware/applicant.auth.middleware.js";
 import { generateReadablePassword } from "../privacy/magic-token.js";
 import { env } from "../config/env.js";
 
@@ -36,7 +36,8 @@ export async function login(c: Context): Promise<Response> {
     password?: string;
   };
 
-  const result = await loginWithMagicToken(magicToken, password);
+  const currentApplicantId = await tryGetApplicantSession(c);
+  const result = await loginWithMagicToken(magicToken, password, currentApplicantId);
   if (result === null) {
     return c.json({ success: false, error: "Invalid credentials" }, 401);
   }

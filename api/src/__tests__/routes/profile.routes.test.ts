@@ -144,6 +144,22 @@ describe("POST /profile/login", () => {
     const res = await post("/profile/login", { magicToken: "short", password: "some-pass" });
     expect(res.status).toBe(422);
   });
+
+  it("refreshes the session when revisiting the magic link while already signed in", async () => {
+    mockLoginWithMagicToken.mockResolvedValue({
+      status: "ok",
+      applicant: { _id: new ObjectId(VALID_APPLICANT_ID), alias: "Blue Falcon" },
+    });
+    const token = await applicantToken();
+    const res = await post("/profile/login", { magicToken: VALID_MAGIC_TOKEN }, token);
+    expect(res.status).toBe(200);
+    const body = await res.json() as any;
+    expect(body.success).toBe(true);
+    expect(body.firstLogin).toBeUndefined();
+    expect(body.passwordRequired).toBeUndefined();
+    expect(res.headers.get("set-cookie")).toMatch(/ons_applicant_session=/);
+    expect(mockLoginWithMagicToken).toHaveBeenCalledWith(VALID_MAGIC_TOKEN, undefined, VALID_APPLICANT_ID);
+  });
 });
 
 // ── POST /profile/set-password ────────────────────────────────────────────────

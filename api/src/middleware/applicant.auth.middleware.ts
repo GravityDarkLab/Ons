@@ -17,28 +17,49 @@ export async function signApplicantToken(applicantId: string, alias: string): Pr
     .sign(SECRET);
 }
 
-export async function requireApplicant(c: Context, next: Next): Promise<Response | void> {
+function extractApplicantToken(c: Context): string | null {
   // Prefer Bearer header for API clients; fall back to HttpOnly session cookie
   const cookieToken = getCookie(c, APPLICANT_COOKIE);
   const header = c.req.header("Authorization");
   const bearerToken = header?.startsWith("Bearer ") ? header.slice(7) : null;
-  const token = bearerToken ?? cookieToken;
+  return bearerToken ?? cookieToken ?? null;
+}
 
+async function verifyApplicantToken(token: string): Promise<{ sub: string; alias: string } | null> {
+  try {
+    const { payload } = await jwtVerify(token, SECRET, { algorithms: [ALGORITHM] });
+    if (!payload.sub || payload.type !== "applicant") return null;
+    return { sub: payload.sub as string, alias: payload.alias as string };
+  } catch {
+    return null;
+  }
+}
+
+export async function requireApplicant(c: Context, next: Next): Promise<Response | void> {
+  const token = extractApplicantToken(c);
   if (!token) {
     return c.json({ success: false, error: "Unauthorized" }, 401);
   }
 
-  try {
-    const { payload } = await jwtVerify(token, SECRET, { algorithms: [ALGORITHM] });
-
-    if (!payload.sub || payload.type !== "applicant") {
-      return c.json({ success: false, error: "Unauthorized" }, 401);
-    }
-
-    c.set("applicantId",    payload.sub as string);
-    c.set("applicantAlias", payload.alias as string);
-    await next();
-  } catch {
+  const claims = await verifyApplicantToken(token);
+  if (!claims) {
     return c.json({ success: false, error: "Invalid or expired token" }, 401);
   }
+
+  c.set("applicantId",    claims.sub);
+  c.set("applicantAlias", claims.alias);
+  await next();
+}
+
+/**
+ * Non-throwing session check — returns the authenticated applicant's ID if
+ * the request carries a valid session, or null otherwise. Used by endpoints
+ * that behave differently for an already-authenticated caller without
+ * requiring authentication.
+ */
+export async function tryGetApplicantSession(c: Context): Promise<string | null> {
+  const token = extractApplicantToken(c);
+  if (!token) return null;
+  const claims = await verifyApplicantToken(token);
+  return claims?.sub ?? null;
 }

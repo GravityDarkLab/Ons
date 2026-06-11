@@ -32,13 +32,20 @@ export type LoginAttemptResult =
 
 export async function loginWithMagicToken(
   magicToken: string,
-  password?: string
+  password?: string,
+  currentApplicantId?: string | null
 ): Promise<LoginAttemptResult> {
   const db  = await getDb();
   const col = getApplicantsCollection(db);
 
   const doc = await col.findOne({ magicToken: hashMagicToken(magicToken) });
   if (!doc) return null;
+
+  // Already signed in as this applicant — refresh the session instead of
+  // re-prompting for a password (e.g. revisiting the magic link).
+  if (currentApplicantId && doc._id.equals(currentApplicantId)) {
+    return { status: "ok", applicant: doc };
+  }
 
   if (doc.passwordHash === null) return { status: "first_login" };
 

@@ -1863,6 +1863,12 @@ paths:
         magic link's state (first-login vs. returning user) without attempting
         verification.
 
+        If the request already carries a valid `ons_applicant_session`
+        cookie/Bearer token **for the same applicant identified by
+        `magicToken`**, the session is refreshed and `{ success: true }` is
+        returned immediately — revisiting your own magic link while already
+        signed in does not re-prompt for a password.
+
         **Rate limit:** 10 requests per minute per IP.
       requestBody:
         required: true
