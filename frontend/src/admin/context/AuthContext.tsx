@@ -5,7 +5,7 @@ interface AuthState {
   isAuthenticated: boolean
   isLoading: boolean
   role: 'admin' | 'super_admin' | null
-  login: () => void
+  login: () => Promise<void>
   logout: () => Promise<void>
 }
 
@@ -28,7 +28,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       .finally(() => setIsLoading(false))
   }, [])
 
-  const login = useCallback(() => setIsAuthenticated(true), [])
+  // After login the cookie is set but our state is stale — re-fetch /me so
+  // `role` reflects the just-authenticated session immediately, without a reload.
+  const login = useCallback(async () => {
+    const data = await getMe()
+    setIsAuthenticated(data !== null)
+    setRole(data?.adminRole as 'admin' | 'super_admin' | null ?? null)
+  }, [])
 
   const logout = useCallback(async () => {
     await adminLogout()

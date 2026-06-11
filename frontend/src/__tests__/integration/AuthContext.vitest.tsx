@@ -61,9 +61,12 @@ describe('AuthContext', () => {
     expect(screen.getByText('unauthenticated')).toBeInTheDocument()
   })
 
-  it('login() marks the session as authenticated', async () => {
-    mockGetMe.mockResolvedValue(null)
+  it('login() re-probes the session and marks it authenticated', async () => {
+    mockGetMe
+      .mockResolvedValueOnce(null) // initial mount probe
+      .mockResolvedValueOnce({ adminId: '1', adminRole: 'super_admin' }) // after login()
     await act(async () => renderWithProvider())
+    expect(screen.getByText('unauthenticated')).toBeInTheDocument()
     await act(async () => screen.getByRole('button', { name: 'login' }).click())
     expect(screen.getByText('authenticated')).toBeInTheDocument()
   })

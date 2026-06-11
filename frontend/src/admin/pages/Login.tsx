@@ -22,7 +22,7 @@ export function Login() {
     setLoading(true)
     try {
       await adminLogin(username, password)
-      login()
+      await login()
       navigate('/admin')
     } catch (err) {
       setError(err instanceof Error ? err.message : t('admin.login.invalidCredentials'))
