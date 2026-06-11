@@ -742,7 +742,7 @@ components:
             magicToken:
               type: string
               description: "Raw magic-link token. Returned only once and never stored — relay it to the applicant."
-              example: "9f1c2e7b4a6d8f0c1e3b5a7d9f1c2e7b4a6d8f0c1e3b5a7d9f1c2e7b4a6d8f0c"
+              example: "9f1c2e7b4a6d8f0c..."
 
     # ── Audit log ─────────────────────────────────────────────────────────────
     AuditLogEntry:
@@ -1500,7 +1500,7 @@ paths:
                 success: true
                 data:
                   alias: "Blue Falcon"
-                  magicToken: "9f1c2e7b4a6d8f0c1e3b5a7d9f1c2e7b4a6d8f0c1e3b5a7d9f1c2e7b4a6d8f0c"
+                  magicToken: "9f1c2e7b4a6d8f0c..."
         '401':
           $ref: '#/components/responses/Unauthorized'
         '403':
