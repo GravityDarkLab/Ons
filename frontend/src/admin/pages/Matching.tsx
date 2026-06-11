@@ -41,6 +41,7 @@ export function Matching() {
   }
 
   async function handleConfirm() {
+    if (loading) return
     setConfirming(false)
     setError('')
     setLoading(true)

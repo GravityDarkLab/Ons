@@ -18,11 +18,11 @@ export async function signApplicantToken(applicantId: string, alias: string): Pr
 }
 
 export async function requireApplicant(c: Context, next: Next): Promise<Response | void> {
-  // Prefer HttpOnly session cookie; fall back to Bearer header for API clients
+  // Prefer Bearer header for API clients; fall back to HttpOnly session cookie
   const cookieToken = getCookie(c, APPLICANT_COOKIE);
   const header = c.req.header("Authorization");
   const bearerToken = header?.startsWith("Bearer ") ? header.slice(7) : null;
-  const token = cookieToken ?? bearerToken;
+  const token = bearerToken ?? cookieToken;
 
   if (!token) {
     return c.json({ success: false, error: "Unauthorized" }, 401);
