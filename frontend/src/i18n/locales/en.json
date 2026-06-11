@@ -46,7 +46,7 @@
         "desc": "If we see a connection, we reach out directly. No algorithm swiping."
       }
     ],
-    "footer": "© 2025 Ons · Built with care"
+    "footer": "© {{year}} Ons · Built with care"
   },
   "apply": {
     "stepOf": "Step {{current}} of {{total}}",

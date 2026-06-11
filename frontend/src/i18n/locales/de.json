@@ -46,7 +46,7 @@
         "desc": "Wenn wir eine Verbindung sehen, melden wir uns direkt. Kein Algorithmus."
       }
     ],
-    "footer": "© 2025 Ons · Mit Sorgfalt entwickelt"
+    "footer": "© {{year}} Ons · Mit Sorgfalt entwickelt"
   },
   "apply": {
     "stepOf": "Schritt {{current}} von {{total}}",

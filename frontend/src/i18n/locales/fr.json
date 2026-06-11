@@ -46,7 +46,7 @@
         "desc": "Si nous voyons une connexion, nous vous contactons directement. Pas d'algorithme."
       }
     ],
-    "footer": "© 2025 Ons · Conçu avec soin"
+    "footer": "© {{year}} Ons · Conçu avec soin"
   },
   "apply": {
     "stepOf": "Étape {{current}} sur {{total}}",

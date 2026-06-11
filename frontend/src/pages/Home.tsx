@@ -81,7 +81,7 @@ export default function Home() {
         </section>
 
         <footer className="pb-8 px-6 text-center">
-          <p className="text-xs text-muted">{t('home.footer')}</p>
+          <p className="text-xs text-muted">{t('home.footer', { year: new Date().getFullYear() })}</p>
         </footer>
       </div>
     </div>
