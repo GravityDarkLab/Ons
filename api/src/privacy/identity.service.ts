@@ -2,11 +2,8 @@ import { ObjectId } from "mongodb";
 import { getDb } from "../db/connection.js";
 import { getIdentitiesCollection } from "../db/collections.js";
 import { encrypt, decrypt } from "./encryption.js";
+import { hashInstagram } from "./hash.js";
 
-/**
- * Encrypts the Instagram handle and persists the identity document.
- * Must be called after the applicant document is created.
- */
 export async function storeIdentity(
   applicantId: ObjectId,
   alias: string,
@@ -24,17 +21,20 @@ export async function storeIdentity(
     encryptedInstagram: encrypted,
     encryptionIv: iv,
     encryptionTag: tag,
+    instagramHash: hashInstagram(instagramHandle),
     createdAt: new Date(),
   });
 }
 
-/**
- * Decrypts and returns the Instagram handle for an applicant identified by alias.
- * Returns null if no identity record is found.
- */
-export async function resolveIdentity(
-  alias: string
-): Promise<string | null> {
+export async function checkInstagramExists(handle: string): Promise<boolean> {
+  const db = await getDb();
+  const identities = getIdentitiesCollection(db);
+  const hash = hashInstagram(handle);
+  const doc = await identities.findOne({ instagramHash: hash }, { projection: { _id: 1 } });
+  return doc !== null;
+}
+
+export async function resolveIdentity(alias: string): Promise<string | null> {
   const db = await getDb();
   const identities = getIdentitiesCollection(db);
 
@@ -44,10 +44,6 @@ export async function resolveIdentity(
   return decrypt(doc.encryptedInstagram, doc.encryptionIv, doc.encryptionTag);
 }
 
-/**
- * Decrypts and returns the Instagram handle for an applicant identified by applicantId.
- * Returns null if no identity record is found.
- */
 export async function resolveIdentityById(
   applicantId: ObjectId
 ): Promise<string | null> {

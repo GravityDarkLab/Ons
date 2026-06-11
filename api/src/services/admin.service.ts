@@ -37,19 +37,21 @@ export async function adminLogin(
   const valid = await Bun.password.verify(password, admin.passwordHash);
   if (!valid) return null;
 
-  return signAdminToken(admin._id.toHexString(), admin.role);
+  return signAdminToken(admin._id.toHexString(), admin.username, admin.role);
 }
 
 /**
  * Returns a paginated list of applicants, optionally filtered by status
  * and/or a case-insensitive alias search string.
  */
+export type ApplicantView = Omit<ApplicantDoc, "_id" | "magicToken" | "passwordHash"> & { id: string };
+
 export async function listApplicants(
   page: number,
   limit: number,
   status?: ApplicantStatus,
   search?: string,
-): Promise<PaginatedResult<Omit<ApplicantDoc, "_id"> & { id: string }>> {
+): Promise<PaginatedResult<ApplicantView>> {
   const db = await getDb();
   const col = getApplicantsCollection(db);
 
@@ -63,7 +65,7 @@ export async function listApplicants(
     col.countDocuments(filter),
   ]);
 
-  const data = docs.map(({ _id, ...rest }) => ({
+  const data = docs.map(({ _id, magicToken: _mt, passwordHash: _ph, ...rest }) => ({
     id: _id.toHexString(),
     ...rest,
   }));
@@ -82,7 +84,7 @@ export async function listApplicants(
  */
 export async function getApplicantById(
   id: string
-): Promise<(Omit<ApplicantDoc, "_id"> & { id: string }) | null> {
+): Promise<ApplicantView | null> {
   const db = await getDb();
   const col = getApplicantsCollection(db);
 
@@ -96,7 +98,7 @@ export async function getApplicantById(
   const doc = await col.findOne({ _id: objectId });
   if (!doc) return null;
 
-  const { _id, ...rest } = doc;
+  const { _id, magicToken: _mt, passwordHash: _ph, ...rest } = doc;
   return { id: _id.toHexString(), ...rest };
 }
 
@@ -142,7 +144,7 @@ export async function deactivateApplicant(id: string): Promise<boolean> {
 
   const result = await col.updateOne(
     { _id: objectId },
-    { $set: { status: "withdrawn", updatedAt: new Date() } }
+    { $set: { status: "inactive", updatedAt: new Date() } }
   );
 
   return result.matchedCount > 0;

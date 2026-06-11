@@ -78,14 +78,14 @@ export async function getCandidates(
     throw new Error(`Invalid applicant ID: ${applicantId}`);
   }
 
-  const target = await col.findOne({ _id: targetId, status: "active" });
+  const target = await col.findOne({ _id: targetId, status: { $in: ["applied", "matched"] } });
   if (!target) {
     throw new Error(`Active applicant not found: ${applicantId}`);
   }
 
   // Load all other active applicants
   const others = await col
-    .find({ _id: { $ne: targetId }, status: "active" })
+    .find({ _id: { $ne: targetId }, status: { $in: ["applied", "matched"] } })
     .toArray();
 
   // Hard filters — remove incompatible candidates before scoring
@@ -130,7 +130,7 @@ export async function runFullMatchingPass(
 
   const db = await getDb();
   const col = getApplicantsCollection(db);
-  const applicants = await col.find({ status: "active" }).toArray();
+  const applicants = await col.find({ status: { $in: ["applied", "matched"] } }).toArray();
 
   if (applicants.length < 2) {
     return {};

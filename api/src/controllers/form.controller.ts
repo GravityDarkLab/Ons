@@ -67,13 +67,17 @@ export async function submitForm(c: Context): Promise<Response> {
     return c.json(
       {
         success: true,
-        alias: result.alias,
+        alias:       result.alias,
         applicantId: result.applicantId,
-        message: "Your profile has been submitted successfully.",
+        magicToken:  result.magicToken,
+        message: "Your profile has been submitted successfully. Save your magic link — you will set your password on first login.",
       },
       201
     );
-  } catch (err) {
+  } catch (err: unknown) {
+    const e = err as { message?: string; statusCode?: number };
+    if (e.statusCode === 401) return c.json({ success: false, error: e.message }, 401);
+    if (e.statusCode === 409) return c.json({ success: false, error: e.message }, 409);
     const message = err instanceof Error ? err.message : "Submission failed";
     return c.json({ success: false, error: message }, 400);
   }

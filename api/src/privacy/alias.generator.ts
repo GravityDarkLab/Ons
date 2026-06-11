@@ -1,3 +1,5 @@
+import { randomInt } from "crypto";
+
 /**
  * Generates human-friendly two-word codenames for applicants.
  * Format: "{Adjective} {Noun}" or "{Noun} {Adjective}" e.g. "Blue Falcon", "River Silent"
@@ -82,7 +84,7 @@ const NOUNS: readonly string[] = [
 ];
 
 function pickRandom<T>(arr: readonly T[]): T {
-  return arr[Math.floor(Math.random() * arr.length)];
+  return arr[randomInt(arr.length)];
 }
 
 /**
@@ -100,7 +102,7 @@ export function generateUniqueAlias(
     const noun = pickRandom(NOUNS);
     // Randomly pick either "Adjective Noun" or "Noun Adjective" order,
     // doubling the pool from 1 296 to 2 592 unique combinations.
-    const alias = Math.random() < 0.5
+    const alias = randomInt(2) === 0
       ? `${adjective} ${noun}`
       : `${noun} ${adjective}`;
 
@@ -113,6 +115,6 @@ export function generateUniqueAlias(
   // but fallback to adjective + noun + random suffix
   const adjective = pickRandom(ADJECTIVES);
   const noun = pickRandom(NOUNS);
-  const suffix = Math.floor(Math.random() * 9000 + 1000);
+  const suffix = randomInt(1000, 10000);
   return `${adjective} ${noun} ${suffix}`;
 }

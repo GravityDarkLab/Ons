@@ -2,6 +2,7 @@ import { ObjectId } from "mongodb";
 
 export type AuditAction =
   | "RESOLVE_IDENTITY"
+  | "APPLICANT_REVEAL_IDENTITY"
   | "LIST_APPLICANTS"
   | "VIEW_APPLICANT"
   | "DEACTIVATE_APPLICANT"

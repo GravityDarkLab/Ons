@@ -7,18 +7,24 @@ info:
 
     **Privacy model:** Instagram handles are never stored in the applicant profile.
     They are AES-256-GCM encrypted in a separate `identities` collection and
-    resolvable only by authorized admins (every access is audit-logged).
+    resolvable only by authorized admin roles (every access is audit-logged).
     Applicants are identified throughout the system by a human-friendly alias
     such as "Blue Falcon" or "Silent River".
 
-    **Authentication:** Admin endpoints are protected by a session cookie
-    (`admin_token`) set by `POST /api/v1/admin/login`. The cookie is `HttpOnly`
-    (not accessible from JavaScript) and `SameSite=Lax`. API clients may
-    alternatively pass the raw JWT in the `Authorization: Bearer` header.
+    **Authentication:**
+    - Admin endpoints are protected by a session cookie (`admin_token`) set by
+      `POST /api/v1/admin/login`. The cookie is `HttpOnly` and `SameSite=Lax`.
+      API clients may alternatively pass the raw JWT in the `Authorization: Bearer` header.
+    - Applicant profile endpoints use a separate JWT with `type: "applicant"` in the payload,
+      issued by `POST /api/v1/profile/login`. Pass it as `Authorization: Bearer <token>`.
+      Admin JWTs are rejected on applicant endpoints and vice-versa.
 
     **Rate limits:**
     - Public form submission: 100 requests per 10 minutes per IP
-    - Admin endpoints: 20 requests per minute per IP
+    - Admin login: 10 requests per minute per IP
+    - Admin endpoints: 200 requests per minute per IP
+    - Profile login: 10 requests per minute per IP
+    - Profile endpoints: 100 requests per minute per IP
   version: 1.0.0
   contact:
     name: Admin
@@ -36,6 +42,8 @@ tags:
     description: Server liveness check
   - name: Form
     description: Public form submission (no auth required)
+  - name: Profile
+    description: Applicant self-service portal (applicant JWT required)
   - name: Admin – Auth
     description: "Session management: login, logout, and session probe"
   - name: Admin – Applicants
@@ -70,6 +78,17 @@ components:
         this Swagger UI). The server tries the cookie first; the header is used only
         when no cookie is present.
         Claims: `sub` = admin MongoDB `_id`, `role` = one of `super_admin | admin | viewer`.
+
+    ApplicantBearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: |
+        JWT issued by `POST /api/v1/profile/login` for applicant self-service access.
+        Pass it as `Authorization: Bearer <token>`.
+        Claims: `sub` = applicant MongoDB `_id`, `alias` = human-friendly codename,
+        `type` = `"applicant"` (distinguishes from admin JWTs which carry `role` instead).
+        Valid for 30 days. Admin JWTs are rejected on all `/api/v1/profile/*` endpoints.
 
     SubmissionKey:
       type: apiKey
@@ -372,7 +391,7 @@ components:
 
     FormSubmissionResponse:
       type: object
-      required: [success, alias, applicantId, message]
+      required: [success, alias, applicantId, magicToken, message]
       properties:
         success:
           type: boolean
@@ -385,9 +404,167 @@ components:
           type: string
           example: "64f1a2b3c4d5e6f7a8b9c0d1"
           description: "MongoDB ObjectId hex string."
+        magicToken:
+          type: string
+          format: hex
+          minLength: 64
+          maxLength: 64
+          example: "a3f9d2c1e4b7089f..."
+          description: |
+            64-character hex token used as the login identifier for the applicant portal.
+            Append to the portal URL as `?token=<value>` so the login form is pre-filled.
+            Stored as a SHA-256 hash on the server — the raw token is given to the applicant
+            only at form submission and is never persisted in plaintext. Treat it like a
+            username — it is not sufficient to log in without a password.
+            No password is generated at submission time. The applicant sets their own
+            password on first login via `POST /api/v1/profile/set-password`.
         message:
           type: string
-          example: "Your profile has been submitted successfully."
+          example: "Your profile has been submitted successfully. Save your magic link — you will set your password on first login."
+
+    # ── Profile (applicant self-service) ─────────────────────────────────────
+    ProfileLoginRequest:
+      type: object
+      required: [magicToken]
+      properties:
+        magicToken:
+          type: string
+          format: hex
+          minLength: 64
+          maxLength: 64
+          example: "a3f9d2c1e4b7089f..."
+          description: "64-char hex token from the form submission response."
+        password:
+          type: string
+          example: "amber-river-silent-fox"
+          description: |
+            The applicant's password. Optional — omit to probe for first-login state
+            without attempting password verification. If the account has no password set,
+            the server returns `{ firstLogin: true }` regardless of whether this field
+            is present.
+
+    ProfileLoginResponse:
+      type: object
+      required: [success]
+      properties:
+        success:
+          type: boolean
+          enum: [true]
+        token:
+          type: string
+          description: "Applicant JWT (30-day expiry). Present only when `firstLogin` is absent."
+          example: "eyJhbGciOiJIUzI1NiJ9..."
+        firstLogin:
+          type: boolean
+          enum: [true]
+          description: |
+            Present (and `true`) when the account has no password yet.
+            The caller should redirect to `POST /api/v1/profile/set-password`.
+            Mutually exclusive with `token` — exactly one of the two is present.
+
+    ApplicantProfileView:
+      type: object
+      required: [applicantId, alias, status, scoreThreshold, createdAt]
+      properties:
+        applicantId:
+          type: string
+          example: "64f1a2b3c4d5e6f7a8b9c0d1"
+        alias:
+          type: string
+          example: "Blue Falcon"
+        status:
+          $ref: '#/components/schemas/ApplicantStatus'
+        scoreThreshold:
+          type: number
+          format: float
+          minimum: 0.6
+          maximum: 1.0
+          default: 0.8
+          example: 0.8
+          description: "Minimum score a match must reach to appear in the portal. Clamped to [0.6, 1.0]."
+        createdAt:
+          type: string
+          format: date-time
+
+    MatchStatus:
+      type: string
+      enum: [proposed, in_progress, dating, success, failed, declined, expired]
+      description: |
+        - `proposed` — algorithm suggested this pair; both see each other anonymously
+        - `in_progress` — initiator revealed partner's Instagram; partner can accept/decline
+        - `dating` — partner accepted; both confirmed; other matches hidden
+        - `success` — self-reported: worked out; both applicants → `inactive`
+        - `failed` — self-reported: didn't work out; both applicants → `applied`
+        - `declined` — partner explicitly declined the contact request
+        - `expired` — a participant went `inactive` before the match concluded
+
+    MatchPerspective:
+      type: string
+      enum: [none, initiator, target]
+      description: |
+        - `none` — match is `proposed`; neither side has initiated contact yet
+        - `initiator` — authenticated applicant sent the contact request
+        - `target` — authenticated applicant received the contact request
+
+    ApplicantMatchView:
+      type: object
+      required: [matchId, partnerAlias, score, status, perspective]
+      properties:
+        matchId:
+          type: string
+          example: "64f1a2b3c4d5e6f7a8b9c0d5"
+        partnerAlias:
+          type: string
+          example: "Silent River"
+          description: "Partner's alias — no Instagram handle is ever included."
+        score:
+          type: number
+          format: float
+          minimum: 0
+          maximum: 1
+          example: 0.83
+        status:
+          $ref: '#/components/schemas/MatchStatus'
+        perspective:
+          $ref: '#/components/schemas/MatchPerspective'
+        iceBreakers:
+          type: array
+          items:
+            type: string
+          description: "AI-generated ice-breaking questions. Only present when `perspective = initiator` AND `status = in_progress`."
+          example: ["What's the most spontaneous trip you've taken?", "What does your ideal Sunday look like?"]
+        contactRequestedAt:
+          type: string
+          format: date-time
+          description: |
+            When the initiator clicked "contact". Present for **both** perspectives
+            when `status = in_progress`. The target can use this to show "X minutes ago".
+          example: "2026-06-09T14:32:00.000Z"
+        dateIdeas:
+          type: array
+          items:
+            type: string
+          description: "AI-generated date ideas based on both profiles. Same visibility rule as `iceBreakers`."
+          example: ["Coffee walk through the old city", "Sunset picnic with homemade snacks"]
+
+    ContactResult:
+      type: object
+      required: [targetInstagram, iceBreakers, dateIdeas]
+      properties:
+        targetInstagram:
+          type: string
+          example: "@partner_handle"
+          description: "Decrypted Instagram handle of the match partner. Triggers an `APPLICANT_REVEAL_IDENTITY` audit log entry."
+        iceBreakers:
+          type: array
+          items:
+            type: string
+          example: ["What's the most spontaneous trip you've taken?", "What does your ideal Sunday look like?"]
+        dateIdeas:
+          type: array
+          items:
+            type: string
+          example: ["Coffee walk through the old city", "Sunset picnic with homemade snacks"]
 
     # ── Auth ──────────────────────────────────────────────────────────────────
     AdminLoginRequest:
@@ -422,12 +599,16 @@ components:
           enum: [true]
         data:
           type: object
-          required: [adminId, adminRole]
+          required: [adminId, adminUsername, adminRole]
           properties:
             adminId:
               type: string
               description: MongoDB `_id` of the authenticated admin.
               example: "507f1f77bcf86cd799439011"
+            adminUsername:
+              type: string
+              description: Username of the authenticated admin.
+              example: "alice"
             adminRole:
               type: string
               enum: [super_admin, admin, viewer]
@@ -436,7 +617,12 @@ components:
     # ── Applicant ─────────────────────────────────────────────────────────────
     ApplicantStatus:
       type: string
-      enum: [active, inactive, matched, withdrawn]
+      enum: [applied, matched, dating, inactive]
+      description: |
+        - `applied` — submitted the form; awaiting first matching run
+        - `matched` — has ≥1 proposed match; still in matching pool
+        - `dating` — actively dating one match; excluded from new runs
+        - `inactive` — deactivated (self or admin); deletion scheduled in 180 days
 
     Applicant:
       type: object
@@ -540,7 +726,11 @@ components:
           example: "64f1a2b3c4d5e6f7a8b9c0d2"
         adminId:
           type: string
-          description: MongoDB `_id` of the admin who performed the action.
+          description: |
+            MongoDB `_id` of the actor who performed the action.
+            For all admin-initiated actions this is the admin's `_id`.
+            For `APPLICANT_REVEAL_IDENTITY` this is the applicant's `_id` —
+            check `metadata.actorType` to distinguish the two cases.
           example: "507f1f77bcf86cd799439011"
         action:
           type: string
@@ -550,6 +740,13 @@ components:
             - VIEW_APPLICANT
             - DEACTIVATE_APPLICANT
             - ADMIN_LOGIN
+            - APPLICANT_REVEAL_IDENTITY
+          description: |
+            `APPLICANT_REVEAL_IDENTITY` is written when an applicant calls
+            `POST /api/v1/profile/matches/:id/contact` to reveal their partner's
+            Instagram handle. In this case `adminId` holds the applicant's MongoDB `_id`
+            and `metadata.actorType` is `"applicant"` — use that field to distinguish
+            applicant-initiated entries from admin-initiated ones in audit queries.
         targetAlias:
           type: string
           example: "Blue Falcon"
@@ -902,7 +1099,17 @@ paths:
                 success: true
                 alias: "Blue Falcon"
                 applicantId: "64f1a2b3c4d5e6f7a8b9c0d1"
-                message: "Your profile has been submitted successfully."
+                magicToken: "a3f9d2c1e4b7089f4a2c8d1e6f3b9a0c..."
+                message: "Your profile has been submitted successfully. Save your magic link — you will set your password on first login."
+        '409':
+          description: Instagram handle already registered
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                success: false
+                error: "An account already exists for this handle. Check your saved access link and password. If you need help, contact support."
         '400':
           description: Questionnaire version not found, inactive, or invalid submission key
           content:
@@ -1046,6 +1253,7 @@ paths:
                 success: true
                 data:
                   adminId: "507f1f77bcf86cd799439011"
+                  adminUsername: "alice"
                   adminRole: "admin"
         '401':
           $ref: '#/components/responses/Unauthorized'
@@ -1067,7 +1275,7 @@ paths:
           in: query
           schema:
             $ref: '#/components/schemas/ApplicantStatus'
-          example: active
+          example: applied
         - name: page
           in: query
           schema:
@@ -1142,7 +1350,8 @@ paths:
         - CookieAuth: []
         - BearerAuth: []
       description: |
-        Sets the applicant status to `withdrawn`. Does not delete data.
+        Sets the applicant status to `inactive`. Does not delete data.
+        Deletion is scheduled 180 days from deactivation.
         Audit-logged as DEACTIVATE_APPLICANT.
       parameters:
         - name: id
@@ -1164,7 +1373,7 @@ paths:
                     enum: [true]
                   message:
                     type: string
-                    example: "Applicant withdrawn successfully."
+                    example: "Applicant deactivated successfully."
         '401':
           $ref: '#/components/responses/Unauthorized'
         '404':
@@ -1184,6 +1393,8 @@ paths:
         - BearerAuth: []
       description: |
         Decrypts and returns the real Instagram handle for an applicant.
+
+        🔒 **Requires `super_admin` role.** Regular `admin` and `viewer` roles receive 403.
 
         ⚠️ **Every call to this endpoint is recorded in the audit log** with the
         admin ID, IP address, user-agent, timestamp, and target alias.
@@ -1210,6 +1421,15 @@ paths:
                   applicantId: "64f1a2b3c4d5e6f7a8b9c0d1"
         '401':
           $ref: '#/components/responses/Unauthorized'
+        '403':
+          description: Insufficient role — super_admin required
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                success: false
+                error: "Forbidden"
         '404':
           description: Identity record not found
           content:
@@ -1468,3 +1688,564 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
+
+  # ── Profile – Applicant Self-Service Portal ───────────────────────────────
+  /api/v1/profile/login:
+    post:
+      tags: [Profile]
+      summary: Applicant portal login
+      operationId: profileLogin
+      description: |
+        Identifies an applicant by `magicToken` and verifies their password.
+
+        **Two possible success responses (both 200):**
+        - `{ token }` — password verified, JWT returned, proceed to dashboard
+        - `{ firstLogin: true }` — account has no password yet; redirect to
+          `POST /api/v1/profile/set-password` before issuing a JWT
+
+        `password` is optional — omitting it is the idiomatic way to trigger a
+        first-login check without attempting verification.
+
+        **Rate limit:** 10 requests per minute per IP.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ProfileLoginRequest'
+            examples:
+              with_password:
+                summary: Returning user with password set
+                value:
+                  magicToken: "a3f9d2c1e4b7089f4a2c8d1e6f3b9a0c..."
+                  password: "amber-river-silent-fox"
+              first_login_check:
+                summary: First-login check (no password yet)
+                value:
+                  magicToken: "a3f9d2c1e4b7089f4a2c8d1e6f3b9a0c..."
+      responses:
+        '200':
+          description: Token issued or first-login detected
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProfileLoginResponse'
+              examples:
+                authenticated:
+                  summary: Password correct — JWT returned
+                  value:
+                    success: true
+                    token: "eyJhbGciOiJIUzI1NiJ9..."
+                first_login:
+                  summary: No password set — redirect to set-password
+                  value:
+                    success: true
+                    firstLogin: true
+        '401':
+          description: Unknown magic token or wrong password
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                success: false
+                error: "Invalid credentials"
+        '422':
+          description: Validation error (token wrong length)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ValidationErrorResponse'
+        '429':
+          description: Rate limit exceeded
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /api/v1/profile/me:
+    get:
+      tags: [Profile]
+      summary: Get my profile
+      operationId: getMyProfile
+      security:
+        - ApplicantBearerAuth: []
+      description: |
+        Returns the authenticated applicant's non-sensitive profile:
+        alias, status, score threshold, and creation date.
+        No Instagram handle or other PII is included.
+      responses:
+        '200':
+          description: Applicant profile
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [success, data]
+                properties:
+                  success:
+                    type: boolean
+                    enum: [true]
+                  data:
+                    $ref: '#/components/schemas/ApplicantProfileView'
+              example:
+                success: true
+                data:
+                  applicantId: "64f1a2b3c4d5e6f7a8b9c0d1"
+                  alias: "Blue Falcon"
+                  status: "matched"
+                  scoreThreshold: 0.8
+                  createdAt: "2026-06-01T12:00:00.000Z"
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /api/v1/profile/matches:
+    get:
+      tags: [Profile]
+      summary: List my matches
+      operationId: getMyMatches
+      security:
+        - ApplicantBearerAuth: []
+      description: |
+        Returns the authenticated applicant's matches, filtered by score threshold.
+        Instagram handles are never included — the `perspective` field tells the
+        frontend which UI to render for each card.
+
+        When the applicant's status is `dating`, only the single `dating` match
+        is returned — other matches are hidden.
+      parameters:
+        - name: threshold
+          in: query
+          schema:
+            type: number
+            format: float
+            minimum: 0.6
+            maximum: 1.0
+            default: 0.8
+          description: "Minimum score (clamped to [0.6, 1.0]). Defaults to the applicant's saved threshold."
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 10
+            default: 10
+          description: "Maximum number of matches to return."
+      responses:
+        '200':
+          description: Match list
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [success, data]
+                properties:
+                  success:
+                    type: boolean
+                    enum: [true]
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/ApplicantMatchView'
+              example:
+                success: true
+                data:
+                  - matchId: "64f1a2b3c4d5e6f7a8b9c0d5"
+                    partnerAlias: "Silent River"
+                    score: 0.83
+                    status: "proposed"
+                    perspective: "none"
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /api/v1/profile/matches/{id}/contact:
+    post:
+      tags: [Profile]
+      summary: Request contact — reveal partner's Instagram
+      operationId: requestContact
+      security:
+        - ApplicantBearerAuth: []
+      description: |
+        Initiates the contact flow for a `proposed` match:
+        1. Decrypts the partner's Instagram handle (audit-logged as `APPLICANT_REVEAL_IDENTITY`)
+        2. Generates AI ice-breakers and date ideas tailored to both profiles
+        3. Transitions match → `in_progress`; sets the authenticated applicant as `initiatorId`
+
+        The partner's Instagram is returned **only** to the initiator in this response —
+        it is never exposed to the target or in any other endpoint.
+
+        Returns 403 if the applicant is not part of this match, or if the match is not `proposed`.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Match MongoDB ObjectId
+          example: "64f1a2b3c4d5e6f7a8b9c0d5"
+      responses:
+        '200':
+          description: Contact initiated — partner's Instagram + conversation starters returned
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [success, data]
+                properties:
+                  success:
+                    type: boolean
+                    enum: [true]
+                  data:
+                    $ref: '#/components/schemas/ContactResult'
+              example:
+                success: true
+                data:
+                  targetInstagram: "@partner_handle"
+                  iceBreakers:
+                    - "What's the most spontaneous trip you've taken?"
+                    - "What does your ideal Sunday look like?"
+                  dateIdeas:
+                    - "Coffee walk through the old city"
+                    - "Sunset picnic with homemade snacks"
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          description: Not a participant in this match, or match is not in `proposed` state
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Match not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /api/v1/profile/matches/{id}/respond:
+    post:
+      tags: [Profile]
+      summary: Respond to a contact request
+      operationId: respondToContact
+      security:
+        - ApplicantBearerAuth: []
+      description: |
+        Called by the **target** of a contact request (the non-initiator) to accept or decline.
+
+        **Accept (`accept: true`):**
+        - Match → `dating`
+        - Both applicants → `dating`
+        - All other `proposed`/`in_progress` matches for both applicants → `expired`
+
+        **Decline (`accept: false`):**
+        - Match → `declined`
+        - No applicant status changes
+
+        Returns 403 if called by the initiator (you cannot respond to your own request)
+        or if the match is not in `in_progress` state.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+          example: "64f1a2b3c4d5e6f7a8b9c0d5"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [accept]
+              properties:
+                accept:
+                  type: boolean
+                  example: true
+      responses:
+        '200':
+          description: Response recorded
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    enum: [true]
+              example:
+                success: true
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          description: Called by initiator, or match not in `in_progress` state
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Match not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '422':
+          description: Validation error (`accept` field missing or not boolean)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ValidationErrorResponse'
+
+  /api/v1/profile/matches/{id}/outcome:
+    post:
+      tags: [Profile]
+      summary: Report match outcome
+      operationId: reportOutcome
+      security:
+        - ApplicantBearerAuth: []
+      description: |
+        Either applicant in a `dating` or `in_progress` match can self-report the outcome.
+
+        **`success`:** match → `success`; both applicants → `inactive` (deletion in 180 days)
+
+        **`failed`:** match → `failed`; both applicants → `applied` (re-enters matching pool)
+
+        Returns 403 if the applicant is not part of this match or the match is not in
+        an appropriate state (`dating` or `in_progress`).
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+          example: "64f1a2b3c4d5e6f7a8b9c0d5"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [outcome]
+              properties:
+                outcome:
+                  type: string
+                  enum: [success, failed]
+                  example: "failed"
+      responses:
+        '200':
+          description: Outcome recorded
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    enum: [true]
+              example:
+                success: true
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          description: Not a participant, or match not in a reportable state
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Match not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '422':
+          description: Validation error (invalid outcome value)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ValidationErrorResponse'
+
+  /api/v1/profile/deactivate:
+    post:
+      tags: [Profile]
+      summary: Deactivate my account
+      operationId: deactivateMyAccount
+      security:
+        - ApplicantBearerAuth: []
+      description: |
+        Deactivates the authenticated applicant's account:
+        - Status → `inactive`; `deletionScheduledAt` = now + 180 days
+        - All `proposed`/`in_progress` matches → `expired`
+        - No data is deleted immediately
+
+        Idempotent — safe to call on an already-inactive account.
+      responses:
+        '200':
+          description: Account deactivated
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    enum: [true]
+              example:
+                success: true
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /api/v1/profile/set-password:
+    post:
+      tags: [Profile]
+      summary: Set password on first login
+      operationId: setPassword
+      description: |
+        Sets the applicant's password for the first time. Only works when
+        `passwordHash` is null (account never had a password set).
+
+        On success the password is stored as a bcrypt hash and a JWT is returned,
+        logging the applicant in immediately.
+
+        Use `GET /api/v1/profile/suggest-password` to offer a generated passphrase.
+
+        **Rate limit:** 10 requests per minute per IP (shared with login).
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [magicToken, newPassword]
+              properties:
+                magicToken:
+                  type: string
+                  format: hex
+                  minLength: 64
+                  maxLength: 64
+                  example: "a3f9d2c1e4b7089f4a2c8d1e6f3b9a0c..."
+                newPassword:
+                  type: string
+                  minLength: 8
+                  example: "amber-river-silent-fox"
+      responses:
+        '200':
+          description: Password set — JWT returned
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [success, token]
+                properties:
+                  success:
+                    type: boolean
+                    enum: [true]
+                  token:
+                    type: string
+                    example: "eyJhbGciOiJIUzI1NiJ9..."
+        '401':
+          description: Unknown magic token
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '409':
+          description: Password already set — use change-password instead
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                success: false
+                error: "Password already set. Use change-password to update it."
+        '422':
+          description: Validation error (token wrong length, password too short)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ValidationErrorResponse'
+
+  /api/v1/profile/suggest-password:
+    get:
+      tags: [Profile]
+      summary: Get a suggested passphrase
+      operationId: suggestPassword
+      description: |
+        Returns a randomly generated 4-word passphrase from a curated word pool.
+        No authentication required.
+
+        Intended as a convenience option in set-password and change-password forms.
+        The suggestion is never stored — call again for a fresh one.
+      responses:
+        '200':
+          description: Suggested passphrase
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [success, suggestion]
+                properties:
+                  success:
+                    type: boolean
+                    enum: [true]
+                  suggestion:
+                    type: string
+                    example: "amber-river-silent-fox"
+
+  /api/v1/profile/change-password:
+    post:
+      tags: [Profile]
+      summary: Change password
+      operationId: changePassword
+      security:
+        - ApplicantBearerAuth: []
+      description: |
+        Changes the authenticated applicant's password. Requires the current
+        password for verification.
+
+        Returns 400 if no password has been set yet (use `POST /set-password` first).
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [currentPassword, newPassword]
+              properties:
+                currentPassword:
+                  type: string
+                  example: "amber-river-silent-fox"
+                newPassword:
+                  type: string
+                  minLength: 8
+                  example: "cascade-stone-swift-oak"
+      responses:
+        '200':
+          description: Password updated
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    enum: [true]
+              example:
+                success: true
+        '400':
+          description: No password set yet — use set-password first
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Not authenticated, or current password is incorrect
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '422':
+          description: Validation error (new password too short)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ValidationErrorResponse'

@@ -1,3 +1,5 @@
+# use `docker compose --env-file .env.mongo.dev  -f docker-compose-mongo-dev.yml up -d` to start the MongoDB and Mongo Express services for development
+
 name: ons-mongo-dev
 
 services:

@@ -10,8 +10,8 @@ const EXPIRY    = env.jwtExpiry || "8h";
 
 export const COOKIE_NAME = "admin_token";
 
-export async function signAdminToken(adminId: string, role: AdminRole): Promise<string> {
-  return new SignJWT({ sub: adminId, role })
+export async function signAdminToken(adminId: string, username: string, role: AdminRole): Promise<string> {
+  return new SignJWT({ sub: adminId, username, role })
     .setProtectedHeader({ alg: ALGORITHM })
     .setIssuedAt()
     .setExpirationTime(EXPIRY)
@@ -60,8 +60,9 @@ export async function requireAdmin(c: Context, next: Next): Promise<Response | v
       return c.json({ success: false, error: "Insufficient permissions" }, 403);
     }
 
-    c.set("adminId",   payload.sub as string);
-    c.set("adminRole", payload.role as AdminRole);
+    c.set("adminId",       payload.sub      as string);
+    c.set("adminUsername", payload.username as string);
+    c.set("adminRole",     payload.role     as AdminRole);
     await next();
   } catch {
     return c.json({ success: false, error: "Invalid or expired token" }, 401);

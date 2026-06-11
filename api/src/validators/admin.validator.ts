@@ -20,7 +20,7 @@ export const paginationSchema = z.object({
 
 export const applicantFilterSchema = paginationSchema.extend({
   status: z
-    .enum(["active", "inactive", "matched", "withdrawn"])
+    .enum(["applied", "matched", "dating", "inactive"])
     .optional(),
 });
 
