@@ -160,6 +160,36 @@
   }
 }
 
+/* ─── Matching page (admin) ──────────────────────────────────────────────────
+   Entrance animations for the run-result card; the bloodstream pulse band
+   lives in admin/components/MatchingPulse.tsx. */
+
+@keyframes match-pop {
+  0%   { opacity: 0; transform: scale(0.4); }
+  60%  { opacity: 1; transform: scale(1.15); }
+  100% { opacity: 1; transform: scale(1); }
+}
+
+@keyframes match-rise {
+  from { opacity: 0; transform: translateY(10px); }
+  to   { opacity: 1; transform: none; }
+}
+
+@keyframes match-fade {
+  from { opacity: 0; transform: translateY(4px); }
+  to   { opacity: 1; transform: none; }
+}
+
+@layer components {
+  .match-pop  { animation: match-pop 0.55s cubic-bezier(0.34, 1.56, 0.64, 1) both; }
+  .match-rise { animation: match-rise 0.6s cubic-bezier(0.2, 0.7, 0.3, 1) both; }
+  .match-fade { animation: match-fade 0.45s ease-out both; }
+
+  @media (prefers-reduced-motion: reduce) {
+    .match-pop, .match-rise, .match-fade { animation: none; opacity: 1; }
+  }
+}
+
 @layer utilities {
   .scrollbar-hide {
     -ms-overflow-style: none;

@@ -4,8 +4,12 @@ import { useTranslation, Trans } from 'react-i18next'
 import { runMatching, fetchMatchingLastRun } from '../api/client'
 import Button from '../../components/ui/Button'
 import ConfirmDialog from '../../components/ui/ConfirmDialog'
+import MatchingPulse, { type PulseState } from '../components/MatchingPulse'
 import { useTimeAgo } from '../utils/timeAgo'
 import type { MatchingRun, MatchingLastRun } from '../types'
+
+const RUN_PHASES = ['phaseLoading', 'phaseScoring', 'phaseSaving'] as const
+const PHASE_INTERVAL_MS = 1700
 
 // ── Component ──────────────────────────────────────────────────────────────
 
@@ -18,10 +22,19 @@ export function Matching() {
   const [error, setError]         = useState('')
   const [confirming, setConfirming] = useState(false)
   const [lastRun, setLastRun]     = useState<MatchingLastRun | null>(null)
+  const [phase, setPhase]         = useState(0)
 
   useEffect(() => {
     fetchMatchingLastRun().then(setLastRun).catch(() => {})
   }, [])
+
+  // Cycle the "working" status line while a run is in flight
+  useEffect(() => {
+    if (!loading) return
+    setPhase(0)
+    const id = setInterval(() => setPhase(p => (p + 1) % RUN_PHASES.length), PHASE_INTERVAL_MS)
+    return () => clearInterval(id)
+  }, [loading])
 
   const ALGORITHMS = [
     { value: 'embedding-cosine', label: t('admin.matching.embedding'), hint: t('admin.matching.embeddingHint'), recommended: true },
@@ -32,6 +45,8 @@ export function Matching() {
   const selectedAlgorithm = ALGORITHMS.find(a => a.value === algorithm)
 
   const isNonEmbedding = algorithm !== 'embedding-cosine'
+
+  const pulseState: PulseState = loading ? 'running' : result ? 'done' : 'idle'
 
   function handleAlgorithmChange(value: string) {
     setAlgorithm(value)
@@ -73,96 +88,116 @@ export function Matching() {
       </div>
 
       {/* Run Matching card */}
-      <div className="bg-surface border border-border rounded-2xl p-8 shadow-card space-y-6">
-        <h2 className="text-xl font-semibold text-primary mb-6">{t('admin.matching.title')}</h2>
+      <div className="bg-surface border border-border rounded-2xl shadow-card overflow-hidden">
 
-        {/* Algorithm dropdown */}
-        <div className="space-y-3">
-          <label htmlFor="matching-algorithm" className="text-sm font-medium text-primary block">
-            {t('admin.matching.algorithm')}
-          </label>
-          <select
-            id="matching-algorithm"
-            value={algorithm}
-            onChange={e => handleAlgorithmChange(e.target.value)}
-            className="w-full max-w-xs rounded-xl border border-border bg-surface px-4 py-3 text-[15px] text-primary transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-accent/30 focus:border-accent cursor-pointer"
-          >
-            {ALGORITHMS.map(a => (
-              <option key={a.value} value={a.value}>
-                {a.label}{a.recommended ? ` — ${t('admin.matching.recommended')}` : ''}
-              </option>
-            ))}
-          </select>
-          {selectedAlgorithm?.hint && (
-            <p className="text-xs text-muted">{selectedAlgorithm.hint}</p>
+        {/* Pulse band — two streams meeting at a beating heart */}
+        <div className="relative h-44 bg-gradient-to-b from-surface-subtle/60 to-surface">
+          <MatchingPulse state={pulseState} className="absolute inset-0" />
+
+          {/* working status line, cycling while the run is in flight */}
+          {loading && (
+            <div className="absolute inset-x-0 bottom-3 text-center">
+              <p key={phase} className="match-fade inline-flex items-center gap-2 text-xs font-medium text-accent-ink">
+                <span className="relative flex h-1.5 w-1.5">
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-accent opacity-75" />
+                  <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-accent" />
+                </span>
+                {t(`admin.matching.${RUN_PHASES[phase]}`)}
+              </p>
+            </div>
           )}
         </div>
 
-        {/* Multilingual warning */}
-        {isNonEmbedding && (
-          <div className="flex items-start gap-3 rounded-xl bg-error-light border border-error/20 px-4 py-3">
-            <svg className="w-4 h-4 text-error shrink-0 mt-0.5" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-              <path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/>
-              <line x1="12" y1="9" x2="12" y2="13"/>
-              <line x1="12" y1="17" x2="12.01" y2="17"/>
-            </svg>
-            <p className="text-xs text-error leading-relaxed">
-              <Trans i18nKey="admin.matching.multilingualWarning" components={{ bold: <strong /> }} />
-            </p>
+        <div className="p-8 pt-6 space-y-6">
+          {/* Algorithm dropdown */}
+          <div className="space-y-3">
+            <label htmlFor="matching-algorithm" className="text-sm font-medium text-primary block">
+              {t('admin.matching.algorithm')}
+            </label>
+            <select
+              id="matching-algorithm"
+              value={algorithm}
+              onChange={e => handleAlgorithmChange(e.target.value)}
+              disabled={loading}
+              className="w-full max-w-xs rounded-xl border border-border bg-surface px-4 py-3 text-[15px] text-primary transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-accent/30 focus:border-accent cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {ALGORITHMS.map(a => (
+                <option key={a.value} value={a.value}>
+                  {a.label}{a.recommended ? ` — ${t('admin.matching.recommended')}` : ''}
+                </option>
+              ))}
+            </select>
+            {selectedAlgorithm?.hint && (
+              <p className="text-xs text-muted">{selectedAlgorithm.hint}</p>
+            )}
           </div>
-        )}
 
-        {/* Last run info */}
-        <p className="text-sm text-muted">
-          {lastRun
-            ? t('admin.matching.lastRunSummary', { time: timeAgo(new Date(lastRun.at).getTime()), count: lastRun.couplesProposed })
-            : t('admin.matching.neverRun')}
-        </p>
+          {/* Multilingual warning */}
+          {isNonEmbedding && (
+            <div className="match-fade flex items-start gap-3 rounded-xl bg-error-light border border-error/20 px-4 py-3">
+              <svg className="w-4 h-4 text-error shrink-0 mt-0.5" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                <path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/>
+                <line x1="12" y1="9" x2="12" y2="13"/>
+                <line x1="12" y1="17" x2="12.01" y2="17"/>
+              </svg>
+              <p className="text-xs text-error leading-relaxed">
+                <Trans i18nKey="admin.matching.multilingualWarning" components={{ bold: <strong /> }} />
+              </p>
+            </div>
+          )}
 
-        {/* Error message */}
-        {error && <p className="text-sm text-error">{error}</p>}
+          {/* Last run info */}
+          <p className="text-sm text-muted">
+            {lastRun
+              ? t('admin.matching.lastRunSummary', { time: timeAgo(new Date(lastRun.at).getTime()), count: lastRun.couplesProposed })
+              : t('admin.matching.neverRun')}
+          </p>
 
-        {/* Confirm dialog */}
-        <Button onClick={() => setConfirming(true)} loading={loading}>
-          {t('admin.matching.run')}
-        </Button>
-        <ConfirmDialog
-          open={confirming}
-          title={t('admin.matching.confirmTitle', { algorithm: selectedAlgorithm?.label ?? algorithm })}
-          description={t('admin.matching.confirmBody')}
-          confirmLabel={t('admin.matching.confirmRun')}
-          cancelLabel={t('admin.matching.cancel')}
-          loading={loading}
-          onConfirm={handleConfirm}
-          onClose={() => setConfirming(false)}
-        />
+          {/* Error message */}
+          {error && <p className="match-fade text-sm text-error" role="alert">{error}</p>}
+
+          {/* Confirm dialog */}
+          <Button onClick={() => setConfirming(true)} loading={loading}>
+            {t('admin.matching.run')}
+          </Button>
+          <ConfirmDialog
+            open={confirming}
+            title={t('admin.matching.confirmTitle', { algorithm: selectedAlgorithm?.label ?? algorithm })}
+            description={t('admin.matching.confirmBody')}
+            confirmLabel={t('admin.matching.confirmRun')}
+            cancelLabel={t('admin.matching.cancel')}
+            loading={loading}
+            onConfirm={handleConfirm}
+            onClose={() => setConfirming(false)}
+          />
+        </div>
       </div>
 
       {/* Result summary card */}
       {result && (
-        <div className="bg-success-light border border-success/30 rounded-xl p-4 space-y-4">
-          <div className="flex items-center gap-2">
-            <span className="flex h-6 w-6 items-center justify-center rounded-full bg-success-light">
-              <svg className="h-3.5 w-3.5 text-success" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+        <div className="match-rise bg-success-light border border-success/30 rounded-2xl p-6 space-y-4">
+          <div className="flex items-center gap-3">
+            <span className="match-pop flex h-8 w-8 items-center justify-center rounded-full bg-success shadow-card">
+              <svg className="h-4 w-4 text-white" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
                 <polyline points="20 6 9 17 4 12" />
               </svg>
             </span>
-            <p className="text-sm font-medium text-primary">{t('admin.matching.runComplete')}</p>
+            <div>
+              <p className="text-sm font-semibold text-primary">{t('admin.matching.runComplete')}</p>
+              <p className="text-xs text-muted">{t('admin.matching.algorithmUsed', { algorithm: result.algorithm })}</p>
+            </div>
           </div>
 
           <div className="grid grid-cols-3 gap-3">
-            <StatCard label={t('admin.matching.statApplicants')} value={result.totalApplicants} />
-            <StatCard label={t('admin.matching.statCouples')}    value={result.couplesProposed} accent />
-            <StatCard label={t('admin.matching.statDuration')}   value={`${result.durationMs}ms`} />
+            <StatCard label={t('admin.matching.statApplicants')} value={result.totalApplicants} delay={0.1} />
+            <StatCard label={t('admin.matching.statCouples')}    value={result.couplesProposed} accent delay={0.22} />
+            <StatCard label={t('admin.matching.statDuration')}   value={`${result.durationMs}ms`} delay={0.34} />
           </div>
-
-          <p className="text-xs text-muted">
-            {t('admin.matching.algorithmUsed', { algorithm: result.algorithm })}
-          </p>
 
           <Link
             to="/admin/matches"
-            className="inline-flex items-center gap-1.5 text-sm font-medium text-accent hover:underline"
+            className="match-rise inline-flex items-center gap-1.5 text-sm font-medium text-accent-ink hover:underline"
+            style={{ animationDelay: '0.45s' }}
           >
             {t('admin.matching.viewMatches')}
             <svg className="h-3.5 w-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
@@ -175,10 +210,10 @@ export function Matching() {
   )
 }
 
-function StatCard({ label, value, accent }: { label: string; value: string | number; accent?: boolean }) {
+function StatCard({ label, value, accent, delay }: { label: string; value: string | number; accent?: boolean; delay: number }) {
   return (
-    <div className="bg-bg border border-border rounded-xl px-4 py-3">
-      <p className={`text-xl font-semibold ${accent ? 'text-accent' : 'text-primary'}`}>{value}</p>
+    <div className="match-rise bg-surface border border-border rounded-xl px-4 py-3 shadow-card" style={{ animationDelay: `${delay}s` }}>
+      <p className={`text-xl font-semibold ${accent ? 'text-accent-ink' : 'text-primary'}`}>{value}</p>
       <p className="text-xs text-muted mt-0.5">{label}</p>
     </div>
   )
