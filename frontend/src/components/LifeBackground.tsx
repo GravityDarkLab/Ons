@@ -1,17 +1,23 @@
 import { useEffect, useRef } from 'react'
 
 /* Animated "alive" backdrop for the public pages: a canvas bloodstream of
-   warm gold particles whose flow surges in a heartbeat rhythm. Pointer
-   parallax adds depth on fine-pointer devices. Honors prefers-reduced-motion
-   (single static frame, no surge, no parallax) and pauses while the tab is
-   hidden. `fixed` pins the layer to the viewport for long scrolling pages. */
+   warm gold particles driven by simple hemodynamics. The heartbeat acts as a
+   pressure wave; flow follows it through a Windkessel-style compliance model
+   (first-order lag), so surges accelerate and decay smoothly — no lurches.
+   Particles advance at constant pixel velocity along the vessel curves
+   (arc-length corrected) and all motion runs on accumulated simulation time,
+   so dropped frames and tab switches can never cause position jumps.
+   Honors prefers-reduced-motion (single static frame, no parallax) and
+   pauses while the tab is hidden. `fixed` pins the layer to the viewport
+   for long scrolling pages. */
 
-const BEAT_MS = 1875 // ~64 bpm — the pulse driving the flow surges
+const BEAT_S = 1.875 // ~64 bpm — the pressure wave driving the flow
+const COMPLIANCE = 5 // 1/s — how fast flow responds to pressure (τ = 200ms)
 
-// lub-dub envelope over one beat cycle, phase ∈ [0,1) → pulse ∈ [0,1]
+// lub-dub pressure envelope over one beat cycle, phase ∈ [0,1) → [0,1]
 function beatPulse(phase: number): number {
   const bump = (c: number, w: number) => Math.exp(-((phase - c) * (phase - c)) / (2 * w * w))
-  return Math.min(1, bump(0.08, 0.045) + 0.65 * bump(0.3, 0.06))
+  return Math.min(1, bump(0.08, 0.07) + 0.6 * bump(0.32, 0.09))
 }
 
 type Vec = readonly [number, number]
@@ -33,14 +39,25 @@ function veinPoint(v: Vein, t: number, w: number, h: number): [number, number] {
   ]
 }
 
+// First derivative in pixel space — used for arc-length-constant velocity
+// and for the cross-flow wobble direction (perpendicular to the vessel)
+function veinDeriv(v: Vein, t: number, w: number, h: number): [number, number] {
+  const u = 1 - t
+  return [
+    (3 * u * u * (v.p1[0] - v.p0[0]) + 6 * u * t * (v.p2[0] - v.p1[0]) + 3 * t * t * (v.p3[0] - v.p2[0])) * w,
+    (3 * u * u * (v.p1[1] - v.p0[1]) + 6 * u * t * (v.p2[1] - v.p1[1]) + 3 * t * t * (v.p3[1] - v.p2[1])) * h,
+  ]
+}
+
 interface Particle {
   vein: number
   t: number
-  speed: number
-  depth: number // 0 = far, 1 = near
+  jitter: number // per-cell velocity variation
+  depth: number //  0 = far, 1 = near
   size: number
   wobble: number
   phase: number
+  phase2: number
   sprite: number
 }
 
@@ -67,11 +84,12 @@ function makeParticles(count: number): Particle[] {
     list.push({
       vein: i % VEINS.length,
       t: Math.random(),
-      speed: 0.035 + Math.random() * 0.04,
+      jitter: 0.8 + Math.random() * 0.6,
       depth,
       size: 1.2 + depth * 2.8,
-      wobble: 0.6 + Math.random() * 1.4,
+      wobble: 0.5 + Math.random() * 1.1,
       phase: Math.random() * Math.PI * 2,
+      phase2: Math.random() * Math.PI * 2,
       // mostly gold, a few deep-gold and warm-rose for "blood" warmth
       sprite: Math.random() < 0.62 ? 0 : Math.random() < 0.6 ? 1 : 2,
     })
@@ -114,6 +132,8 @@ export default function LifeBackground({ fixed = false }: Props) {
     let h = 0
     let raf = 0
     let lastTime = 0
+    let simTime = 0 // accumulated sim seconds — immune to wall-clock gaps
+    let flow = 0.5 //  smoothed flow rate (Windkessel state)
     // pointer parallax, smoothed each frame
     let targetPX = 0, targetPY = 0, px = 0, py = 0
 
@@ -125,10 +145,10 @@ export default function LifeBackground({ fixed = false }: Props) {
       canvas!.width = Math.round(w * dpr)
       canvas!.height = Math.round(h * dpr)
       ctx!.setTransform(dpr, 0, 0, dpr, 0, 0)
-      if (reduceMotion) drawFrame(0, 0.25)
+      if (reduceMotion) drawFrame(0, 0.5, 0.3)
     }
 
-    function drawVeins(pulse: number) {
+    function drawVeins(flowNorm: number) {
       ctx!.lineCap = 'round'
       for (const v of VEINS) {
         ctx!.beginPath()
@@ -136,44 +156,65 @@ export default function LifeBackground({ fixed = false }: Props) {
         ctx!.bezierCurveTo(v.p1[0] * w, v.p1[1] * h, v.p2[0] * w, v.p2[1] * h, v.p3[0] * w, v.p3[1] * h)
         for (const [lw, a] of [[64, 0.016], [30, 0.022], [10, 0.032]] as const) {
           ctx!.lineWidth = lw
-          ctx!.strokeStyle = `rgba(201,169,110,${a * (0.85 + 0.5 * pulse)})`
+          ctx!.strokeStyle = `rgba(201,169,110,${a * (0.85 + 0.45 * flowNorm)})`
           ctx!.stroke()
         }
       }
     }
 
-    function drawFrame(now: number, pulse: number) {
+    // Advances particles by dt (0 = render only) and paints the frame
+    function drawFrame(dt: number, flowVal: number, flowNorm: number) {
       ctx!.clearRect(0, 0, w, h)
-      drawVeins(pulse)
+      drawVeins(flowNorm)
       for (const p of particles) {
-        const [bx, by] = veinPoint(VEINS[p.vein], p.t, w, h)
-        const x = bx + px * 22 * p.depth
-        const y = by + Math.sin(now * 0.001 * p.wobble + p.phase) * 12 + py * 14 * p.depth
-        const size = p.size * (1 + 0.18 * pulse * p.depth)
-        ctx!.globalAlpha = (0.18 + 0.42 * p.depth) * (0.8 + 0.35 * pulse)
+        const vein = VEINS[p.vein]
+        if (dt > 0) {
+          const [dx, dy] = veinDeriv(vein, p.t, w, h)
+          const arc = Math.max(Math.hypot(dx, dy), 40) // px per t-unit
+          // constant pixel velocity along the vessel, scaled by smoothed flow
+          const vel = (70 + 110 * p.depth) * p.jitter * (0.35 + 0.75 * flowVal)
+          p.t += (vel * dt) / arc
+          if (p.t > 1.04) {
+            p.t = -0.04
+            p.phase = Math.random() * Math.PI * 2
+            p.phase2 = Math.random() * Math.PI * 2
+          }
+        }
+        const [bx, by] = veinPoint(vein, p.t, w, h)
+        const [dx, dy] = veinDeriv(vein, p.t, w, h)
+        const m = Math.hypot(dx, dy) || 1
+        // cross-flow oscillation, perpendicular to the vessel direction;
+        // two incommensurate sines read as organic drift, not metronome sway
+        const swing =
+          (Math.sin(simTime * p.wobble + p.phase) * 0.7 +
+            Math.sin(simTime * p.wobble * 1.73 + p.phase2) * 0.3) *
+          (5 + 7 * (1 - p.depth * 0.5))
+        const x = bx + (-dy / m) * swing + px * 22 * p.depth
+        const y = by + (dx / m) * swing + py * 14 * p.depth
+        const size = p.size * (1 + 0.12 * flowNorm * p.depth)
+        ctx!.globalAlpha = (0.18 + 0.42 * p.depth) * (0.75 + 0.35 * flowNorm)
         ctx!.drawImage(sprites[p.sprite], x - size * 3, y - size * 3, size * 6, size * 6)
       }
       ctx!.globalAlpha = 1
     }
 
     function tick(now: number) {
-      const dt = lastTime ? Math.min((now - lastTime) / 1000, 0.05) : 0.016
+      // clamp dt so frame hiccups slow time instead of teleporting particles
+      const dt = lastTime ? Math.min((now - lastTime) / 1000, 1 / 20) : 1 / 60
       lastTime = now
-      const pulse = beatPulse((now % BEAT_MS) / BEAT_MS)
+      simTime += dt
 
-      px += (targetPX - px) * 0.06
-      py += (targetPY - py) * 0.06
+      // pressure wave from the beat; flow follows with vascular compliance
+      const pressure = 0.35 + beatPulse((simTime % BEAT_S) / BEAT_S)
+      flow += (pressure - flow) * (1 - Math.exp(-COMPLIANCE * dt))
+      const flowNorm = Math.min(Math.max((flow - 0.4) / 0.5, 0), 1)
 
-      for (const p of particles) {
-        // blood is pushed in surges: flow speed follows the beat envelope
-        p.t += p.speed * dt * (0.55 + 1.1 * pulse) * (0.5 + p.depth)
-        if (p.t > 1.04) {
-          p.t = -0.04
-          p.phase = Math.random() * Math.PI * 2
-        }
-      }
+      // frame-rate-independent parallax smoothing
+      const ease = 1 - Math.exp(-5 * dt)
+      px += (targetPX - px) * ease
+      py += (targetPY - py) * ease
 
-      drawFrame(now, pulse)
+      drawFrame(dt, flow, flowNorm)
       raf = requestAnimationFrame(tick)
     }
 
