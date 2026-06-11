@@ -11,6 +11,12 @@ interface ConfirmDialogProps {
   tone?: 'default' | 'danger'
   loading?: boolean
   onConfirm: () => void
+  /**
+   * Explicit action for the cancel button when it differs from a plain
+   * dismiss (Escape / backdrop always call onClose). Use this when "cancel"
+   * is itself consequential and must not be triggerable by accident.
+   */
+  onCancel?: () => void
   onClose: () => void
 }
 
@@ -23,6 +29,7 @@ export default function ConfirmDialog({
   tone = 'default',
   loading = false,
   onConfirm,
+  onCancel,
   onClose,
 }: ConfirmDialogProps) {
   const titleId = useId()
@@ -67,7 +74,7 @@ export default function ConfirmDialog({
         <div className="mt-6 flex items-center justify-end gap-3">
           <button
             type="button"
-            onClick={onClose}
+            onClick={onCancel ?? onClose}
             disabled={loading}
             className="px-4 py-2 text-sm font-medium text-muted border border-border rounded-xl hover:text-primary hover:bg-bg transition-colors disabled:opacity-50"
           >

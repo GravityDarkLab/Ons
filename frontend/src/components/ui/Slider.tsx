@@ -6,8 +6,11 @@ interface SliderProps {
   onChange: (value: number) => void
   min?: number
   max?: number
+  step?: number
   lowLabel?: string
   highLabel?: string
+  /** Custom value display next to the label (defaults to "value / max") */
+  formatValue?: (value: number) => string
   error?: string
 }
 
@@ -17,8 +20,10 @@ export default function Slider({
   onChange,
   min = 1,
   max = 10,
+  step = 1,
   lowLabel = 'not important',
   highLabel = 'very important',
+  formatValue,
   error,
 }: SliderProps) {
   const { i18n } = useTranslation()
@@ -49,7 +54,9 @@ export default function Slider({
       {label && (
         <div className="flex items-center justify-between">
           <span className="text-sm font-medium text-primary">{label}</span>
-          <span className="text-sm font-semibold text-accent tabular-nums">{value} / {max}</span>
+          <span className="text-sm font-semibold text-accent tabular-nums">
+            {formatValue ? formatValue(value) : `${value} / ${max}`}
+          </span>
         </div>
       )}
 
@@ -67,6 +74,7 @@ export default function Slider({
           dir="ltr"
           min={min}
           max={max}
+          step={step}
           value={nativeValue}
           onChange={handleChange}
           className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
@@ -88,7 +96,7 @@ export default function Slider({
 
       {/* Tick marks */}
       <div className="flex justify-between px-0.5 -mt-2">
-        {Array.from({ length: max - min + 1 }, (_, i) => i + min).map((tick) => (
+        {Array.from({ length: Math.floor((max - min) / step) + 1 }, (_, i) => min + i * step).map((tick) => (
           <button
             key={tick}
             type="button"

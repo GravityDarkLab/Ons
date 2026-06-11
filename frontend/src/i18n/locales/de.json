@@ -311,7 +311,11 @@
       "submitted": "Eingereicht am {{date}}",
       "minScore": "Min. Match-Score:",
       "dormantTitle": "Dein Konto ruht",
-      "dormantBody": "Danke, dass du Teil von Ons bist."
+      "dormantBody": "Danke, dass du Teil von Ons bist.",
+      "nextPhaseTitle": "Gerade keine Matches",
+      "nextPhaseBody": "Neue Matches kommen mit der nächsten Matching-Phase — schau morgen wieder vorbei.",
+      "noneAtThresholdTitle": "Keine Matches bei diesem Score",
+      "noneAtThresholdBody": "Schiebe den Regler nach unten, um mehr Matches zu sehen."
     },
     "matches": {
       "empty": "Keine Matches vorhanden.",
@@ -334,7 +338,12 @@
         "failed": "Gescheitert",
         "declined": "Abgelehnt",
         "expired": "Abgelaufen"
-      }
+      },
+      "confirmContactTitle": "Es ist ein Match!",
+      "confirmContactBody": "{{alias}} ist @{{handle}} auf Instagram. Bereit für den ersten Schritt? Wenn du jetzt passt, wird dieses Match endgültig geschlossen und du wartest auf die nächste Matching-Phase.",
+      "confirmContactYes": "Ja, verbinde uns",
+      "confirmContactNo": "Nein, passen",
+      "withdrawNotice": "Match geschlossen. Neue Matches gibt es in der nächsten Matching-Phase — schau morgen wieder vorbei."
     },
     "settings": {
       "title": "Einstellungen",

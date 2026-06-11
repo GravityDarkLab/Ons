@@ -6,7 +6,9 @@ import MatchList from './MatchList'
 import { useTranslation } from 'react-i18next'
 import ProfileSettingsDrawer from './ProfileSettingsDrawer'
 import Badge from '../../components/ui/Badge'
+import EmptyState from '../../components/ui/EmptyState'
 import Skeleton from '../../components/ui/Skeleton'
+import Slider from '../../components/ui/Slider'
 import ThemeToggle from '../../theme/ThemeToggle'
 import LanguageSwitcher from '../../components/LanguageSwitcher'
 import { applicantStatusTone } from '../../components/ui/statusTones'
@@ -38,9 +40,11 @@ export default function ProfileDashboard() {
   useEffect(() => {
     async function load() {
       try {
+        // Fetch at the server's minimum threshold so the slider can reveal
+        // lower-scored matches client-side without refetching
         const [prof, matchList] = await Promise.all([
           getMyProfile(),
-          getMyMatches(undefined, 20),
+          getMyMatches(0.6, 50),
         ])
         setProfile(prof)
         setThreshold(prof.scoreThreshold ?? 0.8)
@@ -60,7 +64,10 @@ export default function ProfileDashboard() {
     void load()
   }, [navigate])
 
-  const filteredMatches = matches.filter(m => m.score >= threshold)
+  // Only undecided proposals are score-filtered — an active contact or dating
+  // match stays visible regardless of where the slider sits
+  const visibleMatches = matches.filter(m => (m.status === 'proposed' ? m.score >= threshold : true))
+  const hasProposed = matches.some(m => m.status === 'proposed')
 
   // ── Loading / error states ────────────────────────────────────────────────
 
@@ -146,24 +153,44 @@ export default function ProfileDashboard() {
 
         {profile?.status === 'matched' && (
           <div className="max-w-2xl mx-auto px-6 py-8 space-y-6">
-            {/* Threshold filter pills */}
-            <div className="flex items-center gap-2">
-              <span className="text-sm text-muted">{t('portal.dashboard.minScore')}</span>
-              {[60, 70, 80].map(pct => (
-                <button
-                  key={pct}
-                  className={`rounded-full px-3 py-1 text-sm transition-colors ${
-                    threshold * 100 === pct
-                      ? 'bg-accent text-bg'
-                      : 'bg-surface border border-border text-muted hover:text-primary hover:border-accent/40'
-                  }`}
-                  onClick={() => setThreshold(pct / 100)}
-                >
-                  {pct}%
-                </button>
-              ))}
-            </div>
-            <MatchList matches={filteredMatches} onMatchesChange={setMatches} />
+            {matches.length === 0 ? (
+              // Nothing live for this applicant (e.g. after passing on a
+              // contact) — fresh matches arrive with the next matching phase
+              <div className="bg-surface border border-border rounded-2xl shadow-card">
+                <EmptyState
+                  title={t('portal.dashboard.nextPhaseTitle')}
+                  description={t('portal.dashboard.nextPhaseBody')}
+                />
+              </div>
+            ) : (
+              <>
+                {hasProposed && (
+                  <div className="bg-surface border border-border rounded-2xl p-5 shadow-card">
+                    <Slider
+                      label={t('portal.dashboard.minScore')}
+                      value={Math.round(threshold * 100)}
+                      onChange={pct => setThreshold(pct / 100)}
+                      min={60}
+                      max={100}
+                      step={5}
+                      lowLabel="60%"
+                      highLabel="100%"
+                      formatValue={v => `${v}%`}
+                    />
+                  </div>
+                )}
+                {visibleMatches.length === 0 ? (
+                  <div className="bg-surface border border-border rounded-2xl shadow-card">
+                    <EmptyState
+                      title={t('portal.dashboard.noneAtThresholdTitle')}
+                      description={t('portal.dashboard.noneAtThresholdBody')}
+                    />
+                  </div>
+                ) : (
+                  <MatchList matches={visibleMatches} onMatchesChange={setMatches} />
+                )}
+              </>
+            )}
           </div>
         )}
 

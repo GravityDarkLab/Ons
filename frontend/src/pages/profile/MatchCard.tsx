@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import Badge from '../../components/ui/Badge'
+import ConfirmDialog from '../../components/ui/ConfirmDialog'
 import { matchStatusTone } from '../../components/ui/statusTones'
 import { useTimeAgo } from '../../admin/utils/timeAgo'
 import type { MatchView, ContactResult } from '../../api/profile.client'
@@ -11,6 +12,7 @@ interface MatchCardProps {
   match: MatchView
   onContactRequest?: (matchId: string) => Promise<ContactResult>
   onRespond?: (matchId: string, accept: boolean) => Promise<void>
+  onWithdraw?: (matchId: string) => Promise<void>
   onOutcome?: (matchId: string, outcome: 'success' | 'failed') => Promise<void>
 }
 
@@ -71,11 +73,15 @@ function IceBreakersSection({ iceBreakers, dateIdeas }: { iceBreakers?: string[]
 
 // ── Main component ────────────────────────────────────────────────────────────
 
-export function MatchCard({ match, onContactRequest, onRespond, onOutcome }: MatchCardProps) {
+export function MatchCard({ match, onContactRequest, onRespond, onWithdraw, onOutcome }: MatchCardProps) {
   const { t } = useTranslation()
   const timeAgo = useTimeAgo()
   const [displayMatch, setDisplayMatch] = useState<MatchView>(match)
   const [loadingContact, setLoadingContact] = useState(false)
+  // Contact has succeeded server-side (identity revealed, other matches
+  // released) but the user hasn't confirmed/passed in the dialog yet
+  const [pendingContact, setPendingContact] = useState<ContactResult | null>(null)
+  const [withdrawing, setWithdrawing] = useState(false)
   const [loadingAccept, setLoadingAccept] = useState(false)
   const [loadingDecline, setLoadingDecline] = useState(false)
   const [loadingSuccess, setLoadingSuccess] = useState(false)
@@ -254,18 +260,47 @@ export function MatchCard({ match, onContactRequest, onRespond, onOutcome }: Mat
     setActionError('')
     try {
       const result = await onContactRequest(matchId)
-      setDisplayMatch(prev => ({
-        ...prev,
-        status: 'in_progress',
-        perspective: 'initiator',
-        targetInstagram: result.targetInstagram,
-        iceBreakers: result.iceBreakers,
-        dateIdeas: result.dateIdeas,
-      }))
+      // Reveal happened server-side — let the user confirm or pass in a dialog
+      setPendingContact(result)
     } catch (err) {
       failAction(err)
     } finally {
       setLoadingContact(false)
+    }
+  }
+
+  // Confirm (and any plain dismiss — Escape/backdrop must never decline
+  // permanently by accident): proceed to the waiting "contact status" view
+  const confirmContact = () => {
+    if (!pendingContact) return
+    setDisplayMatch(prev => ({
+      ...prev,
+      status: 'in_progress',
+      perspective: 'initiator',
+      targetInstagram: pendingContact.targetInstagram,
+      iceBreakers: pendingContact.iceBreakers,
+      dateIdeas: pendingContact.dateIdeas,
+    }))
+    setPendingContact(null)
+  }
+
+  // Explicit "No": withdraw — the match is declined for good and the user
+  // waits for the next matching phase
+  const cancelContact = async () => {
+    if (!onWithdraw) {
+      confirmContact()
+      return
+    }
+    setWithdrawing(true)
+    try {
+      await onWithdraw(matchId)
+      // Parent clears the list — this card unmounts
+    } catch (err) {
+      // Withdraw failed: fall back to the waiting view, the contact is still live
+      failAction(err)
+      confirmContact()
+    } finally {
+      setWithdrawing(false)
     }
   }
 
@@ -286,6 +321,20 @@ export function MatchCard({ match, onContactRequest, onRespond, onOutcome }: Mat
         </button>
         {actionError && <p role="alert" className="text-sm text-error mt-3">{actionError}</p>}
       </div>
+      <ConfirmDialog
+        open={pendingContact !== null}
+        title={t('portal.matches.confirmContactTitle')}
+        description={t('portal.matches.confirmContactBody', {
+          alias: partnerAlias,
+          handle: pendingContact?.targetInstagram ?? '',
+        })}
+        confirmLabel={t('portal.matches.confirmContactYes')}
+        cancelLabel={t('portal.matches.confirmContactNo')}
+        loading={withdrawing}
+        onConfirm={confirmContact}
+        onCancel={() => { void cancelContact() }}
+        onClose={confirmContact}
+      />
     </div>
   )
 }

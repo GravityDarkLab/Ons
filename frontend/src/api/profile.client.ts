@@ -136,6 +136,14 @@ export async function respondToContact(matchId: string, accept: boolean): Promis
   )
 }
 
+/** Initiator backs out after the reveal — match is declined permanently. */
+export async function withdrawContact(matchId: string): Promise<void> {
+  await profileRequest<unknown>(
+    `/profile/matches/${matchId}/withdraw`,
+    { method: 'POST' },
+  )
+}
+
 export async function reportOutcome(
   matchId: string,
   outcome: 'success' | 'failed',

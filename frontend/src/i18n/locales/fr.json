@@ -311,7 +311,11 @@
       "submitted": "Envoyé le {{date}}",
       "minScore": "Score min. :",
       "dormantTitle": "Ton compte est en sommeil",
-      "dormantBody": "Merci de faire partie d'Ons."
+      "dormantBody": "Merci de faire partie d'Ons.",
+      "nextPhaseTitle": "Aucun match pour le moment",
+      "nextPhaseBody": "De nouveaux matchs arriveront à la prochaine phase de matching — revenez demain.",
+      "noneAtThresholdTitle": "Aucun match à ce score",
+      "noneAtThresholdBody": "Baissez le curseur pour voir plus de matchs."
     },
     "matches": {
       "empty": "Aucun match à afficher.",
@@ -334,7 +338,12 @@
         "failed": "Échoué",
         "declined": "Refusé",
         "expired": "Expiré"
-      }
+      },
+      "confirmContactTitle": "C'est un match !",
+      "confirmContactBody": "{{alias}}, c'est @{{handle}} sur Instagram. Prêt·e à faire le premier pas ? Si vous passez maintenant, ce match sera définitivement fermé et vous attendrez la prochaine phase de matching.",
+      "confirmContactYes": "Oui, on se lance",
+      "confirmContactNo": "Non, je passe",
+      "withdrawNotice": "Match fermé. De nouveaux matchs arriveront à la prochaine phase de matching — revenez demain."
     },
     "settings": {
       "title": "Réglages",

@@ -1,8 +1,9 @@
 import { useTranslation } from 'react-i18next'
 import { MatchCard } from './MatchCard'
 import EmptyState from '../../components/ui/EmptyState'
+import { useToast } from '../../components/ui/Toast'
 import type { MatchView, ContactResult } from '../../api/profile.client'
-import { requestContact, respondToContact, reportOutcome } from '../../api/profile.client'
+import { requestContact, respondToContact, withdrawContact, reportOutcome } from '../../api/profile.client'
 
 interface Props {
   matches: MatchView[]
@@ -11,21 +12,22 @@ interface Props {
 
 export default function MatchList({ matches, onMatchesChange }: Props) {
   const { t } = useTranslation()
+  const { toast } = useToast()
+
   async function handleContact(matchId: string): Promise<ContactResult> {
     const result = await requestContact(matchId)
+    // Contact is exclusive: the server expired every other match, keep only this one
     onMatchesChange(
-      matches.map(m =>
-        m.matchId === matchId
-          ? {
-              ...m,
-              status: 'in_progress' as const,
-              perspective: 'initiator' as const,
-              targetInstagram: result.targetInstagram,
-              iceBreakers: result.iceBreakers,
-              dateIdeas: result.dateIdeas,
-            }
-          : m,
-      ),
+      matches
+        .filter(m => m.matchId === matchId)
+        .map(m => ({
+          ...m,
+          status: 'in_progress' as const,
+          perspective: 'initiator' as const,
+          targetInstagram: result.targetInstagram,
+          iceBreakers: result.iceBreakers,
+          dateIdeas: result.dateIdeas,
+        })),
     )
     return result
   }
@@ -39,6 +41,13 @@ export default function MatchList({ matches, onMatchesChange }: Props) {
           : m,
       ),
     )
+  }
+
+  async function handleWithdraw(matchId: string): Promise<void> {
+    await withdrawContact(matchId)
+    toast(t('portal.matches.withdrawNotice'))
+    // The declined match and all expired ones are gone — next phase brings new ones
+    onMatchesChange([])
   }
 
   async function handleOutcome(matchId: string, outcome: 'success' | 'failed'): Promise<void> {
@@ -58,6 +67,7 @@ export default function MatchList({ matches, onMatchesChange }: Props) {
           match={m}
           onContactRequest={handleContact}
           onRespond={handleRespond}
+          onWithdraw={handleWithdraw}
           onOutcome={handleOutcome}
         />
       ))}

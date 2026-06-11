@@ -1,4 +1,4 @@
-import { render, screen, waitFor } from '@testing-library/react'
+import { render, screen, waitFor, fireEvent } from '@testing-library/react'
 import { MemoryRouter } from 'react-router-dom'
 import { vi } from 'vitest'
 
@@ -7,6 +7,7 @@ vi.mock('../../api/profile.client', () => ({
   getMyMatches: vi.fn(),
   requestContact: vi.fn(),
   respondToContact: vi.fn(),
+  withdrawContact: vi.fn(),
   reportOutcome: vi.fn(),
 }))
 
@@ -60,7 +61,7 @@ describe('ProfileDashboard', () => {
     expect(screen.getByText('Test User')).toBeInTheDocument()
   })
 
-  it('shows match list when status is "matched"', async () => {
+  it('shows a threshold slider and reveals more matches when lowered', async () => {
     mockGetMyProfile.mockResolvedValue({
       applicantId: '2',
       alias: 'River Moon',
@@ -68,15 +69,48 @@ describe('ProfileDashboard', () => {
       scoreThreshold: 0.8,
       createdAt: '2026-01-01',
     })
+    mockGetMyMatches.mockResolvedValue([
+      { matchId: 'm1', partnerAlias: 'High Score', score: 0.86, status: 'proposed', perspective: 'none' },
+      { matchId: 'm2', partnerAlias: 'Low Score', score: 0.65, status: 'proposed', perspective: 'none' },
+    ])
+
+    renderDashboard()
+
+    // Matches are fetched at the server minimum so the slider works client-side
+    await waitFor(() => {
+      expect(mockGetMyMatches).toHaveBeenCalledWith(0.6, 50)
+    })
+
+    // Default threshold 80% — only the high-score match is visible
+    expect(await screen.findByText('High Score')).toBeInTheDocument()
+    expect(screen.queryByText('Low Score')).not.toBeInTheDocument()
+
+    // Lower the slider to 60% — the second match appears
+    fireEvent.change(screen.getByRole('slider'), { target: { value: '60' } })
+    expect(screen.getByText('Low Score')).toBeInTheDocument()
+
+    // Raise back to 80% — it disappears again
+    fireEvent.change(screen.getByRole('slider'), { target: { value: '80' } })
+    expect(screen.queryByText('Low Score')).not.toBeInTheDocument()
+  })
+
+  it('shows the next-phase message when matched with no visible matches', async () => {
+    mockGetMyProfile.mockResolvedValue({
+      applicantId: '2',
+      alias: 'River Moon',
+      status: 'matched',
+      scoreThreshold: 0.8,
+      createdAt: '2026-01-01',
+    })
+    mockGetMyMatches.mockResolvedValue([])
 
     renderDashboard()
 
     await waitFor(() => {
-      // Filter pills for matched status
-      expect(screen.getByRole('button', { name: '60%' })).toBeInTheDocument()
+      expect(screen.getByText(/portal\.dashboard\.nextPhaseTitle/i)).toBeInTheDocument()
     })
-    expect(screen.getByRole('button', { name: '70%' })).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: '80%' })).toBeInTheDocument()
+    expect(screen.getByText(/portal\.dashboard\.nextPhaseBody/i)).toBeInTheDocument()
+    expect(screen.queryByRole('slider')).not.toBeInTheDocument()
   })
 
   it('shows dormant message when status is "inactive"', async () => {

@@ -311,7 +311,11 @@
       "submitted": "Submitted {{date}}",
       "minScore": "Min. match score:",
       "dormantTitle": "Your account is dormant",
-      "dormantBody": "Thank you for being part of Ons."
+      "dormantBody": "Thank you for being part of Ons.",
+      "nextPhaseTitle": "No matches right now",
+      "nextPhaseBody": "New matches arrive with the next matching phase — check back tomorrow.",
+      "noneAtThresholdTitle": "No matches at this score",
+      "noneAtThresholdBody": "Lower the slider to see more matches."
     },
     "matches": {
       "empty": "No matches to show.",
@@ -334,7 +338,12 @@
         "failed": "Failed",
         "declined": "Declined",
         "expired": "Expired"
-      }
+      },
+      "confirmContactTitle": "It's a match!",
+      "confirmContactBody": "{{alias}} is @{{handle}} on Instagram. Ready to reach out? If you pass now, this match closes for good and you will wait for the next matching phase for new matches.",
+      "confirmContactYes": "Yes, connect us",
+      "confirmContactNo": "No, pass",
+      "withdrawNotice": "Match closed. You will see new matches at the next matching phase — check back tomorrow."
     },
     "settings": {
       "title": "Settings",

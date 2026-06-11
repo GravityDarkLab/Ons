@@ -50,10 +50,10 @@ function StatusStepper({ status }: { status: ApplicantStatus }) {
         let circleClass: string
         let labelClass: string
         if (isCompleted) {
-          circleClass = 'bg-success text-white'
+          circleClass = 'bg-success text-bg'
           labelClass  = 'text-success'
         } else if (isCurrent) {
-          circleClass = 'bg-accent text-white'
+          circleClass = 'bg-accent text-bg'
           labelClass  = 'text-accent font-medium'
         } else {
           circleClass = 'border-2 border-border text-muted bg-surface'

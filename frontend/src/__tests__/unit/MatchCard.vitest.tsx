@@ -82,6 +82,73 @@ describe('MatchCard', () => {
     expect(screen.queryByRole('button')).not.toBeInTheDocument()
   })
 
+  // tested: contact opens a confirmation dialog showing the partner's Instagram
+  it('opens a confirm dialog with the Instagram handle after contact succeeds', async () => {
+    const onContactRequest = vi.fn().mockResolvedValue({
+      targetInstagram: 'cresriver',
+      iceBreakers: ['Q1'],
+      dateIdeas: ['Coffee walk'],
+    })
+    render(<MatchCard match={base} onContactRequest={onContactRequest} />)
+
+    await userEvent.click(screen.getByRole('button', { name: /portal\.matches\.reachOut/i }))
+
+    const dialog = await screen.findByRole('alertdialog')
+    expect(dialog).toHaveTextContent(/portal\.matches\.confirmContactTitle/)
+    expect(dialog).toHaveTextContent(/cresriver/)
+  })
+
+  it('confirming the dialog shows the waiting contact-status view', async () => {
+    const onContactRequest = vi.fn().mockResolvedValue({
+      targetInstagram: 'cresriver',
+      iceBreakers: ['Q1'],
+      dateIdeas: ['Coffee walk'],
+    })
+    render(<MatchCard match={base} onContactRequest={onContactRequest} />)
+
+    await userEvent.click(screen.getByRole('button', { name: /portal\.matches\.reachOut/i }))
+    await userEvent.click(await screen.findByRole('button', { name: /confirmContactYes/i }))
+
+    expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument()
+    expect(screen.getByText(/@cresriver/)).toBeInTheDocument()
+    expect(screen.getByText('Q1')).toBeInTheDocument()
+    expect(screen.getByText(/portal\.matches\.waiting/)).toBeInTheDocument()
+  })
+
+  it('passing in the dialog withdraws the contact', async () => {
+    const onContactRequest = vi.fn().mockResolvedValue({
+      targetInstagram: 'cresriver',
+      iceBreakers: [],
+      dateIdeas: [],
+    })
+    const onWithdraw = vi.fn().mockResolvedValue(undefined)
+    render(<MatchCard match={base} onContactRequest={onContactRequest} onWithdraw={onWithdraw} />)
+
+    await userEvent.click(screen.getByRole('button', { name: /portal\.matches\.reachOut/i }))
+    await userEvent.click(await screen.findByRole('button', { name: /confirmContactNo/i }))
+
+    expect(onWithdraw).toHaveBeenCalledWith('m1')
+  })
+
+  it('dismissing the dialog with Escape keeps the contact (no accidental withdraw)', async () => {
+    const onContactRequest = vi.fn().mockResolvedValue({
+      targetInstagram: 'cresriver',
+      iceBreakers: [],
+      dateIdeas: [],
+    })
+    const onWithdraw = vi.fn().mockResolvedValue(undefined)
+    render(<MatchCard match={base} onContactRequest={onContactRequest} onWithdraw={onWithdraw} />)
+
+    await userEvent.click(screen.getByRole('button', { name: /portal\.matches\.reachOut/i }))
+    await screen.findByRole('alertdialog')
+    await userEvent.keyboard('{Escape}')
+
+    expect(onWithdraw).not.toHaveBeenCalled()
+    // Dismiss falls through to the waiting view — never a silent permanent decline
+    expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument()
+    expect(screen.getByText(/@cresriver/)).toBeInTheDocument()
+  })
+
   // tested: failed actions surface an inline error instead of being swallowed
   it('shows an error and keeps the card actionable when contact fails', async () => {
     const onContactRequest = vi.fn().mockRejectedValue(new Error('Match is no longer available'))

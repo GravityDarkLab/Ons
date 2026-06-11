@@ -323,7 +323,11 @@
       "submitted": "تم الإرسال في {{date}}",
       "minScore": "الحد الأدنى لنسبة التوافق:",
       "dormantTitle": "حسابك في وضع السكون",
-      "dormantBody": "شكرًا لكونك جزءًا من Ons."
+      "dormantBody": "شكرًا لكونك جزءًا من Ons.",
+      "nextPhaseTitle": "لا توجد توافقات حالياً",
+      "nextPhaseBody": "ستصل توافقات جديدة مع جولة التوفيق القادمة — عُد غداً.",
+      "noneAtThresholdTitle": "لا توافقات عند هذه النسبة",
+      "noneAtThresholdBody": "اخفض المؤشر لرؤية المزيد من التوافقات."
     },
     "matches": {
       "empty": "لا توجد توافقات لعرضها.",
@@ -346,7 +350,12 @@
         "failed": "فشل",
         "declined": "مرفوض",
         "expired": "منتهي"
-      }
+      },
+      "confirmContactTitle": "إنه توافق!",
+      "confirmContactBody": "{{alias}} هو @{{handle}} على إنستغرام. مستعد للتواصل؟ إذا تخطيت الآن، سيُغلق هذا التوافق نهائياً وستنتظر جولة التوفيق القادمة.",
+      "confirmContactYes": "نعم، صِلنا",
+      "confirmContactNo": "لا، أتخطى",
+      "withdrawNotice": "تم إغلاق التوافق. ستصل توافقات جديدة مع جولة التوفيق القادمة — عُد غداً."
     },
     "settings": {
       "title": "الإعدادات",
