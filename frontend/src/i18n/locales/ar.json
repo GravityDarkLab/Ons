@@ -441,6 +441,7 @@
     "settings": {
       "title": "الإعدادات",
       "close": "إغلاق الإعدادات",
+      "signOut": "تسجيل الخروج",
       "changePassword": "تغيير كلمة المرور",
       "currentPassword": "كلمة المرور الحالية",
       "newPassword": "كلمة المرور الجديدة",

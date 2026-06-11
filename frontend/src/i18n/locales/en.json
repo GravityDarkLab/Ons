@@ -429,6 +429,7 @@
     "settings": {
       "title": "Settings",
       "close": "Close settings",
+      "signOut": "Sign out",
       "changePassword": "Change password",
       "currentPassword": "Current password",
       "newPassword": "New password",

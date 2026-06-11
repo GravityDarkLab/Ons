@@ -171,6 +171,11 @@ export async function outcome(c: Context): Promise<Response> {
   }
 }
 
+export async function logout(c: Context): Promise<Response> {
+  deleteCookie(c, APPLICANT_COOKIE, { path: "/" });
+  return c.json({ success: true });
+}
+
 export async function deactivate(c: Context): Promise<Response> {
   const applicantId = c.get("applicantId") as string;
   await deactivateMyAccount(applicantId);

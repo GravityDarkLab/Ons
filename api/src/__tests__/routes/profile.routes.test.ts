@@ -491,3 +491,22 @@ describe("POST /profile/delete-now", () => {
     expect(res.status).toBe(404);
   });
 });
+
+// ── POST /profile/logout ────────────────────────────────────────────────────────
+
+describe("POST /profile/logout", () => {
+  it("returns 200 and clears the session cookie without a session", async () => {
+    const res = await post("/profile/logout", {});
+    expect(res.status).toBe(200);
+    const body = await res.json() as any;
+    expect(body.success).toBe(true);
+    expect(res.headers.get("set-cookie")).toMatch(/ons_applicant_session=;/);
+  });
+
+  it("returns 200 and clears the session cookie with a valid session", async () => {
+    const token = await applicantToken();
+    const res = await post("/profile/logout", {}, token);
+    expect(res.status).toBe(200);
+    expect(res.headers.get("set-cookie")).toMatch(/ons_applicant_session=;/);
+  });
+});

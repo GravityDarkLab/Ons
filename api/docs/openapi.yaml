@@ -1913,6 +1913,29 @@ paths:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
 
+  /api/v1/profile/logout:
+    post:
+      tags: [Profile]
+      summary: Log out of the applicant portal
+      operationId: profileLogout
+      description: |
+        Clears the `ons_applicant_session` cookie. A one-shot, idempotent
+        action — no session is required, so it is exempt from rate limiting
+        (mirrors `POST /api/v1/admin/logout`).
+      responses:
+        '200':
+          description: Logged out
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    enum: [true]
+              example:
+                success: true
+
   /api/v1/profile/me:
     get:
       tags: [Profile]

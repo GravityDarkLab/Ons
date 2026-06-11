@@ -23,6 +23,7 @@ import {
   deactivate,
   cancelDeletion,
   deleteNow,
+  logout,
 } from "../controllers/profile.controller.js";
 import { requireApplicant } from "../middleware/applicant.auth.middleware.js";
 import {
@@ -49,6 +50,11 @@ profileRoutes.post(
 );
 
 profileRoutes.get("/suggest-password", suggestPassword);
+
+// /logout is a one-shot cookie clear, like admin's — not a brute-force
+// surface, so it's exempt from rate limiting and doesn't require a valid
+// session (an already-expired session can still "log out" cleanly).
+profileRoutes.post("/logout", logout);
 
 // ── Protected ──────────────────────────────────────────────────────────────────
 

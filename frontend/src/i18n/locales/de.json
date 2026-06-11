@@ -429,6 +429,7 @@
     "settings": {
       "title": "Einstellungen",
       "close": "Einstellungen schließen",
+      "signOut": "Abmelden",
       "changePassword": "Passwort ändern",
       "currentPassword": "Aktuelles Passwort",
       "newPassword": "Neues Passwort",

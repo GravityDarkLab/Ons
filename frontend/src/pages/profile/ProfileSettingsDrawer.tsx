@@ -1,7 +1,7 @@
 import { useEffect, useState, type FormEvent } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useNavigate } from 'react-router-dom'
-import { changePassword, deactivateAccount } from '../../api/profile.client'
+import { changePassword, deactivateAccount, logout } from '../../api/profile.client'
 import Input from '../../components/ui/Input'
 import ConfirmDialog from '../../components/ui/ConfirmDialog'
 import Spinner from '../../components/ui/Spinner'
@@ -113,6 +113,18 @@ export default function ProfileSettingsDrawer({ onClose }: Props) {
     }
   }
 
+  async function handleLogout() {
+    try {
+      await logout()
+    } catch {
+      // Cookie may already be gone or the request failed — proceed regardless,
+      // since the goal (returning to a logged-out state) is still met locally.
+    } finally {
+      onClose()
+      navigate('/profile/login')
+    }
+  }
+
   // ── Render ────────────────────────────────────────────────────────────────
 
   return (
@@ -191,7 +203,20 @@ export default function ProfileSettingsDrawer({ onClose }: Props) {
         {/* Divider */}
         <div className="my-8 border-t border-border" />
 
-        {/* Section 2: Deactivate account */}
+        {/* Section 2: Sign out */}
+        <section>
+          <button
+            onClick={handleLogout}
+            className="bg-surface border border-border text-primary rounded-xl px-4 py-2 text-sm hover:bg-bg transition-colors"
+          >
+            {t('portal.settings.signOut')}
+          </button>
+        </section>
+
+        {/* Divider */}
+        <div className="my-8 border-t border-border" />
+
+        {/* Section 3: Deactivate account */}
         <section>
           <h3 className="text-sm font-medium text-primary uppercase tracking-wider mb-4">
             {t('portal.settings.deactivateTitle')}

@@ -97,6 +97,11 @@ export async function suggestPassword(): Promise<{ suggestion: string }> {
   return profileRequest<{ suggestion: string }>('/profile/suggest-password', { method: 'GET' })
 }
 
+/** Clears the portal session cookie. */
+export async function logout(): Promise<void> {
+  await profileRequest<unknown>('/profile/logout', { method: 'POST' })
+}
+
 // ── Authenticated endpoints (cookie sent automatically) ───────────────────────
 
 export async function changePassword(
