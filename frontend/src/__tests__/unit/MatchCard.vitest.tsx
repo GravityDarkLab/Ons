@@ -340,3 +340,62 @@ describe('MatchCard partner profile', () => {
     expect(screen.getByText('Paris, France')).toBeInTheDocument()
   })
 })
+
+// tested: target sees who wants to meet them (handle, profile, breakdown) before accepting
+describe('MatchCard target reveal before accepting', () => {
+  const targetMatch: MatchView = {
+    ...base,
+    status: 'in_progress',
+    perspective: 'target',
+    partnerInstagram: 'horizon.swift',
+    breakdown: { numeric_compatibility: 0.9 },
+    partnerProfile: { location: 'Paris, France', age: 27 },
+  }
+
+  it('shows the initiator instagram handle on the target card', () => {
+    render(<MatchCard match={targetMatch} />)
+    expect(screen.getByText('@horizon.swift')).toBeInTheDocument()
+    // accept/decline still available
+    expect(screen.getByRole('button', { name: /portal\.matches\.accept/i })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /portal\.matches\.decline/i })).toBeInTheDocument()
+  })
+
+  it('expands to reveal profile and score breakdown on the target card', async () => {
+    render(<MatchCard match={targetMatch} />)
+    expect(screen.queryByText('Paris, France')).not.toBeInTheDocument()
+
+    await userEvent.click(screen.getByRole('button', { name: /portal\.matches\.wantsToMeet/i }))
+
+    expect(screen.getByText('Paris, France')).toBeInTheDocument()
+    expect(screen.getByText('portal.matches.breakdown.numeric_compatibility.label')).toBeInTheDocument()
+  })
+
+  it('shows no expand toggle on the target card without details', () => {
+    const match: MatchView = { ...base, status: 'in_progress', perspective: 'target' }
+    render(<MatchCard match={match} />)
+    expect(screen.queryByRole('button', { name: /portal\.matches\.wantsToMeet/i })).not.toBeInTheDocument()
+    expect(screen.getByText(/portal\.matches\.wantsToMeet/)).toBeInTheDocument()
+  })
+
+  it('falls back to partnerInstagram on initiator cards after a reload', () => {
+    const match: MatchView = {
+      ...base,
+      status: 'in_progress',
+      perspective: 'initiator',
+      partnerInstagram: 'cres.river',
+    }
+    render(<MatchCard match={match} />)
+    expect(screen.getByText('@cres.river')).toBeInTheDocument()
+  })
+
+  it('shows partnerInstagram on dating cards', () => {
+    const match: MatchView = {
+      ...base,
+      status: 'dating',
+      perspective: 'none',
+      partnerInstagram: 'cres.river',
+    }
+    render(<MatchCard match={match} />)
+    expect(screen.getByText('@cres.river')).toBeInTheDocument()
+  })
+})

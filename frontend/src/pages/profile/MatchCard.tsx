@@ -209,11 +209,14 @@ export function MatchCard({ match, onContactRequest, onRespond, onWithdraw, onOu
     setActionError(err instanceof Error ? err.message : t('portal.matches.genericError'))
   }
 
-  const { matchId, partnerAlias, score, status, perspective, contactRequestedAt, breakdown, partnerProfile } = displayMatch
+  const { matchId, partnerAlias, score, status, perspective, contactRequestedAt, breakdown, partnerProfile, partnerInstagram } = displayMatch
   const hasBreakdown = !!breakdown && Object.keys(breakdown).length > 0
   const hasProfile = !!partnerProfile && Object.keys(partnerProfile).length > 0
   const hasDetails = hasBreakdown || hasProfile
   const toggleExpanded = () => setExpanded(prev => !prev)
+  // targetInstagram arrives via the contact flow within this session;
+  // partnerInstagram comes from the API and survives page reloads
+  const partnerHandle = displayMatch.targetInstagram ?? partnerInstagram
 
   // Partner profile first (who they are), then the score breakdown (why this score)
   const detailsSection = expanded ? (
@@ -261,14 +264,28 @@ export function MatchCard({ match, onContactRequest, onRespond, onWithdraw, onOu
 
     return (
       <div className="bg-surface border border-border rounded-2xl p-5 shadow-card hover-card transition-card">
-        <p className="text-base font-medium text-primary">
-          {t('portal.matches.wantsToMeet', { alias: partnerAlias })}
-        </p>
+        <ExpandableHeader
+          expanded={expanded}
+          onToggle={toggleExpanded}
+          hasDetails={hasDetails}
+          left={
+            <span className="text-base font-medium text-primary">
+              {t('portal.matches.wantsToMeet', { alias: partnerAlias })}
+            </span>
+          }
+          right={<ScoreBar score={score} />}
+        />
+        {partnerHandle && (
+          <p className="text-accent font-medium text-sm mt-1">
+            @{partnerHandle}
+          </p>
+        )}
         {contactRequestedAt && (
           <p className="text-sm text-muted mt-0.5">
             {t('portal.matches.requested', { time: timeAgo(new Date(contactRequestedAt).getTime()) })}
           </p>
         )}
+        {detailsSection}
         <div className="flex gap-3 mt-4">
           <button
             onClick={() => handleRespond(true)}
@@ -307,9 +324,9 @@ export function MatchCard({ match, onContactRequest, onRespond, onWithdraw, onOu
           left={<span className="text-base font-medium text-primary">{partnerAlias}</span>}
           right={<Badge tone="warning" size="sm">{t('portal.matches.waiting')}</Badge>}
         />
-        {displayMatch.targetInstagram && (
+        {partnerHandle && (
           <p className="text-accent font-medium text-sm mt-1">
-            @{displayMatch.targetInstagram}
+            @{partnerHandle}
           </p>
         )}
         <IceBreakersSection
@@ -353,9 +370,9 @@ export function MatchCard({ match, onContactRequest, onRespond, onWithdraw, onOu
           right={<span className="text-sm text-muted">{t('portal.matches.matchScore', { percent: Math.round(score * 100) })}</span>}
         />
         {detailsSection}
-        {displayMatch.targetInstagram && (
+        {partnerHandle && (
           <p className="text-accent font-medium text-sm mt-1">
-            @{displayMatch.targetInstagram}
+            @{partnerHandle}
           </p>
         )}
         {perspective === 'initiator' && (

@@ -109,7 +109,9 @@ export async function matches(c: Context): Promise<Response> {
     threshold: number;
     limit: number;
   };
-  const data = await getMyMatches(applicantId, threshold, limit);
+  const ipAddress = c.req.header("X-Forwarded-For") ?? c.req.header("X-Real-IP") ?? "unknown";
+  const userAgent = c.req.header("User-Agent") ?? "unknown";
+  const data = await getMyMatches(applicantId, threshold, limit, { ipAddress, userAgent });
   return c.json({ success: true, data });
 }
 

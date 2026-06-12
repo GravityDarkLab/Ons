@@ -130,7 +130,8 @@ export async function getMyProfile(applicantId: string): Promise<ApplicantProfil
 export async function getMyMatches(
   applicantId: string,
   threshold: number,
-  limit: number
+  limit: number,
+  audit: { ipAddress: string; userAgent: string } = { ipAddress: "unknown", userAgent: "unknown" },
 ): Promise<ApplicantMatchView[]> {
   const db       = await getDb();
   const appCol   = getApplicantsCollection(db);
@@ -168,9 +169,39 @@ export async function getMyMatches(
     : [];
   const answersById = new Map(partners.map((p) => [p._id.toHexString(), p.answers]));
 
+  // Reveal partner identities for committed matches (in_progress/dating) —
+  // the contact flow already revealed the target's handle to the initiator,
+  // and the initiator consented by initiating. Each decryption is audit-logged.
+  const instagramByMatchId = new Map<string, string>();
+  for (const d of docs) {
+    if (d.status !== "in_progress" && d.status !== "dating") continue;
+    const partnerId = d.applicantAId.equals(oid) ? d.applicantBId : d.applicantAId;
+    const handle = await resolveIdentityById(partnerId);
+    if (!handle) continue;
+    instagramByMatchId.set(d._id.toHexString(), handle);
+    await writeAuditLog(
+      { adminId: applicantId, ipAddress: audit.ipAddress, userAgent: audit.userAgent },
+      "APPLICANT_REVEAL_IDENTITY",
+      {
+        targetApplicantId: partnerId,
+        metadata: {
+          actorType: "applicant",
+          matchId: d._id.toHexString(),
+          targetAlias: d.applicantAId.equals(oid) ? d.applicantBAlias : d.applicantAAlias,
+          reason: "match_view",
+        },
+      }
+    );
+  }
+
   return docs.map((d) => {
     const partnerId = d.applicantAId.equals(oid) ? d.applicantBId : d.applicantAId;
-    return toMatchView(d, oid, answersById.get(partnerId.toHexString()));
+    return toMatchView(
+      d,
+      oid,
+      answersById.get(partnerId.toHexString()),
+      instagramByMatchId.get(d._id.toHexString())
+    );
   });
 }
 

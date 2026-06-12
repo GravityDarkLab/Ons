@@ -126,6 +126,42 @@ describe("toMatchView – partner profile", () => {
   });
 });
 
+describe("toMatchView – partner instagram", () => {
+  it("includes partnerInstagram for in_progress matches", () => {
+    const match = makeMatch({ status: "in_progress" });
+    match.initiatorId = match.applicantAId;
+    const view = toMatchView(match, match.applicantBId, undefined, "horizon.swift");
+    expect(view.partnerInstagram).toBe("horizon.swift");
+  });
+
+  it("includes partnerInstagram for dating matches", () => {
+    const match = makeMatch({ status: "dating" });
+    const view = toMatchView(match, match.applicantAId, undefined, "horizon.swift");
+    expect(view.partnerInstagram).toBe("horizon.swift");
+  });
+
+  it("never includes partnerInstagram for proposed matches, even if passed", () => {
+    const match = makeMatch({ status: "proposed" });
+    const view = toMatchView(match, match.applicantAId, undefined, "horizon.swift");
+    expect(view.partnerInstagram).toBeUndefined();
+  });
+
+  it("never includes partnerInstagram for terminal statuses, even if passed", () => {
+    for (const status of ["declined", "expired", "failed", "success"] as const) {
+      const match = makeMatch({ status });
+      const view = toMatchView(match, match.applicantAId, undefined, "horizon.swift");
+      expect(view.partnerInstagram).toBeUndefined();
+    }
+  });
+
+  it("omits partnerInstagram when not provided", () => {
+    const match = makeMatch({ status: "in_progress" });
+    match.initiatorId = match.applicantAId;
+    const view = toMatchView(match, match.applicantBId);
+    expect(view.partnerInstagram).toBeUndefined();
+  });
+});
+
 describe("toMatchView – privacy", () => {
   it("never contains an instagramHandle field", () => {
     const match = makeMatch({ status: "in_progress" });

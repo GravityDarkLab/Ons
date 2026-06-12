@@ -41,6 +41,7 @@ export interface ApplicantMatchView {
   iceBreakers?: string[];
   dateIdeas?: string[];
   partnerProfile?: Record<string, unknown>; // partner's public questionnaire answers
+  partnerInstagram?: string; // only for in_progress/dating — see toMatchView
 }
 
 // Keys never shown to a partner: consent checkboxes carry no information, and
@@ -57,7 +58,8 @@ const PARTNER_PROFILE_EXCLUDED_KEYS = new Set(["disclaimer_agreed", "instagram_h
 export function toMatchView(
   doc: MatchDoc,
   actorId: ObjectId,
-  partnerAnswers?: Record<string, unknown>
+  partnerAnswers?: Record<string, unknown>,
+  partnerInstagram?: string
 ): ApplicantMatchView {
   const isA       = doc.applicantAId.equals(actorId);
   const partnerAlias = isA ? doc.applicantBAlias : doc.applicantAAlias;
@@ -82,6 +84,13 @@ export function toMatchView(
       Object.entries(partnerAnswers).filter(([key]) => !PARTNER_PROFILE_EXCLUDED_KEYS.has(key))
     );
     if (Object.keys(profile).length > 0) view.partnerProfile = profile;
+  }
+
+  // Identity is only revealed once contact is committed: the initiator consented
+  // by initiating, and the target's handle was already revealed to the initiator
+  // at contact time. Never attached while the match is merely proposed.
+  if (partnerInstagram && (doc.status === "in_progress" || doc.status === "dating")) {
+    view.partnerInstagram = partnerInstagram;
   }
 
   if (doc.status === "in_progress") {

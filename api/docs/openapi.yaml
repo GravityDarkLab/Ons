@@ -587,6 +587,13 @@ components:
             Identity fields are stored encrypted in a separate collection and are never
             part of this object; consent checkboxes are filtered out.
           example: { location: "Paris, France", age: 27, work: "Student" }
+        partnerInstagram:
+          type: string
+          description: |
+            Partner's Instagram handle. Only present once contact is committed
+            (`status` is `in_progress` or `dating`) — never while merely proposed.
+            Each decryption is audit-logged.
+          example: "horizon.swift"
 
     ContactResult:
       type: object
