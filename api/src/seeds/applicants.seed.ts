@@ -266,14 +266,6 @@ function randomCreatedAt(): Date {
 
 type SeedApplicantStatus = "applied" | "matched" | "dating" | "inactive";
 
-function randomStatus(): SeedApplicantStatus {
-  const r = randomFloat();
-  if (r < 0.70) return "applied";
-  if (r < 0.85) return "matched";
-  if (r < 0.93) return "dating";
-  return "inactive";
-}
-
 // ─── Main ─────────────────────────────────────────────────────────────────────
 
 // All seeded accounts share one login credential for easy local testing.
@@ -355,7 +347,7 @@ async function seed() {
 
     try {
       const rawToken = Buffer.from(crypto.getRandomValues(new Uint8Array(32))).toString("hex");
-      const status = randomStatus();
+      const status = "applied" as SeedApplicantStatus;
       await applicants.insertOne({
         _id: applicantId,
         alias,

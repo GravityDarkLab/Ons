@@ -573,6 +573,20 @@ components:
             type: string
           description: "AI-generated date ideas based on both profiles. Same visibility rule as `iceBreakers`."
           example: ["Coffee walk through the old city", "Sunset picnic with homemade snacks"]
+        breakdown:
+          type: object
+          additionalProperties:
+            type: number
+          description: "Per-dimension scores (0–1) from the matching algorithm, keyed by dimension name."
+          example: { numeric_compatibility: 0.9, lifestyle_similarity: 0.7 }
+        partnerProfile:
+          type: object
+          additionalProperties: true
+          description: |
+            Partner's public questionnaire answers (location, age, work, vibe words, …).
+            Identity fields are stored encrypted in a separate collection and are never
+            part of this object; consent checkboxes are filtered out.
+          example: { location: "Paris, France", age: 27, work: "Student" }
 
     ContactResult:
       type: object

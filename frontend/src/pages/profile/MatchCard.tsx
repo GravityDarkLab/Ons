@@ -52,19 +52,20 @@ function ChevronIcon({ expanded }: { expanded: boolean }) {
 }
 
 /**
- * Card header row. When `hasBreakdown` is true the whole row becomes a toggle
- * button (with a chevron) for the score breakdown; otherwise it's a static row.
+ * Card header row. When `hasDetails` is true the whole row becomes a toggle
+ * button (with a chevron) for the partner profile + score breakdown;
+ * otherwise it's a static row.
  */
 function ExpandableHeader({
   expanded,
   onToggle,
-  hasBreakdown,
+  hasDetails,
   left,
   right,
 }: {
   expanded: boolean
   onToggle: () => void
-  hasBreakdown: boolean
+  hasDetails: boolean
   left: React.ReactNode
   right: React.ReactNode
 }) {
@@ -73,12 +74,12 @@ function ExpandableHeader({
       {left}
       <div className="flex items-center gap-2">
         {right}
-        {hasBreakdown && <ChevronIcon expanded={expanded} />}
+        {hasDetails && <ChevronIcon expanded={expanded} />}
       </div>
     </>
   )
 
-  if (!hasBreakdown) {
+  if (!hasDetails) {
     return <div className="flex items-center justify-between gap-3">{content}</div>
   }
 
@@ -101,14 +102,48 @@ function MatchBreakdown({ breakdown }: { breakdown: Record<string, number> }) {
     .sort((a, b) => b.value - a.value)
 
   return (
-    <div className="mt-4 pt-4 border-t border-border space-y-3">
-      {entries.map(({ key, value, label, description }) => (
-        <div key={key}>
-          <p className="text-sm font-medium text-primary mb-1">{label}</p>
-          <ScoreBar score={value} />
-          {description && <p className="text-xs text-muted mt-1">{description}</p>}
-        </div>
-      ))}
+    <div className="mt-4 pt-4 border-t border-border">
+      <p className="text-xs font-medium text-muted uppercase tracking-wider mb-3">
+        {t('portal.matches.scoreBreakdown')}
+      </p>
+      <div className="space-y-3">
+        {entries.map(({ key, value, label, description }) => (
+          <div key={key}>
+            <p className="text-sm font-medium text-primary mb-1">{label}</p>
+            <ScoreBar score={value} />
+            {description && <p className="text-xs text-muted mt-1">{description}</p>}
+          </div>
+        ))}
+      </div>
+    </div>
+  )
+}
+
+function formatAnswerValue(value: unknown, yes: string, no: string): string {
+  if (typeof value === 'boolean') return value ? yes : no
+  if (Array.isArray(value)) return value.map(v => String(v)).join(', ')
+  if (value === null || value === undefined || String(value).trim() === '') return '—'
+  return String(value)
+}
+
+/** Partner's public questionnaire answers — rendered raw, keyed by question id. */
+function PartnerProfileSection({ profile, alias }: { profile: Record<string, unknown>; alias: string }) {
+  const { t } = useTranslation()
+  return (
+    <div className="mt-4 pt-4 border-t border-border">
+      <p className="text-xs font-medium text-muted uppercase tracking-wider mb-3">
+        {t('portal.matches.aboutPartner', { alias })}
+      </p>
+      <div className="space-y-2.5">
+        {Object.entries(profile).map(([key, value]) => (
+          <div key={key} className="flex justify-between gap-3 text-sm">
+            <span className="text-muted capitalize shrink-0">{key.replace(/_/g, ' ')}</span>
+            <span className="text-primary text-end break-words">
+              {formatAnswerValue(value, t('common.yes'), t('common.no'))}
+            </span>
+          </div>
+        ))}
+      </div>
     </div>
   )
 }
@@ -174,9 +209,19 @@ export function MatchCard({ match, onContactRequest, onRespond, onWithdraw, onOu
     setActionError(err instanceof Error ? err.message : t('portal.matches.genericError'))
   }
 
-  const { matchId, partnerAlias, score, status, perspective, contactRequestedAt, breakdown } = displayMatch
+  const { matchId, partnerAlias, score, status, perspective, contactRequestedAt, breakdown, partnerProfile } = displayMatch
   const hasBreakdown = !!breakdown && Object.keys(breakdown).length > 0
+  const hasProfile = !!partnerProfile && Object.keys(partnerProfile).length > 0
+  const hasDetails = hasBreakdown || hasProfile
   const toggleExpanded = () => setExpanded(prev => !prev)
+
+  // Partner profile first (who they are), then the score breakdown (why this score)
+  const detailsSection = expanded ? (
+    <>
+      {hasProfile && <PartnerProfileSection profile={partnerProfile!} alias={partnerAlias} />}
+      {hasBreakdown && <MatchBreakdown breakdown={breakdown!} />}
+    </>
+  ) : null
 
   // ── Case 5: Terminal statuses ──────────────────────────────────────────────
   if (status === 'declined' || status === 'failed' || status === 'success' || status === 'expired') {
@@ -258,7 +303,7 @@ export function MatchCard({ match, onContactRequest, onRespond, onWithdraw, onOu
         <ExpandableHeader
           expanded={expanded}
           onToggle={toggleExpanded}
-          hasBreakdown={hasBreakdown}
+          hasDetails={hasDetails}
           left={<span className="text-base font-medium text-primary">{partnerAlias}</span>}
           right={<Badge tone="warning" size="sm">{t('portal.matches.waiting')}</Badge>}
         />
@@ -271,7 +316,7 @@ export function MatchCard({ match, onContactRequest, onRespond, onWithdraw, onOu
           iceBreakers={displayMatch.iceBreakers}
           dateIdeas={displayMatch.dateIdeas}
         />
-        {expanded && hasBreakdown && <MatchBreakdown breakdown={breakdown!} />}
+        {detailsSection}
       </div>
     )
   }
@@ -299,7 +344,7 @@ export function MatchCard({ match, onContactRequest, onRespond, onWithdraw, onOu
         <ExpandableHeader
           expanded={expanded}
           onToggle={toggleExpanded}
-          hasBreakdown={hasBreakdown}
+          hasDetails={hasDetails}
           left={
             <span className="text-base font-medium text-primary">
               {t('portal.matches.dating', { alias: partnerAlias })}
@@ -307,7 +352,7 @@ export function MatchCard({ match, onContactRequest, onRespond, onWithdraw, onOu
           }
           right={<span className="text-sm text-muted">{t('portal.matches.matchScore', { percent: Math.round(score * 100) })}</span>}
         />
-        {expanded && hasBreakdown && <MatchBreakdown breakdown={breakdown!} />}
+        {detailsSection}
         {displayMatch.targetInstagram && (
           <p className="text-accent font-medium text-sm mt-1">
             @{displayMatch.targetInstagram}
@@ -401,11 +446,11 @@ export function MatchCard({ match, onContactRequest, onRespond, onWithdraw, onOu
       <ExpandableHeader
         expanded={expanded}
         onToggle={toggleExpanded}
-        hasBreakdown={hasBreakdown}
+        hasDetails={hasDetails}
         left={<span className="text-base font-medium text-primary">{partnerAlias}</span>}
         right={<ScoreBar score={score} />}
       />
-      {expanded && hasBreakdown && <MatchBreakdown breakdown={breakdown!} />}
+      {detailsSection}
       <div className="mt-4">
         <button
           onClick={handleContactRequest}

@@ -276,3 +276,67 @@ describe('MatchCard score breakdown', () => {
     expect(screen.getByText('portal.matches.breakdown.numeric_compatibility.label')).toBeInTheDocument()
   })
 })
+
+// tested: partner profile (raw questionnaire answers shown alongside the breakdown)
+describe('MatchCard partner profile', () => {
+  const profile = {
+    location: 'Paris, France',
+    age: 27,
+    vibe_words: ['calm', 'curious'],
+    open_to_long_distance: true,
+  }
+
+  it('shows an expand toggle when only partnerProfile is present (no breakdown)', () => {
+    render(<MatchCard match={{ ...base, partnerProfile: profile }} />)
+    expect(screen.getByRole('button', { name: /Crescent River/i })).toBeInTheDocument()
+  })
+
+  it('does not show a toggle when partnerProfile is empty and breakdown missing', () => {
+    render(<MatchCard match={{ ...base, partnerProfile: {} }} />)
+    expect(screen.queryByRole('button', { name: /Crescent River/i })).not.toBeInTheDocument()
+  })
+
+  it('expands to reveal the partner profile section with formatted values', async () => {
+    render(<MatchCard match={{ ...base, partnerProfile: profile }} />)
+    expect(screen.queryByText('Paris, France')).not.toBeInTheDocument()
+
+    await userEvent.click(screen.getByRole('button', { name: /Crescent River/i }))
+
+    expect(screen.getByText(/portal\.matches\.aboutPartner/)).toBeInTheDocument()
+    expect(screen.getByText('Paris, France')).toBeInTheDocument()
+    expect(screen.getByText('27')).toBeInTheDocument()
+    // arrays joined with ", "
+    expect(screen.getByText('calm, curious')).toBeInTheDocument()
+    // booleans rendered as yes/no labels
+    expect(screen.getByText('common.yes')).toBeInTheDocument()
+    // question ids prettified
+    expect(screen.getByText('vibe words')).toBeInTheDocument()
+    expect(screen.getByText('open to long distance')).toBeInTheDocument()
+  })
+
+  it('renders profile and score breakdown together when both are present', async () => {
+    const match: MatchView = {
+      ...base,
+      breakdown: { numeric_compatibility: 0.9 },
+      partnerProfile: profile,
+    }
+    render(<MatchCard match={match} />)
+    await userEvent.click(screen.getByRole('button', { name: /Crescent River/i }))
+
+    expect(screen.getByText(/portal\.matches\.aboutPartner/)).toBeInTheDocument()
+    expect(screen.getByText('portal.matches.scoreBreakdown')).toBeInTheDocument()
+    expect(screen.getByText('portal.matches.breakdown.numeric_compatibility.label')).toBeInTheDocument()
+  })
+
+  it('shows the partner profile on dating cards too', async () => {
+    const match: MatchView = {
+      ...base,
+      status: 'dating',
+      perspective: 'none',
+      partnerProfile: profile,
+    }
+    render(<MatchCard match={match} />)
+    await userEvent.click(screen.getByRole('button', { name: /portal\.matches\.dating/i }))
+    expect(screen.getByText('Paris, France')).toBeInTheDocument()
+  })
+})

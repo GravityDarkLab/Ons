@@ -84,6 +84,48 @@ describe("toMatchView – ice-breakers and date ideas", () => {
   });
 });
 
+describe("toMatchView – partner profile", () => {
+  it("includes the partner's public answers when provided", () => {
+    const match = makeMatch();
+    const answers = { location: "Paris, France", age: 27, vibe_words: ["calm", "curious"] };
+    const view = toMatchView(match, match.applicantAId, answers);
+    expect(view.partnerProfile).toEqual(answers);
+  });
+
+  it("omits partnerProfile when no answers are provided", () => {
+    const match = makeMatch();
+    const view = toMatchView(match, match.applicantAId);
+    expect(view.partnerProfile).toBeUndefined();
+  });
+
+  it("filters out consent-only keys like disclaimer_agreed", () => {
+    const match = makeMatch();
+    const view = toMatchView(match, match.applicantAId, {
+      work: "Student",
+      disclaimer_agreed: true,
+    });
+    expect(view.partnerProfile).toEqual({ work: "Student" });
+  });
+
+  it("omits partnerProfile entirely when only excluded keys remain", () => {
+    const match = makeMatch();
+    const view = toMatchView(match, match.applicantAId, { disclaimer_agreed: true });
+    expect(view.partnerProfile).toBeUndefined();
+  });
+
+  it("strips instagram_handle even if it somehow appears in answers", () => {
+    // answers come from the applicants collection which never stores the handle —
+    // this is defense in depth in case that invariant is ever broken upstream
+    const match = makeMatch();
+    const view = toMatchView(match, match.applicantAId, {
+      location: "Tunis, Tunisia",
+      instagram_handle: "leaked_handle",
+    });
+    expect(view.partnerProfile).toEqual({ location: "Tunis, Tunisia" });
+    expect(JSON.stringify(view)).not.toContain("leaked_handle");
+  });
+});
+
 describe("toMatchView – privacy", () => {
   it("never contains an instagramHandle field", () => {
     const match = makeMatch({ status: "in_progress" });

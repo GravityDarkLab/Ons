@@ -24,6 +24,7 @@ export interface MatchView {
   iceBreakers?: string[] // only for initiator in in_progress/dating
   dateIdeas?: string[] // only for initiator in in_progress/dating
   targetInstagram?: string // revealed via /contact while the match is in_progress
+  partnerProfile?: Record<string, unknown> // partner's public questionnaire answers
 }
 
 export interface ProfileView {

@@ -156,7 +156,22 @@ export async function getMyMatches(
     .limit(limit)
     .toArray();
 
-  return docs.map((d) => toMatchView(d, oid));
+  // Batch-load partner answers so each card can show who the match is —
+  // answers hold only public questionnaire fields, never the Instagram handle
+  const partnerIds = docs.map((d) =>
+    d.applicantAId.equals(oid) ? d.applicantBId : d.applicantAId
+  );
+  const partners = partnerIds.length
+    ? await appCol
+        .find({ _id: { $in: partnerIds } }, { projection: { answers: 1 } })
+        .toArray()
+    : [];
+  const answersById = new Map(partners.map((p) => [p._id.toHexString(), p.answers]));
+
+  return docs.map((d) => {
+    const partnerId = d.applicantAId.equals(oid) ? d.applicantBId : d.applicantAId;
+    return toMatchView(d, oid, answersById.get(partnerId.toHexString()));
+  });
 }
 
 // ── Contact flow ──────────────────────────────────────────────────────────────

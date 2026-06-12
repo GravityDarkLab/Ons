@@ -371,6 +371,8 @@
       "didntWork": "It didn't",
       "iceBreakers": "Ice-breakers",
       "dateIdeas": "Date ideas",
+      "aboutPartner": "About {{alias}}",
+      "scoreBreakdown": "Score breakdown",
       "genericError": "Something went wrong. Please try again.",
       "status": {
         "success": "Success",

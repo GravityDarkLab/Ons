@@ -40,13 +40,25 @@ export interface ApplicantMatchView {
   contactRequestedAt?: Date; // when the initiator clicked "contact" — shown to target
   iceBreakers?: string[];
   dateIdeas?: string[];
+  partnerProfile?: Record<string, unknown>; // partner's public questionnaire answers
 }
+
+// Keys never shown to a partner: consent checkboxes carry no information, and
+// instagram_handle is defense in depth — identity answers are stored encrypted
+// in a separate collection and should never appear in `answers` at all
+const PARTNER_PROFILE_EXCLUDED_KEYS = new Set(["disclaimer_agreed", "instagram_handle"]);
 
 /**
  * Pure function — no DB calls. Projects a MatchDoc into the applicant-facing view
- * from the perspective of `actorId`. Instagram handles are never included.
+ * from the perspective of `actorId`. Instagram handles are never included:
+ * `partnerAnswers` holds only the public answers (identity fields are stored
+ * encrypted in a separate collection and never reach the applicants collection).
  */
-export function toMatchView(doc: MatchDoc, actorId: ObjectId): ApplicantMatchView {
+export function toMatchView(
+  doc: MatchDoc,
+  actorId: ObjectId,
+  partnerAnswers?: Record<string, unknown>
+): ApplicantMatchView {
   const isA       = doc.applicantAId.equals(actorId);
   const partnerAlias = isA ? doc.applicantBAlias : doc.applicantAAlias;
 
@@ -64,6 +76,13 @@ export function toMatchView(doc: MatchDoc, actorId: ObjectId): ApplicantMatchVie
   };
 
   if (doc.breakdown) view.breakdown = doc.breakdown;
+
+  if (partnerAnswers) {
+    const profile = Object.fromEntries(
+      Object.entries(partnerAnswers).filter(([key]) => !PARTNER_PROFILE_EXCLUDED_KEYS.has(key))
+    );
+    if (Object.keys(profile).length > 0) view.partnerProfile = profile;
+  }
 
   if (doc.status === "in_progress") {
     if (doc.contactRequestedAt) view.contactRequestedAt = doc.contactRequestedAt;

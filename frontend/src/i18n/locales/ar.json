@@ -383,6 +383,8 @@
       "didntWork": "لم ينجح",
       "iceBreakers": "كاسرات الجليد",
       "dateIdeas": "أفكار للمواعدة",
+      "aboutPartner": "نبذة عن {{alias}}",
+      "scoreBreakdown": "تفاصيل النتيجة",
       "genericError": "حدث خطأ ما. حاول مرة أخرى.",
       "status": {
         "success": "نجاح",

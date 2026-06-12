@@ -53,18 +53,18 @@ function ask(question: string): Promise<string> {
 
 async function pickTarget(): Promise<Target> {
   console.log("\nWhat would you like to seed?");
-  console.log("  1) questionnaire");
-  console.log("  2) applicants");
+  console.log("  1) applicants");
+  console.log("  2) questionnaire");
   console.log("  3) admin account");
   console.log("  4) both (questionnaire + applicants)\n");
   const answer = await ask("Choice [1]: ");
   const map: Record<string, Target> = {
-    "": "questionnaire", "1": "questionnaire", "questionnaire": "questionnaire",
-    "2": "applicants",   "applicants": "applicants",
+    "": "applicants", "1": "applicants", "applicants": "applicants",
+    "2": "questionnaire", "questionnaire": "questionnaire",
     "3": "admin",        "admin": "admin",
     "4": "both",         "both": "both",
   };
-  return map[answer] ?? "questionnaire";
+  return map[answer] ?? "applicants";
 }
 
 async function pickEnv(): Promise<Env> {
