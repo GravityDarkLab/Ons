@@ -1,4 +1,5 @@
 import { ObjectId } from "mongodb";
+import { env } from "../config/env.js";
 import { AppError } from "../errors.js";
 import { getDb } from "../db/connection.js";
 import { getMatchesCollection, getApplicantsCollection } from "../db/collections.js";
@@ -174,8 +175,8 @@ export async function expireConflictingMatches(
 /** Portal slider floor — matches below this score are never shown to applicants. */
 export const PORTAL_MIN_SCORE = 0.6;
 
-/** Grace period before personal data of inactive accounts is purged. */
-export const DELETION_GRACE_MS = 180 * 24 * 60 * 60 * 1000;
+/** Grace period before personal data of inactive accounts is purged. Configurable via DELETION_GRACE_DAYS. */
+export const DELETION_GRACE_MS = env.deletionGraceDays * 24 * 60 * 60 * 1000;
 
 /**
  * Promotes "applied" applicants to "matched" when they have at least one

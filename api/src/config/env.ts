@@ -70,6 +70,9 @@ export const env = {
   // Scheduled matching job — disabled unless a positive interval is set
   matchingJobIntervalHours: parseFloat(optional("MATCHING_JOB_INTERVAL_HOURS", "0")),
 
+  // Grace period (days) before an inactive applicant's personal data is permanently purged
+  deletionGraceDays: parseInt(optional("DELETION_GRACE_DAYS", "180"), 10),
+
   // Server config
   port: parseInt(optional("PORT", "3001"), 10),
   nodeEnv: optional("NODE_ENV", "development"),
