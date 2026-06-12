@@ -180,13 +180,19 @@
   to   { opacity: 1; transform: none; }
 }
 
+@keyframes dropdown-fade {
+  from { opacity: 0; transform: translateY(-4px); }
+  to   { opacity: 1; transform: none; }
+}
+
 @layer components {
   .match-pop  { animation: match-pop 0.55s cubic-bezier(0.34, 1.56, 0.64, 1) both; }
   .match-rise { animation: match-rise 0.6s cubic-bezier(0.2, 0.7, 0.3, 1) both; }
   .match-fade { animation: match-fade 0.45s ease-out both; }
+  .dropdown-fade { animation: dropdown-fade 0.15s ease-out both; }
 
   @media (prefers-reduced-motion: reduce) {
-    .match-pop, .match-rise, .match-fade { animation: none; opacity: 1; }
+    .match-pop, .match-rise, .match-fade, .dropdown-fade { animation: none; opacity: 1; }
   }
 }
 

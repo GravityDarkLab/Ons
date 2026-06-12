@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next'
 import type { Control, FieldErrors } from 'react-hook-form'
 import type { FormValues } from '../types/form'
 import Input from '../components/ui/Input'
+import LocationAutocomplete from '../components/ui/LocationAutocomplete'
 
 interface Props { control: Control<FormValues>; errors: FieldErrors<FormValues> }
 export const FIELDS: (keyof FormValues)[] = ['instagram_handle', 'location']
@@ -28,7 +29,7 @@ export default function Step1Identity({ control, errors }: Props) {
           name="location"
           control={control}
           render={({ field }) => (
-            <Input label={t('steps.s1.location')} placeholder={t('steps.s1.locationPlaceholder')}
+            <LocationAutocomplete label={t('steps.s1.location')} placeholder={t('steps.s1.locationPlaceholder')}
               error={errors.location?.message} required {...field} />
           )}
         />
