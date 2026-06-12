@@ -23,7 +23,7 @@ export interface MatchView {
   contactRequestedAt?: string // ISO date string
   iceBreakers?: string[] // only for initiator in in_progress/dating
   dateIdeas?: string[] // only for initiator in in_progress/dating
-  targetInstagram?: string // only after contact is accepted
+  targetInstagram?: string // revealed via /contact while the match is in_progress
 }
 
 export interface ProfileView {

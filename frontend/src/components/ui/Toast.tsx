@@ -2,6 +2,7 @@ import {
   createContext,
   useCallback,
   useContext,
+  useEffect,
   useRef,
   useState,
   type ReactNode,
@@ -114,6 +115,13 @@ export function ToastProvider({ children }: { children: ReactNode }) {
       setTimeout(() => dismiss(id), AUTO_DISMISS_MS),
     )
   }
+
+  useEffect(() => {
+    return () => {
+      timers.current.forEach(timer => clearTimeout(timer))
+      timers.current.clear()
+    }
+  }, [])
 
   return (
     <ToastContext.Provider value={api.current}>

@@ -3,7 +3,8 @@ import { useSearchParams, Link } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 
 export default function Success() {
-  const { t } = useTranslation()
+  const { t, i18n } = useTranslation()
+  const isRTL = i18n.dir() === 'rtl'
   const [params] = useSearchParams()
   const alias = params.get('alias') ?? 'Mystery Person'
   const token = params.get('token') ?? null
@@ -125,7 +126,7 @@ export default function Success() {
             <button
               type="button"
               onClick={handleCopy}
-              className="flex-1 inline-flex items-center justify-center gap-2 rounded-full bg-accent text-white font-medium text-sm px-4 py-2.5 hover:opacity-90 transition-opacity duration-150"
+              className="flex-1 inline-flex items-center justify-center gap-2 rounded-full bg-accent text-bg font-medium text-sm px-4 py-2.5 hover:opacity-90 transition-opacity duration-150"
             >
               {copied ? t('success.copied') : t('success.copyLink')}
             </button>
@@ -148,6 +149,7 @@ export default function Success() {
             {t('success.done')}
             <svg
               className="h-3.5 w-3.5"
+              style={isRTL ? { transform: 'scaleX(-1)' } : undefined}
               xmlns="http://www.w3.org/2000/svg"
               viewBox="0 0 24 24"
               fill="none"

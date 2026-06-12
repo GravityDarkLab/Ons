@@ -38,6 +38,14 @@ function validateEncryptionKey(key: string): string {
   return key;
 }
 
+function validatePositiveInt(name: string, value: string): number {
+  const parsed = parseInt(value, 10);
+  if (!Number.isInteger(parsed) || parsed <= 0) {
+    throw new Error(`${name} must be a positive integer, got "${value}"`);
+  }
+  return parsed;
+}
+
 export function parseAllowedOrigins(value: string): string[] {
   return value
     .split(/[;,]/)
@@ -71,7 +79,7 @@ export const env = {
   matchingJobIntervalHours: parseFloat(optional("MATCHING_JOB_INTERVAL_HOURS", "0")),
 
   // Grace period (days) before an inactive applicant's personal data is permanently purged
-  deletionGraceDays: parseInt(optional("DELETION_GRACE_DAYS", "180"), 10),
+  deletionGraceDays: validatePositiveInt("DELETION_GRACE_DAYS", optional("DELETION_GRACE_DAYS", "180")),
 
   // Server config
   port: parseInt(optional("PORT", "3001"), 10),

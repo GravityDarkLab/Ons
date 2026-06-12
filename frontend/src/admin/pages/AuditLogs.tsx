@@ -10,14 +10,14 @@ const LIMIT = 20
 
 function dotColor(action: string): string {
   if (action === 'RESOLVE_IDENTITY' || action === 'APPLICANT_REVEAL_IDENTITY') return 'bg-warning'
-  if (action === 'LOGIN') return 'bg-info'
+  if (action === 'ADMIN_LOGIN') return 'bg-info'
   if (action === 'LOGOUT') return 'bg-faint'
   return 'bg-border'
 }
 
 function actionColor(action: string): string {
   if (action === 'RESOLVE_IDENTITY' || action === 'APPLICANT_REVEAL_IDENTITY') return 'text-warning'
-  if (action === 'LOGIN') return 'text-info'
+  if (action === 'ADMIN_LOGIN') return 'text-info'
   return 'text-muted'
 }
 
