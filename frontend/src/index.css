@@ -1,5 +1,21 @@
 @import "tailwindcss";
-@config "../tailwind.config.js";
+
+@theme {
+  --font-sans: 'Inter', system-ui, sans-serif;
+  --radius-xl: 0.75rem;
+  --radius-2xl: 1rem;
+  --radius-3xl: 1.5rem;
+  --container-form: 520px;
+  --animate-shake: shake 0.5s ease-in-out;
+}
+
+@keyframes shake {
+  0%, 100% { transform: translateX(0); }
+  20%      { transform: translateX(-6px); }
+  40%      { transform: translateX(6px); }
+  60%      { transform: translateX(-4px); }
+  80%      { transform: translateX(4px); }
+}
 
 /* ─── Design tokens ──────────────────────────────────────────────────────────
    Single source of truth. Raw values live in --t-* custom properties; the
