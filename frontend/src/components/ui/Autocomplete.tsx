@@ -2,7 +2,8 @@ import { useId, useMemo, useState, type KeyboardEvent } from 'react'
 
 const MAX_SUGGESTIONS = 8
 
-function getSuggestions(query: string, options: readonly string[]): string[] {
+/** Ranks prefix matches before substring matches, capped at MAX_SUGGESTIONS. */
+export function getSuggestions(query: string, options: readonly string[]): string[] {
   const q = query.trim().toLowerCase()
   if (!q) return []
 
@@ -60,7 +61,7 @@ export default function Autocomplete({
   const [open, setOpen] = useState(false)
   const [highlighted, setHighlighted] = useState(-1)
   const listboxId = useId()
-  const inputId = id ?? name
+  const inputId = id ?? name ?? `${listboxId}-input`
 
   const suggestions = useMemo(() => getSuggestions(value, options), [value, options])
   const showList = open && suggestions.length > 0

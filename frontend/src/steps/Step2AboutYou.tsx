@@ -6,6 +6,7 @@ import Input from '../components/ui/Input'
 import RadioCardGroup from '../components/ui/RadioCard'
 import Autocomplete from '../components/ui/Autocomplete'
 import { OCCUPATIONS } from '../data/occupations'
+import { RELIGIONS } from '../data/religions'
 
 interface Props { control: Control<FormValues>; errors: FieldErrors<FormValues> }
 export const FIELDS: (keyof FormValues)[] = ['age', 'work', 'gender_identity', 'sexual_orientation', 'religion']
@@ -62,8 +63,8 @@ export default function Step2AboutYou({ control, errors }: Props) {
             error={errors.sexual_orientation?.message} columns={2} />
         )} />
         <Controller name="religion" control={control} render={({ field }) => (
-          <Input label={t('steps.s2.religion')} placeholder={t('steps.s2.religionPlaceholder')}
-            error={errors.religion?.message} required {...field} />
+          <Autocomplete label={t('steps.s2.religion')} placeholder={t('steps.s2.religionPlaceholder')}
+            error={errors.religion?.message} required suggestions={RELIGIONS} {...field} />
         )} />
       </div>
     </div>
