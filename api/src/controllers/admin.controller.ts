@@ -82,13 +82,6 @@ export async function getApplicants(c: Context): Promise<Response> {
   const search = query.search?.trim() || undefined;
   const scheduledDeletion = query.scheduledDeletion === "true";
 
-  const adminId = c.get("adminId") as string;
-  const auditCtx = extractAuditContext(adminId, c);
-
-  await writeAuditLog(auditCtx, "LIST_APPLICANTS", {
-    metadata: { page, limit, status, scheduledDeletion },
-  });
-
   try {
     const result = await listApplicants(page, limit, status, search, scheduledDeletion);
     return c.json({ success: true, ...result });
@@ -137,17 +130,12 @@ export async function getApplicantIdentityHandler(c: Context): Promise<Response>
   const auditCtx = extractAuditContext(adminId, c);
 
   try {
-    const identity = await getApplicantIdentity(id);
+    // The service decrypts and audit-logs as RESOLVE_IDENTITY in one place
+    const identity = await getApplicantIdentity(id, auditCtx);
 
     if (!identity) {
       return c.json({ success: false, error: "Identity not found" }, 404);
     }
-
-    // Audit log AFTER successful decryption
-    await writeAuditLog(auditCtx, "RESOLVE_IDENTITY", {
-      targetAlias: identity.alias,
-      targetApplicantId: new ObjectId(id),
-    });
 
     return c.json({
       success: true,

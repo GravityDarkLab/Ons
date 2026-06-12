@@ -9,7 +9,8 @@ import {
 import type { ApplicantDoc, ApplicantStatus } from "../models/applicant.model.js";
 import type { AuditLogDoc } from "../models/auditLog.model.js";
 import type { CreateQuestionnaireInput } from "../validators/admin.validator.js";
-import { resolveIdentityById } from "../privacy/identity.service.js";
+import { revealIdentityById } from "../privacy/identity.service.js";
+import type { AuditContext } from "../middleware/audit.middleware.js";
 import { signAdminToken } from "../middleware/auth.middleware.js";
 import { DELETION_GRACE_MS } from "./match.service.js";
 import { generateMagicToken, hashMagicToken } from "../privacy/magic-token.js";
@@ -132,7 +133,8 @@ export async function getApplicantById(
  * This is an admin-only action; callers MUST write an audit log.
  */
 export async function getApplicantIdentity(
-  id: string
+  id: string,
+  auditCtx: AuditContext
 ): Promise<{ alias: string; instagramHandle: string } | null> {
   const db = await getDb();
   const col = getApplicantsCollection(db);
@@ -147,7 +149,11 @@ export async function getApplicantIdentity(
   const applicant = await col.findOne({ _id: objectId });
   if (!applicant) return null;
 
-  const instagramHandle = await resolveIdentityById(objectId);
+  const instagramHandle = await revealIdentityById(objectId, {
+    actor: auditCtx,
+    action: "RESOLVE_IDENTITY",
+    targetAlias: applicant.alias,
+  });
   if (!instagramHandle) return null;
 
   return { alias: applicant.alias, instagramHandle };

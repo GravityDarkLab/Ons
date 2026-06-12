@@ -27,6 +27,10 @@ export interface MatchDoc {
   dateIdeas?: string[];         // AI-generated, populated at in_progress
   contactRequestedAt?: Date;
   contactRespondedAt?: Date;
+  /** Applicant ids (hex strings) for whom the partner-identity reveal on the
+   *  matches page has already been audit-logged — keeps repeat page loads
+   *  from writing a new log entry every time. */
+  identityViewLoggedFor?: string[];
   notes?: string;
   createdAt: Date;
   updatedAt: Date;
