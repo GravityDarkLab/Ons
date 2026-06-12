@@ -5,6 +5,8 @@ import {
   setPassword as setPasswordService,
   changePassword as changePasswordService,
   getMyProfile,
+  getMyAnswers,
+  updateMyAnswers,
   getMyMatches,
   requestContact,
   respondToContact,
@@ -101,6 +103,29 @@ export async function me(c: Context): Promise<Response> {
   const profile = await getMyProfile(applicantId);
   if (!profile) return c.json({ success: false, error: "Not found" }, 404);
   return c.json({ success: true, data: profile });
+}
+
+export async function answers(c: Context): Promise<Response> {
+  const applicantId = c.get("applicantId") as string;
+  const data = await getMyAnswers(applicantId);
+  if (!data) return c.json({ success: false, error: "Not found" }, 404);
+  return c.json({ success: true, data: { answers: data } });
+}
+
+export async function updateAnswers(c: Context): Promise<Response> {
+  const applicantId = c.get("applicantId") as string;
+  const { answers: updates } = c.req.valid("json" as never) as {
+    answers: Record<string, unknown>;
+  };
+
+  try {
+    await updateMyAnswers(applicantId, updates);
+    return c.json({ success: true });
+  } catch (err: unknown) {
+    const e = err as { message?: string; statusCode?: number };
+    const code = (e.statusCode ?? 500) as Parameters<typeof c.json>[1];
+    return c.json({ success: false, error: e.message ?? "Error" }, code);
+  }
 }
 
 export async function matches(c: Context): Promise<Response> {

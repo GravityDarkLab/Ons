@@ -803,7 +803,6 @@ components:
           type: string
           enum:
             - RESOLVE_IDENTITY
-            - LIST_APPLICANTS
             - VIEW_APPLICANT
             - DEACTIVATE_APPLICANT
             - ADMIN_LOGIN
@@ -1336,7 +1335,7 @@ paths:
         - BearerAuth: []
       description: |
         Returns a paginated list of applicant profiles. No sensitive data
-        (instagram handles) is included. Audit-logged as LIST_APPLICANTS.
+        (instagram handles) is included.
       parameters:
         - name: status
           in: query
@@ -2017,6 +2016,114 @@ paths:
                   createdAt: "2026-06-01T12:00:00.000Z"
         '401':
           $ref: '#/components/responses/Unauthorized'
+
+  /api/v1/profile/answers:
+    get:
+      tags: [Profile]
+      summary: Get my questionnaire answers
+      operationId: getMyAnswers
+      security:
+        - ApplicantCookieAuth: []
+        - ApplicantBearerAuth: []
+      description: |
+        Returns the authenticated applicant's own questionnaire answers for
+        self-service editing. `instagram_handle` is never included — identity
+        answers live encrypted in a separate collection — and the one-time
+        `disclaimer_agreed` consent is filtered out as well.
+      responses:
+        '200':
+          description: The applicant's editable answers
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [success, data]
+                properties:
+                  success:
+                    type: boolean
+                    enum: [true]
+                  data:
+                    type: object
+                    required: [answers]
+                    properties:
+                      answers:
+                        type: object
+                        additionalProperties: true
+              example:
+                success: true
+                data:
+                  answers:
+                    location: "Paris, France"
+                    age: 27
+                    work: "Student"
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          description: Applicant not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+    put:
+      tags: [Profile]
+      summary: Update my questionnaire answers
+      operationId: updateMyAnswers
+      security:
+        - ApplicantCookieAuth: []
+        - ApplicantBearerAuth: []
+      description: |
+        Replaces the applicant's editable questionnaire answers. Field rules
+        match the original submission. `instagram_handle` and
+        `disclaimer_agreed` are rejected — changing the Instagram handle
+        requires contacting an admin. Embeddings are refreshed in the
+        background so the next matching run uses the updated answers.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [answers]
+              properties:
+                answers:
+                  type: object
+                  additionalProperties: true
+                  description: |
+                    All editable questionnaire answers (full replacement of the
+                    editable set). Unknown keys, `instagram_handle`, and
+                    `disclaimer_agreed` are rejected with a 422.
+            example:
+              answers:
+                location: "Paris, France"
+                age: 27
+                work: "Student"
+      responses:
+        '200':
+          description: Answers updated
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    enum: [true]
+              example:
+                success: true
+        '422':
+          description: Validation failed (unknown key, instagram_handle, disclaimer_agreed, or invalid value)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          description: Applicant not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
 
   /api/v1/profile/matches:
     get:

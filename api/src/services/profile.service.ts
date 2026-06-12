@@ -17,10 +17,15 @@ import {
   DELETION_GRACE_MS,
   type ApplicantMatchView,
 } from "./match.service.js";
-import { resolveIdentityById } from "../privacy/identity.service.js";
+import {
+  resolveIdentityById,
+  revealIdentityById,
+  identityExistsById,
+} from "../privacy/identity.service.js";
 import { hashMagicToken } from "../privacy/magic-token.js";
 import { writeAuditLog } from "../middleware/audit.middleware.js";
 import { generateIceBreakers } from "./icebreaker.service.js";
+import { embedApplicant } from "./embedding.service.js";
 
 // ── Auth ──────────────────────────────────────────────────────────────────────
 
@@ -125,6 +130,61 @@ export async function getMyProfile(applicantId: string): Promise<ApplicantProfil
   };
 }
 
+// ── Answers (self-service questionnaire edits) ───────────────────────────────
+
+// Never sent to the applicant editor and never overwritten by it:
+// instagram_handle is defense in depth (identities live in a separate,
+// encrypted collection), disclaimer_agreed is a one-time consent.
+const NON_EDITABLE_ANSWER_KEYS = new Set(["instagram_handle", "disclaimer_agreed"]);
+
+export async function getMyAnswers(
+  applicantId: string
+): Promise<Record<string, unknown> | null> {
+  const db  = await getDb();
+  const col = getApplicantsCollection(db);
+
+  const doc = await col.findOne(
+    { _id: new ObjectId(applicantId) },
+    { projection: { answers: 1 } }
+  );
+  if (!doc) return null;
+
+  return Object.fromEntries(
+    Object.entries(doc.answers ?? {}).filter(([key]) => !NON_EDITABLE_ANSWER_KEYS.has(key))
+  );
+}
+
+export async function updateMyAnswers(
+  applicantId: string,
+  updates: Record<string, unknown>
+): Promise<void> {
+  const db  = await getDb();
+  const col = getApplicantsCollection(db);
+  const oid = new ObjectId(applicantId);
+
+  const doc = await col.findOne({ _id: oid }, { projection: { answers: 1, alias: 1 } });
+  if (!doc) throw new AppError("Not found", 404);
+
+  // Merge over the stored answers so non-editable keys survive untouched.
+  // The validator already rejects them in `updates`; filtering again here
+  // keeps the invariant even if a future caller skips validation.
+  const merged: Record<string, unknown> = { ...(doc.answers ?? {}) };
+  for (const [key, value] of Object.entries(updates)) {
+    if (NON_EDITABLE_ANSWER_KEYS.has(key)) continue;
+    merged[key] = value;
+  }
+  // height_cm is the only optional field — absence in a full-form update means cleared
+  if (!("height_cm" in updates)) delete merged["height_cm"];
+
+  await col.updateOne({ _id: oid }, { $set: { answers: merged, updatedAt: new Date() } });
+
+  // Refresh embeddings in the background (same as submission) so the next
+  // matching run scores against the updated text
+  embedApplicant(oid, merged).catch((err) =>
+    console.error(`[profile] Background embedding refresh failed for ${doc.alias}:`, err)
+  );
+}
+
 // ── Matches ───────────────────────────────────────────────────────────────────
 
 export async function getMyMatches(
@@ -171,27 +231,35 @@ export async function getMyMatches(
 
   // Reveal partner identities for committed matches (in_progress/dating) —
   // the contact flow already revealed the target's handle to the initiator,
-  // and the initiator consented by initiating. Each decryption is audit-logged.
+  // and the initiator consented by initiating. The decryption is audit-logged
+  // once per applicant per match, not on every page load.
   const instagramByMatchId = new Map<string, string>();
   for (const d of docs) {
     if (d.status !== "in_progress" && d.status !== "dating") continue;
     const partnerId = d.applicantAId.equals(oid) ? d.applicantBId : d.applicantAId;
-    const handle = await resolveIdentityById(partnerId);
+    const alreadyLogged = d.identityViewLoggedFor?.includes(applicantId) ?? false;
+
+    const handle = alreadyLogged
+      ? await resolveIdentityById(partnerId)
+      : await revealIdentityById(partnerId, {
+          actor: { adminId: applicantId, ipAddress: audit.ipAddress, userAgent: audit.userAgent },
+          action: "APPLICANT_REVEAL_IDENTITY",
+          targetAlias: d.applicantAId.equals(oid) ? d.applicantBAlias : d.applicantAAlias,
+          metadata: {
+            actorType: "applicant",
+            matchId: d._id.toHexString(),
+            reason: "match_view",
+          },
+        });
     if (!handle) continue;
     instagramByMatchId.set(d._id.toHexString(), handle);
-    await writeAuditLog(
-      { adminId: applicantId, ipAddress: audit.ipAddress, userAgent: audit.userAgent },
-      "APPLICANT_REVEAL_IDENTITY",
-      {
-        targetApplicantId: partnerId,
-        metadata: {
-          actorType: "applicant",
-          matchId: d._id.toHexString(),
-          targetAlias: d.applicantAId.equals(oid) ? d.applicantBAlias : d.applicantAAlias,
-          reason: "match_view",
-        },
-      }
-    );
+
+    if (!alreadyLogged) {
+      await matchCol.updateOne(
+        { _id: d._id },
+        { $addToSet: { identityViewLoggedFor: applicantId } }
+      );
+    }
   }
 
   return docs.map((d) => {
@@ -249,9 +317,10 @@ export async function requestContact(
     ? await generateIceBreakers(actorDoc, targetDoc)
     : { questions: [], dateIdeas: [] };
 
-  // Pre-flight identity check before any mutation — prevents stuck state if identity is missing
-  const targetInstagram = await resolveIdentityById(targetId);
-  if (!targetInstagram) {
+  // Pre-flight identity check before any mutation — prevents stuck state if
+  // identity is missing. Existence only: the decrypt (and its audit log)
+  // happens after the atomic claim below, via revealIdentityById.
+  if (!(await identityExistsById(targetId))) {
     throw new AppError("Target identity not found", 404);
   }
 
@@ -269,6 +338,9 @@ export async function requestContact(
         dateIdeas,
         contactRequestedAt: now,
         updatedAt:          now,
+        // The contact reveal is logged below — repeat views on the matches
+        // page must not write another entry for the initiator
+        identityViewLoggedFor: [applicantId],
       },
     },
     { returnDocument: "after" },
@@ -283,21 +355,23 @@ export async function requestContact(
   // they haven't acted yet. (Accept later expires both sides as before.)
   await expireConflictingMatches([actorId], matchOid);
 
-  // Write audit log after winning the race (identity was pre-fetched without side-effects)
-  await writeAuditLog(
-    { adminId: applicantId, ipAddress: audit.ipAddress, userAgent: audit.userAgent },
-    "APPLICANT_REVEAL_IDENTITY",
-    {
-      targetApplicantId: targetId,
-      metadata: {
-        actorType: "applicant",
-        matchId,
-        targetAlias: match.applicantAId.equals(actorId)
-          ? match.applicantBAlias
-          : match.applicantAAlias,
-      },
-    }
-  );
+  // Decrypt + audit log after winning the race — revealIdentityById logs
+  // before the plaintext is returned. Existence was verified pre-flight.
+  const targetInstagram = await revealIdentityById(targetId, {
+    actor: { adminId: applicantId, ipAddress: audit.ipAddress, userAgent: audit.userAgent },
+    action: "APPLICANT_REVEAL_IDENTITY",
+    targetAlias: match.applicantAId.equals(actorId)
+      ? match.applicantBAlias
+      : match.applicantAAlias,
+    metadata: {
+      actorType: "applicant",
+      matchId,
+      reason: "contact_request",
+    },
+  });
+  if (!targetInstagram) {
+    throw new AppError("Target identity not found", 404);
+  }
 
   return { targetInstagram, iceBreakers: questions, dateIdeas };
 }

@@ -462,6 +462,17 @@
       "cancel": "Annuler",
       "deactivateFailed": "Impossible de désactiver le compte.",
       "alreadyDeactivated": "Ton compte est déjà désactivé. Tu peux annuler ou accélérer la suppression programmée depuis ton tableau de bord."
+    },
+    "profile": {
+      "tabMatches": "Matchs",
+      "tabProfile": "Mon profil",
+      "intro": "Mettez à jour vos réponses à tout moment — elles seront utilisées lors de la prochaine recherche de matchs.",
+      "instagramLocked": "Pour changer votre pseudo Instagram, veuillez contacter les admins.",
+      "save": "Enregistrer les modifications",
+      "saved": "Votre profil a été mis à jour.",
+      "saveError": "Impossible d'enregistrer vos modifications. Veuillez réessayer.",
+      "loadError": "Impossible de charger votre profil.",
+      "unsaved": "Vous avez des modifications non enregistrées"
     }
   }
 }

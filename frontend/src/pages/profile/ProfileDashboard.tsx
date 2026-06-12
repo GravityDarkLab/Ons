@@ -4,6 +4,7 @@ import type { ProfileView, MatchView, ApplicantStatus } from '../../api/profile.
 import { getMyProfile, getMyMatches } from '../../api/profile.client'
 import MatchList from './MatchList'
 import { useTranslation } from 'react-i18next'
+import EditProfileForm from './EditProfileForm'
 import ProfileSettingsDrawer from './ProfileSettingsDrawer'
 import DeletionCountdown from './DeletionCountdown'
 import Badge from '../../components/ui/Badge'
@@ -25,6 +26,35 @@ function StatusBadge({ status }: { status: ApplicantStatus | undefined }) {
   )
 }
 
+type PortalTab = 'matches' | 'profile'
+
+function TabBar({ tab, onChange }: { tab: PortalTab; onChange: (t: PortalTab) => void }) {
+  const { t } = useTranslation()
+  const tabs: { value: PortalTab; label: string }[] = [
+    { value: 'matches', label: t('portal.profile.tabMatches') },
+    { value: 'profile', label: t('portal.profile.tabProfile') },
+  ]
+  return (
+    <div role="tablist" className="flex gap-2">
+      {tabs.map(item => (
+        <button
+          key={item.value}
+          role="tab"
+          aria-selected={tab === item.value}
+          onClick={() => onChange(item.value)}
+          className={`rounded-full px-4 py-1.5 text-sm transition-colors ${
+            tab === item.value
+              ? 'bg-accent text-bg'
+              : 'bg-surface border border-border text-muted hover:text-primary hover:border-accent/40'
+          }`}
+        >
+          {item.label}
+        </button>
+      ))}
+    </div>
+  )
+}
+
 // ── Main component ────────────────────────────────────────────────────────────
 
 export default function ProfileDashboard() {
@@ -34,6 +64,7 @@ export default function ProfileDashboard() {
   const [profile, setProfile] = useState<ProfileView | null>(null)
   const [matches, setMatches] = useState<MatchView[]>([])
   const [threshold, setThreshold] = useState<number>(0.8)
+  const [tab, setTab] = useState<PortalTab>('matches')
   const [drawerOpen, setDrawerOpen] = useState(false)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -132,7 +163,20 @@ export default function ProfileDashboard() {
 
       {/* Status-aware content */}
       <main>
-        {profile?.status === 'applied' && (
+        {/* Matches | My profile tabs — inactive accounts keep the dormant screen */}
+        {profile && profile.status !== 'inactive' && (
+          <div className="max-w-2xl mx-auto px-6 pt-6">
+            <TabBar tab={tab} onChange={setTab} />
+          </div>
+        )}
+
+        {tab === 'profile' && profile && profile.status !== 'inactive' && (
+          <div className="max-w-2xl mx-auto px-6 py-6">
+            <EditProfileForm />
+          </div>
+        )}
+
+        {tab === 'matches' && profile?.status === 'applied' && (
           <div className="max-w-lg mx-auto px-6 py-12 text-center space-y-6">
             <div className="bg-surface border border-border rounded-2xl p-8 shadow-sm">
               <h2 className="text-xl font-semibold text-primary mb-2">
@@ -152,7 +196,7 @@ export default function ProfileDashboard() {
           </div>
         )}
 
-        {profile?.status === 'matched' && (
+        {tab === 'matches' && profile?.status === 'matched' && (
           <div className="max-w-2xl mx-auto px-6 py-8 space-y-6">
             {matches.length === 0 ? (
               // Nothing live for this applicant (e.g. after passing on a
@@ -195,7 +239,7 @@ export default function ProfileDashboard() {
           </div>
         )}
 
-        {profile?.status === 'dating' && (
+        {tab === 'matches' && profile?.status === 'dating' && (
           <div className="max-w-2xl mx-auto px-6 py-8 space-y-6">
             <MatchList
               matches={matches.filter(

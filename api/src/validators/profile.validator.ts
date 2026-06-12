@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { formSubmissionSchema } from "./form.validator.js";
 
 export const profileLoginSchema = z.object({
   magicToken: z.string().length(64, "magicToken must be exactly 64 characters"),
@@ -41,3 +42,19 @@ export const respondSchema = z.object({
 export const outcomeSchema = z.object({
   outcome: z.enum(["success", "failed"]),
 });
+
+/**
+ * Self-service answer updates — same field rules as the original submission,
+ * minus the fields an applicant must not change themselves:
+ * - instagram_handle lives encrypted in the identities collection and can
+ *   only be changed by an admin
+ * - disclaimer_agreed is a one-time consent given at submission
+ * `.strict()` rejects both (and any unknown key) instead of silently dropping.
+ */
+export const updateAnswersSchema = z.object({
+  answers: formSubmissionSchema.shape.answers
+    .omit({ instagram_handle: true, disclaimer_agreed: true })
+    .strict(),
+});
+
+export type UpdateAnswersInput = z.infer<typeof updateAnswersSchema>;

@@ -17,6 +17,8 @@ const mockLoginWithMagicToken = mock(async () => null as any);
 const mockSetPassword         = mock(async () => null as any);
 const mockChangePassword      = mock(async () => {});
 const mockGetMyProfile        = mock(async () => null as any);
+const mockGetMyAnswers        = mock(async () => null as any);
+const mockUpdateMyAnswers     = mock(async () => {});
 const mockGetMyMatches        = mock(async () => [] as any[]);
 const mockRequestContact      = mock(async () => ({ targetInstagram: "@partner", iceBreakers: [] as string[], dateIdeas: [] as string[] }));
 const mockRespondToContact    = mock(async () => {});
@@ -31,6 +33,8 @@ mock.module("../../services/profile.service.js", () => ({
   setPassword:         mockSetPassword,
   changePassword:      mockChangePassword,
   getMyProfile:        mockGetMyProfile,
+  getMyAnswers:        mockGetMyAnswers,
+  updateMyAnswers:     mockUpdateMyAnswers,
   getMyMatches:        mockGetMyMatches,
   requestContact:      mockRequestContact,
   respondToContact:    mockRespondToContact,
@@ -75,11 +79,19 @@ function get(path: string, token?: string) {
   return app.request(path, { headers });
 }
 
+function put(path: string, body: unknown, token?: string) {
+  const headers: Record<string, string> = { "Content-Type": "application/json" };
+  if (token) headers["Authorization"] = `Bearer ${token}`;
+  return app.request(path, { method: "PUT", headers, body: JSON.stringify(body) });
+}
+
 beforeEach(() => {
   mockLoginWithMagicToken.mockReset();
   mockSetPassword.mockReset();
   mockChangePassword.mockReset();
   mockGetMyProfile.mockReset();
+  mockGetMyAnswers.mockReset();
+  mockUpdateMyAnswers.mockReset();
   mockGetMyMatches.mockReset();
   mockRequestContact.mockReset();
   mockRespondToContact.mockReset();
@@ -293,6 +305,120 @@ describe("GET /profile/me", () => {
     const body = await res.json() as any;
     expect(body.success).toBe(true);
     expect(body.data.alias).toBe("Blue Falcon");
+  });
+});
+
+// ── GET /profile/answers ──────────────────────────────────────────────────────
+
+const VALID_ANSWERS_UPDATE = {
+  location: "Paris, France",
+  age: 27,
+  work: "Student",
+  gender_identity: "Female",
+  sexual_orientation: "Straight",
+  religion: "Islam",
+  vibe_words: "calm, curious",
+  lifestyle: "Early riser, gym, reading",
+  relationship_type: "Long Term",
+  open_to_long_distance: true,
+  preferred_physical_traits: "Tall",
+  preferred_character_traits: "Kind",
+  deal_breakers: "Smoking",
+  okay_with_opposite_gender_friends: true,
+  religion_deal_breaker: false,
+  physical_affection_importance: 7,
+  dream_first_date: "A walk by the sea",
+};
+
+describe("GET /profile/answers", () => {
+  it("returns 401 without a token", async () => {
+    const res = await get("/profile/answers");
+    expect(res.status).toBe(401);
+  });
+
+  it("returns the applicant's answers", async () => {
+    mockGetMyAnswers.mockResolvedValue({ location: "Paris, France", age: 27 });
+    const token = await applicantToken();
+    const res = await get("/profile/answers", token);
+    expect(res.status).toBe(200);
+    const body = await res.json() as any;
+    expect(body.success).toBe(true);
+    expect(body.data.answers).toEqual({ location: "Paris, France", age: 27 });
+  });
+
+  it("returns 404 when the applicant no longer exists", async () => {
+    mockGetMyAnswers.mockResolvedValue(null);
+    const token = await applicantToken();
+    const res = await get("/profile/answers", token);
+    expect(res.status).toBe(404);
+  });
+});
+
+// ── PUT /profile/answers ──────────────────────────────────────────────────────
+
+describe("PUT /profile/answers", () => {
+  it("returns 401 without a token", async () => {
+    const res = await put("/profile/answers", { answers: VALID_ANSWERS_UPDATE });
+    expect(res.status).toBe(401);
+  });
+
+  it("updates answers with a valid payload", async () => {
+    mockUpdateMyAnswers.mockResolvedValue(undefined);
+    const token = await applicantToken();
+    const res = await put("/profile/answers", { answers: VALID_ANSWERS_UPDATE }, token);
+    expect(res.status).toBe(200);
+    expect(mockUpdateMyAnswers).toHaveBeenCalledWith(VALID_APPLICANT_ID, VALID_ANSWERS_UPDATE);
+  });
+
+  it("rejects instagram_handle with 422 and never reaches the service", async () => {
+    const token = await applicantToken();
+    const res = await put(
+      "/profile/answers",
+      { answers: { ...VALID_ANSWERS_UPDATE, instagram_handle: "sneaky_handle" } },
+      token,
+    );
+    expect(res.status).toBe(422);
+    expect(mockUpdateMyAnswers).not.toHaveBeenCalled();
+  });
+
+  it("rejects disclaimer_agreed with 422", async () => {
+    const token = await applicantToken();
+    const res = await put(
+      "/profile/answers",
+      { answers: { ...VALID_ANSWERS_UPDATE, disclaimer_agreed: false } },
+      token,
+    );
+    expect(res.status).toBe(422);
+    expect(mockUpdateMyAnswers).not.toHaveBeenCalled();
+  });
+
+  it("rejects unknown keys with 422", async () => {
+    const token = await applicantToken();
+    const res = await put(
+      "/profile/answers",
+      { answers: { ...VALID_ANSWERS_UPDATE, evil_extra: "x" } },
+      token,
+    );
+    expect(res.status).toBe(422);
+    expect(mockUpdateMyAnswers).not.toHaveBeenCalled();
+  });
+
+  it("rejects invalid field values with 422 (age below 18)", async () => {
+    const token = await applicantToken();
+    const res = await put(
+      "/profile/answers",
+      { answers: { ...VALID_ANSWERS_UPDATE, age: 15 } },
+      token,
+    );
+    expect(res.status).toBe(422);
+    expect(mockUpdateMyAnswers).not.toHaveBeenCalled();
+  });
+
+  it("accepts a payload without the optional height_cm", async () => {
+    mockUpdateMyAnswers.mockResolvedValue(undefined);
+    const token = await applicantToken();
+    const res = await put("/profile/answers", { answers: VALID_ANSWERS_UPDATE }, token);
+    expect(res.status).toBe(200);
   });
 });
 

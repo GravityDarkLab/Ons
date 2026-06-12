@@ -123,6 +123,23 @@ export async function getMyProfile(): Promise<ProfileView> {
   return body.data
 }
 
+/** The applicant's own questionnaire answers (never includes instagram_handle). */
+export async function getMyAnswers(): Promise<Record<string, unknown>> {
+  const body = await profileRequest<{ data: { answers: Record<string, unknown> } }>(
+    '/profile/answers',
+    { method: 'GET' },
+  )
+  return body.data.answers
+}
+
+/** Updates the applicant's questionnaire answers (instagram_handle is not accepted). */
+export async function updateMyAnswers(answers: Record<string, unknown>): Promise<void> {
+  await profileRequest<unknown>(
+    '/profile/answers',
+    { method: 'PUT', body: JSON.stringify({ answers }) },
+  )
+}
+
 export async function getMyMatches(threshold?: number, limit?: number): Promise<MatchView[]> {
   const params = new URLSearchParams()
   if (threshold !== undefined) params.set('threshold', String(threshold))

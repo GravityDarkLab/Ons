@@ -462,6 +462,17 @@
       "cancel": "Abbrechen",
       "deactivateFailed": "Konto konnte nicht deaktiviert werden.",
       "alreadyDeactivated": "Dein Konto ist bereits deaktiviert. Du kannst die geplante Löschung über dein Dashboard abbrechen oder vorziehen."
+    },
+    "profile": {
+      "tabMatches": "Matches",
+      "tabProfile": "Mein Profil",
+      "intro": "Aktualisiere deine Antworten jederzeit — sie werden bei der nächsten Match-Suche verwendet.",
+      "instagramLocked": "Um deinen Instagram-Namen zu ändern, wende dich bitte an die Admins.",
+      "save": "Änderungen speichern",
+      "saved": "Dein Profil wurde aktualisiert.",
+      "saveError": "Änderungen konnten nicht gespeichert werden. Bitte versuche es erneut.",
+      "loadError": "Dein Profil konnte nicht geladen werden.",
+      "unsaved": "Du hast ungespeicherte Änderungen"
     }
   }
 }

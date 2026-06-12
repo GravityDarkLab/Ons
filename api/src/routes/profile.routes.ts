@@ -8,6 +8,7 @@ import {
   matchQuerySchema,
   respondSchema,
   outcomeSchema,
+  updateAnswersSchema,
 } from "../validators/profile.validator.js";
 import {
   login,
@@ -15,6 +16,8 @@ import {
   changePassword,
   suggestPassword,
   me,
+  answers,
+  updateAnswers,
   matches,
   contact,
   respond,
@@ -61,6 +64,15 @@ profileRoutes.post("/logout", logout);
 profileRoutes.use("*", profileRateLimiter);
 
 profileRoutes.get("/me", requireApplicant, me);
+
+profileRoutes.get("/answers", requireApplicant, answers);
+
+profileRoutes.put(
+  "/answers",
+  requireApplicant,
+  zValidator("json", updateAnswersSchema, validationHook),
+  updateAnswers
+);
 
 profileRoutes.get(
   "/matches",
