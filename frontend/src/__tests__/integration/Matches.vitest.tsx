@@ -281,3 +281,49 @@ describe('Matches page — delete', () => {
     expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument()
   })
 })
+
+describe('Matches page — status menu', () => {
+  it('opens the status menu outside the scrollable table container', async () => {
+    mockFetchMatches.mockResolvedValue({ data: [MATCH_A], total: 1, page: 1, limit: 20, totalPages: 1 })
+    renderMatches()
+    await waitFor(() => table().getByText('Lunar Ocean'))
+
+    await userEvent.click(table().getByRole('button', { name: /admin\.matches\.proposed/ }))
+    const menu = screen.getByRole('menu')
+
+    // The table wrapper clips overflow for rounded corners; the menu must
+    // render outside it (via portal) so it isn't clipped when it overflows.
+    const tableWrapper = screen.getByRole('table').closest('.overflow-hidden')
+    expect(tableWrapper).not.toBeNull()
+    expect(tableWrapper?.contains(menu)).toBe(false)
+    expect(menu.closest('body')).not.toBeNull()
+  })
+
+  it('calls updateMatch when a new status is selected from the menu', async () => {
+    mockFetchMatches.mockResolvedValue({ data: [MATCH_A], total: 1, page: 1, limit: 20, totalPages: 1 })
+    mockUpdateMatch.mockResolvedValue({ ...MATCH_A, status: 'declined' as const })
+    renderMatches()
+    await waitFor(() => table().getByText('Lunar Ocean'))
+
+    await userEvent.click(table().getByRole('button', { name: /admin\.matches\.proposed/ }))
+    const menu = screen.getByRole('menu')
+    await userEvent.click(within(menu).getByRole('menuitem', { name: 'admin.matches.declined' }))
+
+    await waitFor(() =>
+      expect(mockUpdateMatch).toHaveBeenCalledWith('match-001', { status: 'declined' }),
+    )
+    expect(screen.queryByRole('menu')).not.toBeInTheDocument()
+  })
+
+  it('closes the menu when clicking outside', async () => {
+    mockFetchMatches.mockResolvedValue({ data: [MATCH_A], total: 1, page: 1, limit: 20, totalPages: 1 })
+    renderMatches()
+    await waitFor(() => table().getByText('Lunar Ocean'))
+
+    await userEvent.click(table().getByRole('button', { name: /admin\.matches\.proposed/ }))
+    expect(screen.getByRole('menu')).toBeInTheDocument()
+
+    await userEvent.click(document.body)
+    expect(screen.queryByRole('menu')).not.toBeInTheDocument()
+  })
+})

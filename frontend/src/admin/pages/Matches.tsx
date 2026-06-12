@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
+import { createPortal } from 'react-dom'
 import { Link, useSearchParams } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { fetchMatches, updateMatch, removeMatch } from '../api/client'
@@ -316,21 +317,42 @@ function useStatusLabels() {
 function StatusMenu({ match, saving, onStatusChange }: Pick<RowProps, 'match' | 'saving' | 'onStatusChange'>) {
   const { STATUS_LABEL } = useStatusLabels()
   const [open, setOpen] = useState(false)
-  const ref = useRef<HTMLDivElement>(null)
+  const [coords, setCoords] = useState<{ top: number; left: number } | null>(null)
+  const buttonRef = useRef<HTMLButtonElement>(null)
+  const menuRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
     if (!open) return
     function handleOutside(e: MouseEvent) {
-      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false)
+      const target = e.target as Node
+      if (buttonRef.current?.contains(target)) return
+      if (menuRef.current?.contains(target)) return
+      setOpen(false)
     }
+    function handleReposition() { setOpen(false) }
     document.addEventListener('mousedown', handleOutside)
-    return () => document.removeEventListener('mousedown', handleOutside)
+    window.addEventListener('resize', handleReposition)
+    window.addEventListener('scroll', handleReposition, true)
+    return () => {
+      document.removeEventListener('mousedown', handleOutside)
+      window.removeEventListener('resize', handleReposition)
+      window.removeEventListener('scroll', handleReposition, true)
+    }
   }, [open])
 
+  function toggle() {
+    if (!open && buttonRef.current) {
+      const rect = buttonRef.current.getBoundingClientRect()
+      setCoords({ top: rect.bottom + 4, left: rect.left })
+    }
+    setOpen(o => !o)
+  }
+
   return (
-    <div className="relative" ref={ref}>
+    <div className="relative inline-block">
       <button
-        onClick={() => setOpen(o => !o)}
+        ref={buttonRef}
+        onClick={toggle}
         aria-expanded={open}
         aria-haspopup="menu"
         className="cursor-pointer hover:opacity-80 transition-opacity"
@@ -340,8 +362,13 @@ function StatusMenu({ match, saving, onStatusChange }: Pick<RowProps, 'match' | 
           <ChevronDownIcon />
         </Badge>
       </button>
-      {open && (
-        <div role="menu" className="absolute left-0 top-full mt-1 z-10 bg-surface border border-border rounded-xl shadow-raised py-1 min-w-[140px]">
+      {open && coords && createPortal(
+        <div
+          ref={menuRef}
+          role="menu"
+          style={{ top: coords.top, left: coords.left }}
+          className="fixed z-50 bg-surface border border-border rounded-xl shadow-raised py-1 min-w-[140px]"
+        >
           {ALL_STATUSES.map(s => (
             <button
               key={s}
@@ -353,7 +380,8 @@ function StatusMenu({ match, saving, onStatusChange }: Pick<RowProps, 'match' | 
               {STATUS_LABEL[s]}
             </button>
           ))}
-        </div>
+        </div>,
+        document.body,
       )}
     </div>
   )
