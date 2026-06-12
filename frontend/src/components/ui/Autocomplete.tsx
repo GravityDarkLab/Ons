@@ -1,18 +1,17 @@
 import { useId, useMemo, useState, type KeyboardEvent } from 'react'
-import { CITIES } from '../../data/cities'
 
 const MAX_SUGGESTIONS = 8
 
-function getSuggestions(query: string): string[] {
+function getSuggestions(query: string, options: readonly string[]): string[] {
   const q = query.trim().toLowerCase()
   if (!q) return []
 
   const startsWith: string[] = []
   const includes: string[] = []
-  for (const city of CITIES) {
-    const lower = city.toLowerCase()
-    if (lower.startsWith(q)) startsWith.push(city)
-    else if (lower.includes(q)) includes.push(city)
+  for (const option of options) {
+    const lower = option.toLowerCase()
+    if (lower.startsWith(q)) startsWith.push(option)
+    else if (lower.includes(q)) includes.push(option)
   }
   return [...startsWith, ...includes].slice(0, MAX_SUGGESTIONS)
 }
@@ -42,9 +41,11 @@ interface Props {
   onBlur?: () => void
   name?: string
   id?: string
+  /** Suggestion pool to filter as the user types. The field stays free text. */
+  suggestions: readonly string[]
 }
 
-export default function LocationAutocomplete({
+export default function Autocomplete({
   label,
   error,
   required,
@@ -54,17 +55,18 @@ export default function LocationAutocomplete({
   onBlur,
   name,
   id,
+  suggestions: options,
 }: Props) {
   const [open, setOpen] = useState(false)
   const [highlighted, setHighlighted] = useState(-1)
   const listboxId = useId()
-  const inputId = id ?? name ?? 'location'
+  const inputId = id ?? name
 
-  const suggestions = useMemo(() => getSuggestions(value), [value])
+  const suggestions = useMemo(() => getSuggestions(value, options), [value, options])
   const showList = open && suggestions.length > 0
 
-  function selectCity(city: string) {
-    onChange(city)
+  function selectOption(option: string) {
+    onChange(option)
     setOpen(false)
     setHighlighted(-1)
   }
@@ -83,7 +85,7 @@ export default function LocationAutocomplete({
       case 'Enter':
         if (highlighted >= 0) {
           e.preventDefault()
-          selectCity(suggestions[highlighted])
+          selectOption(suggestions[highlighted])
         }
         break
       case 'Escape':
@@ -141,21 +143,21 @@ export default function LocationAutocomplete({
             role="listbox"
             className="dropdown-fade absolute z-20 mt-1.5 w-full max-h-60 overflow-y-auto rounded-xl border border-border bg-surface shadow-raised py-1.5"
           >
-            {suggestions.map((city, i) => (
+            {suggestions.map((option, i) => (
               <li
-                key={city}
+                key={option}
                 id={`${listboxId}-option-${i}`}
                 role="option"
                 aria-selected={i === highlighted}
                 onMouseDown={e => e.preventDefault()}
-                onClick={() => selectCity(city)}
+                onClick={() => selectOption(option)}
                 onMouseEnter={() => setHighlighted(i)}
                 className={[
                   'px-4 py-2.5 text-[15px] cursor-pointer transition-colors duration-100',
                   i === highlighted ? 'bg-accent-light text-primary' : 'text-primary hover:bg-bg',
                 ].join(' ')}
               >
-                {highlightMatch(city, value)}
+                {highlightMatch(option, value)}
               </li>
             ))}
           </ul>

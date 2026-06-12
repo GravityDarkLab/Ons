@@ -4,6 +4,8 @@ import type { Control, FieldErrors } from 'react-hook-form'
 import type { FormValues } from '../types/form'
 import Input from '../components/ui/Input'
 import RadioCardGroup from '../components/ui/RadioCard'
+import Autocomplete from '../components/ui/Autocomplete'
+import { OCCUPATIONS } from '../data/occupations'
 
 interface Props { control: Control<FormValues>; errors: FieldErrors<FormValues> }
 export const FIELDS: (keyof FormValues)[] = ['age', 'work', 'gender_identity', 'sexual_orientation', 'religion']
@@ -46,8 +48,8 @@ export default function Step2AboutYou({ control, errors }: Props) {
           )} />
         </div>
         <Controller name="work" control={control} render={({ field }) => (
-          <Input label={t('steps.s2.work')} placeholder={t('steps.s2.workPlaceholder')}
-            error={errors.work?.message} required {...field} />
+          <Autocomplete label={t('steps.s2.work')} placeholder={t('steps.s2.workPlaceholder')}
+            error={errors.work?.message} required suggestions={OCCUPATIONS} {...field} />
         )} />
         <Controller name="gender_identity" control={control} render={({ field }) => (
           <RadioCardGroup label={t('steps.s2.gender')} options={genderOptions}
