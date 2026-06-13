@@ -48,11 +48,13 @@ export default function DeletionCountdown({ deletionScheduledAt, onCancelled }: 
     setCancelLoading(true)
     try {
       await cancelAccountDeletion()
+      setShowCancelConfirm(false)
       onCancelled()
     } catch (err) {
       toastError(err instanceof Error ? err.message : t('portal.dashboard.deletion.cancelFailed'))
-      setCancelLoading(false)
       setShowCancelConfirm(false)
+    } finally {
+      setCancelLoading(false)
     }
   }
 

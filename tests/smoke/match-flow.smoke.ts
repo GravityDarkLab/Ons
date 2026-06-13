@@ -355,14 +355,19 @@ describe("Match state machine — concurrent transitions", () => {
   // so the B-C pair can only hold one match doc at a time — each test injects
   // its own fixture after removing the previous one.
   async function injectBCMatch(status: "in_progress" | "dating"): Promise<string> {
+    const { idB, idC } = S;
+    if (!idB || !idC) {
+      throw new Error("[match-flow] injectBCMatch: applicant B/C IDs not set — beforeAll setup failed");
+    }
+
     const client = new MongoClient(MONGO_URI);
     await client.connect();
     const db = client.db();
 
-    const [cBC_a, cBC_b] = canonical(S.idB!, S.idC!);
-    const aliasA = cBC_a.equals(S.idB!) ? S.aliasB : S.aliasC;
-    const aliasB = cBC_a.equals(S.idB!) ? S.aliasC : S.aliasB;
-    const initiatorId = cBC_a.equals(S.idB!) ? cBC_a : cBC_b;
+    const [cBC_a, cBC_b] = canonical(idB, idC);
+    const aliasA = cBC_a.equals(idB) ? S.aliasB : S.aliasC;
+    const aliasB = cBC_a.equals(idB) ? S.aliasC : S.aliasB;
+    const initiatorId = cBC_a.equals(idB) ? cBC_a : cBC_b;
     const now = new Date();
 
     await db.collection("matches").deleteMany({ applicantAId: cBC_a, applicantBId: cBC_b });

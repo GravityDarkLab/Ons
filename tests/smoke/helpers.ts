@@ -113,11 +113,20 @@ export function cookieToken(setCookie: string): string {
 
 // ── Form payload helpers ──────────────────────────────────────────────────────
 
+/** YYYY-MM-DD birth date for someone who is `age` years old today. */
+function birthDateForAge(age: number): string {
+  const today = new Date();
+  const year = String(today.getUTCFullYear() - age);
+  const month = String(today.getUTCMonth() + 1).padStart(2, "0");
+  const day = String(today.getUTCDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+}
+
 export function maleAnswers(handle: string, run: number) {
   return {
     questionnaireVersion: "1.0.0",
     answers: {
-      location: "Paris, France", age: 26, height_cm: 178, work: "Engineer",
+      location: "Paris, France", birth_date: birthDateForAge(26), height_cm: 178, work: "Engineer",
       gender_identity: "Male", sexual_orientation: "Straight", religion: "Muslim",
       vibe_words: "curious, calm", lifestyle: "Active, gym 3x/week",
       relationship_type: "Long Term", open_to_long_distance: false,
@@ -135,7 +144,7 @@ export function femaleAnswers(handle: string, run: number) {
   return {
     questionnaireVersion: "1.0.0",
     answers: {
-      location: "Paris, France", age: 25, height_cm: 165, work: "Designer",
+      location: "Paris, France", birth_date: birthDateForAge(25), height_cm: 165, work: "Designer",
       gender_identity: "Female", sexual_orientation: "Straight", religion: "Muslim",
       vibe_words: "warm, creative", lifestyle: "Yoga, healthy eater",
       relationship_type: "Long Term", open_to_long_distance: false,

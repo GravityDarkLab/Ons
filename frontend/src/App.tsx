@@ -56,7 +56,7 @@ export default function App() {
           }
         />
 
-        {/* ── Applicant portal (Bearer JWT auth) ─────────────────────── */}
+        {/* ── Applicant portal (HttpOnly cookie session) ───────────────── */}
         <Route path="/profile/login" element={<ThemeProvider><ProfileLoginPage /></ThemeProvider>} />
         <Route path="/profile" element={<ThemeProvider><ProfileDashboard /></ThemeProvider>} />
 
