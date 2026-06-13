@@ -7,7 +7,7 @@
   "type": "module",
   "engines": {
     "bun": ">=1.2.0",
-    "node": ">=22.12 <26"
+    "node": ">=22.12 <23 || >=24 <25"
   },
   "scripts": {
     "dev": "NODE_OPTIONS=--no-deprecation vite",

@@ -6,7 +6,7 @@
   "license": "SEE LICENSE IN LICENSE",
   "engines": {
     "bun": ">=1.2.0",
-    "node": ">=22.12 <26"
+    "node": ">=22.12 <23 || >=24 <25"
   },
   "workspaces": [
     "api",
