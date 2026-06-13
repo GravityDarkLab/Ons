@@ -1,4 +1,5 @@
 import { z } from 'zod'
+import { ageFromBirthDate, BIRTH_DATE_PATTERN } from '../lib/age'
 
 // ── Step schemas ──────────────────────────────────────────────────────────────
 
@@ -11,10 +12,17 @@ export const step1Schema = z.object({
 })
 
 export const step2Schema = z.object({
-  age: z
-    .number({ error: 'Age is required' })
-    .min(18, 'You must be at least 18')
-    .max(99, 'Please enter a valid age'),
+  birth_date: z
+    .string({ error: 'Birth date is required' })
+    .regex(BIRTH_DATE_PATTERN, 'Birth date is required')
+    .refine(d => {
+      const age = ageFromBirthDate(d)
+      return age !== null && age >= 18
+    }, 'You must be at least 18')
+    .refine(d => {
+      const age = ageFromBirthDate(d)
+      return age === null || age <= 99
+    }, 'Please enter a valid birth date'),
   height_cm: z
     .number({ error: 'Must be a number' })
     .min(100, 'Enter a valid height')
@@ -72,7 +80,7 @@ export interface FormPayload {
   answers: {
     instagram_handle: string
     location: string
-    age: number
+    birth_date: string
     height_cm?: number
     work: string
     gender_identity: string

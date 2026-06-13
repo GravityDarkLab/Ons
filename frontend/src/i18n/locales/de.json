@@ -68,8 +68,7 @@
     "s2": {
       "title": "Über dich",
       "subtitle": "Hilf uns, dich besser zu verstehen.",
-      "age": "Alter",
-      "agePlaceholder": "25",
+      "birthDate": "Geburtsdatum",
       "height": "Größe (cm)",
       "heightPlaceholder": "175",
       "heightHint": "Optional",
@@ -472,7 +471,10 @@
       "saved": "Dein Profil wurde aktualisiert.",
       "saveError": "Änderungen konnten nicht gespeichert werden. Bitte versuche es erneut.",
       "loadError": "Dein Profil konnte nicht geladen werden.",
-      "unsaved": "Du hast ungespeicherte Änderungen"
+      "unsaved": "Du hast ungespeicherte Änderungen",
+      "adminLockedNote": "Diese Angaben können nur von einem Admin geändert werden — melde dich, falls etwas korrigiert werden muss.",
+      "savedButton": "Gespeichert",
+      "yearsOld": "{{age}} Jahre alt"
     }
   }
 }

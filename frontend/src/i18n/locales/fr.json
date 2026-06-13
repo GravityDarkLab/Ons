@@ -68,8 +68,7 @@
     "s2": {
       "title": "À propos de vous",
       "subtitle": "Aidez-nous à vous comprendre.",
-      "age": "Âge",
-      "agePlaceholder": "25",
+      "birthDate": "Date de naissance",
       "height": "Taille (cm)",
       "heightPlaceholder": "175",
       "heightHint": "Optionnel",
@@ -472,7 +471,10 @@
       "saved": "Votre profil a été mis à jour.",
       "saveError": "Impossible d'enregistrer vos modifications. Veuillez réessayer.",
       "loadError": "Impossible de charger votre profil.",
-      "unsaved": "Vous avez des modifications non enregistrées"
+      "unsaved": "Vous avez des modifications non enregistrées",
+      "adminLockedNote": "Ces informations ne peuvent être modifiées que par un admin — contactez-nous si quelque chose doit être corrigé.",
+      "savedButton": "Enregistré",
+      "yearsOld": "{{age}} ans"
     }
   }
 }

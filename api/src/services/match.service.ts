@@ -6,6 +6,7 @@ import { getMatchesCollection, getApplicantsCollection } from "../db/collections
 import type { MatchDoc, MatchStatus } from "../models/match.model.js";
 import type { ApplicantDoc, ApplicantStatus } from "../models/applicant.model.js";
 import { proposalPairAction, type CoupleProposal } from "../matching/proposals.js";
+import { ageFromBirthDate } from "../utils/age.js";
 import type { PaginatedResult } from "./admin.service.js";
 
 // ── Admin view (ObjectIds serialised to strings) ──────────────────────────────
@@ -44,10 +45,15 @@ export interface ApplicantMatchView {
   partnerInstagram?: string; // only for in_progress/dating — see toMatchView
 }
 
-// Keys never shown to a partner: consent checkboxes carry no information, and
+// Keys never shown to a partner: consent checkboxes carry no information,
 // instagram_handle is defense in depth — identity answers are stored encrypted
-// in a separate collection and should never appear in `answers` at all
-const PARTNER_PROFILE_EXCLUDED_KEYS = new Set(["disclaimer_agreed", "instagram_handle"]);
+// in a separate collection and should never appear in `answers` at all — and
+// birth_date is a precise identity fact, so partners only see the derived age
+const PARTNER_PROFILE_EXCLUDED_KEYS = new Set([
+  "disclaimer_agreed",
+  "instagram_handle",
+  "birth_date",
+]);
 
 /**
  * Pure function — no DB calls. Projects a MatchDoc into the applicant-facing view
@@ -83,6 +89,10 @@ export function toMatchView(
     const profile = Object.fromEntries(
       Object.entries(partnerAnswers).filter(([key]) => !PARTNER_PROFILE_EXCLUDED_KEYS.has(key))
     );
+    // Partners see an age, not the exact birth date (legacy records carry a
+    // stored `age` answer instead, which passes through unchanged)
+    const age = ageFromBirthDate(partnerAnswers["birth_date"]);
+    if (age !== null && !("age" in profile)) profile["age"] = age;
     if (Object.keys(profile).length > 0) view.partnerProfile = profile;
   }
 

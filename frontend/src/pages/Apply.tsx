@@ -46,6 +46,7 @@ export default function Apply() {
     defaultValues: {
       instagram_handle: '',
       location: '',
+      birth_date: '',
       work: '',
       gender_identity: '',
       sexual_orientation: '',
@@ -85,7 +86,7 @@ export default function Apply() {
         answers: {
           instagram_handle: values.instagram_handle,
           location: values.location,
-          age: values.age,
+          birth_date: values.birth_date,
           height_cm: values.height_cm,
           work: values.work,
           gender_identity: values.gender_identity,

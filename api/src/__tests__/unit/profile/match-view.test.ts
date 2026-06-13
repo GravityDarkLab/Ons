@@ -113,6 +113,23 @@ describe("toMatchView – partner profile", () => {
     expect(view.partnerProfile).toBeUndefined();
   });
 
+  it("replaces birth_date with the derived age", () => {
+    const match = makeMatch();
+    const birthYear = new Date().getUTCFullYear() - 28;
+    const view = toMatchView(match, match.applicantAId, {
+      location: "Paris, France",
+      birth_date: `${birthYear}-01-01`, // birthday already passed this year
+    });
+    expect(view.partnerProfile).not.toHaveProperty("birth_date");
+    expect(view.partnerProfile?.["age"]).toBe(28);
+  });
+
+  it("passes a legacy stored age through unchanged", () => {
+    const match = makeMatch();
+    const view = toMatchView(match, match.applicantAId, { age: 31 });
+    expect(view.partnerProfile).toEqual({ age: 31 });
+  });
+
   it("strips instagram_handle even if it somehow appears in answers", () => {
     // answers come from the applicants collection which never stores the handle —
     // this is defense in depth in case that invariant is ever broken upstream

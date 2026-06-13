@@ -312,9 +312,7 @@ describe("GET /profile/me", () => {
 
 const VALID_ANSWERS_UPDATE = {
   location: "Paris, France",
-  age: 27,
   work: "Student",
-  gender_identity: "Female",
   sexual_orientation: "Straight",
   religion: "Islam",
   vibe_words: "calm, curious",
@@ -337,13 +335,13 @@ describe("GET /profile/answers", () => {
   });
 
   it("returns the applicant's answers", async () => {
-    mockGetMyAnswers.mockResolvedValue({ location: "Paris, France", age: 27 });
+    mockGetMyAnswers.mockResolvedValue({ location: "Paris, France", birth_date: "1999-03-12" });
     const token = await applicantToken();
     const res = await get("/profile/answers", token);
     expect(res.status).toBe(200);
     const body = await res.json() as any;
     expect(body.success).toBe(true);
-    expect(body.data.answers).toEqual({ location: "Paris, France", age: 27 });
+    expect(body.data.answers).toEqual({ location: "Paris, France", birth_date: "1999-03-12" });
   });
 
   it("returns 404 when the applicant no longer exists", async () => {
@@ -403,11 +401,33 @@ describe("PUT /profile/answers", () => {
     expect(mockUpdateMyAnswers).not.toHaveBeenCalled();
   });
 
-  it("rejects invalid field values with 422 (age below 18)", async () => {
+  it("rejects the locked birth_date with 422", async () => {
     const token = await applicantToken();
     const res = await put(
       "/profile/answers",
-      { answers: { ...VALID_ANSWERS_UPDATE, age: 15 } },
+      { answers: { ...VALID_ANSWERS_UPDATE, birth_date: "1999-03-12" } },
+      token,
+    );
+    expect(res.status).toBe(422);
+    expect(mockUpdateMyAnswers).not.toHaveBeenCalled();
+  });
+
+  it("rejects the locked gender_identity with 422", async () => {
+    const token = await applicantToken();
+    const res = await put(
+      "/profile/answers",
+      { answers: { ...VALID_ANSWERS_UPDATE, gender_identity: "Other" } },
+      token,
+    );
+    expect(res.status).toBe(422);
+    expect(mockUpdateMyAnswers).not.toHaveBeenCalled();
+  });
+
+  it("rejects invalid field values with 422 (affection out of range)", async () => {
+    const token = await applicantToken();
+    const res = await put(
+      "/profile/answers",
+      { answers: { ...VALID_ANSWERS_UPDATE, physical_affection_importance: 20 } },
       token,
     );
     expect(res.status).toBe(422);

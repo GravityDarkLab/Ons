@@ -1,28 +1,44 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Controller, useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { useTranslation } from 'react-i18next'
 import type { FormValues } from '../../types/form'
 import { formSchema } from '../../types/form'
+import { ageFromBirthDate } from '../../lib/age'
 import { getMyAnswers, updateMyAnswers } from '../../api/profile.client'
 import Autocomplete from '../../components/ui/Autocomplete'
 import Button from '../../components/ui/Button'
+import Input from '../../components/ui/Input'
+import RadioCardGroup from '../../components/ui/RadioCard'
 import Skeleton from '../../components/ui/Skeleton'
 import Slider from '../../components/ui/Slider'
 import Textarea from '../../components/ui/Textarea'
 import { useToast } from '../../components/ui/Toast'
 import { CITIES } from '../../data/cities'
+import { OCCUPATIONS } from '../../data/occupations'
+import { RELIGIONS } from '../../data/religions'
 
-import Step2AboutYou from '../../steps/Step2AboutYou'
 import Step3Vibe from '../../steps/Step3Vibe'
 import Step4Preferences from '../../steps/Step4Preferences'
 
-// instagram_handle and disclaimer_agreed exist only to satisfy the shared
-// formSchema — they are never shown and never sent to the API
+// Locked answers never sent back to the API: instagram_handle and
+// disclaimer_agreed exist only to satisfy the shared formSchema, while
+// birth_date and gender_identity are loaded for display but only an
+// admin may change them
 const LOCKED_DEFAULTS = {
   instagram_handle: 'locked',
   disclaimer_agreed: true as const,
 }
+
+const LOCKED_ANSWER_KEYS = ['instagram_handle', 'disclaimer_agreed', 'birth_date', 'gender_identity'] as const
+
+// Mirrors Step2's radio options — values stay in English for the matching engine
+const orientationOptions = [
+  { value: 'Straight', label: 'Straight' },
+  { value: 'Gay', label: 'Gay' },
+  { value: 'Bisexual', label: 'Bisexual' },
+  { value: 'Other', label: 'Other' },
+]
 
 function LockIcon() {
   return (
@@ -33,16 +49,26 @@ function LockIcon() {
   )
 }
 
+function CheckIcon() {
+  return (
+    <svg className="h-4 w-4" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <polyline points="20 6 9 17 4 12" />
+    </svg>
+  )
+}
+
 function toFormValues(answers: Record<string, unknown>): FormValues {
   return { ...LOCKED_DEFAULTS, ...answers } as FormValues
 }
 
 /** Strips the locked fields and serializes form values into an answers payload. */
 export function toAnswersPayload(values: FormValues): Record<string, unknown> {
-  const { instagram_handle: _ig, disclaimer_agreed: _da, ...answers } = values
+  const answers: Record<string, unknown> = { ...values }
+  for (const key of LOCKED_ANSWER_KEYS) delete answers[key]
   // height_cm is optional — drop it entirely when empty so the API clears it
-  if (answers.height_cm === undefined || Number.isNaN(answers.height_cm)) {
-    delete (answers as Record<string, unknown>)['height_cm']
+  const height = answers['height_cm']
+  if (height === undefined || (typeof height === 'number' && Number.isNaN(height))) {
+    delete answers['height_cm']
   }
   return answers
 }
@@ -55,19 +81,34 @@ function SectionCard({ children }: { children: React.ReactNode }) {
   )
 }
 
+function LockedRow({ label, value }: { label: string; value?: string }) {
+  return (
+    <div className="flex items-center justify-between gap-3 rounded-xl bg-bg border border-border px-4 py-3">
+      <div className="flex items-center gap-3 text-muted min-w-0">
+        <LockIcon />
+        <span className="text-sm font-medium text-primary">{label}</span>
+      </div>
+      {value && <span className="text-sm text-muted truncate">{value}</span>}
+    </div>
+  )
+}
+
 export default function EditProfileForm() {
-  const { t } = useTranslation()
+  const { t, i18n } = useTranslation()
   const { success } = useToast()
 
   const [loading, setLoading] = useState(true)
   const [loadFailed, setLoadFailed] = useState(false)
   const [saveFailed, setSaveFailed] = useState(false)
+  const [justSaved, setJustSaved] = useState(false)
+  const savedTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   const {
     control,
     formState: { errors, isDirty, isSubmitting },
     handleSubmit,
     reset,
+    watch,
   } = useForm<FormValues>({
     resolver: zodResolver(formSchema),
     mode: 'onBlur',
@@ -81,16 +122,30 @@ export default function EditProfileForm() {
       .finally(() => setLoading(false))
   }, [reset])
 
+  useEffect(() => () => {
+    if (savedTimer.current) clearTimeout(savedTimer.current)
+  }, [])
+
   const onSubmit = handleSubmit(async values => {
     setSaveFailed(false)
     try {
       await updateMyAnswers(toAnswersPayload(values))
       reset(values) // clears dirty state, keeps what was saved
       success(t('portal.profile.saved'))
+      setJustSaved(true)
+      if (savedTimer.current) clearTimeout(savedTimer.current)
+      savedTimer.current = setTimeout(() => setJustSaved(false), 2500)
     } catch {
       setSaveFailed(true)
     }
   })
+
+  const birthDate = watch('birth_date')
+  const gender = watch('gender_identity')
+  const age = ageFromBirthDate(birthDate)
+  const birthDateDisplay = birthDate
+    ? `${new Date(`${birthDate}T00:00:00`).toLocaleDateString(i18n.language)}${age !== null ? ` · ${t('portal.profile.yearsOld', { age })}` : ''}`
+    : undefined
 
   if (loading) {
     return (
@@ -111,18 +166,19 @@ export default function EditProfileForm() {
   }
 
   return (
-    <form onSubmit={onSubmit} className="space-y-4" noValidate>
+    <form onSubmit={onSubmit} className="space-y-4 pb-24" noValidate>
       <p className="text-sm text-muted">{t('portal.profile.intro')}</p>
 
-      {/* Identity: locked instagram + editable location */}
+      {/* Identity: admin-locked facts + editable location */}
       <SectionCard>
         <div className="flex flex-col gap-4">
-          <div className="flex items-start gap-3 rounded-xl bg-bg border border-border px-4 py-3.5 text-muted">
-            <LockIcon />
-            <div className="flex flex-col gap-0.5">
-              <span className="text-sm font-medium text-primary">{t('steps.s1.instagram')}</span>
-              <p className="text-xs leading-relaxed">{t('portal.profile.instagramLocked')}</p>
-            </div>
+          <div className="flex flex-col gap-2">
+            <LockedRow label={t('steps.s1.instagram')} />
+            <LockedRow label={t('steps.s2.birthDate')} value={birthDateDisplay} />
+            <LockedRow label={t('steps.s2.gender')} value={gender} />
+            <p className="text-xs text-muted leading-relaxed px-1">
+              {t('portal.profile.instagramLocked')} {t('portal.profile.adminLockedNote')}
+            </p>
           </div>
           <Controller
             name="location"
@@ -135,8 +191,34 @@ export default function EditProfileForm() {
         </div>
       </SectionCard>
 
+      {/* About you — the editable subset of the wizard's step 2 */}
       <SectionCard>
-        <Step2AboutYou control={control} errors={errors} />
+        <div className="flex flex-col gap-6">
+          <h2 className="text-2xl font-semibold text-primary tracking-tight">{t('steps.s2.title')}</h2>
+          <div className="flex flex-col gap-4">
+            <div className="grid grid-cols-2 gap-3">
+              <Controller name="height_cm" control={control} render={({ field }) => (
+                <Input label={t('steps.s2.height')} type="number" placeholder={t('steps.s2.heightPlaceholder')}
+                  hint={t('steps.s2.heightHint')} error={errors.height_cm?.message} {...field}
+                  onChange={e => field.onChange(e.target.value === '' ? undefined : Number(e.target.value))}
+                  value={field.value ?? ''} />
+              )} />
+              <Controller name="work" control={control} render={({ field }) => (
+                <Autocomplete label={t('steps.s2.work')} placeholder={t('steps.s2.workPlaceholder')}
+                  error={errors.work?.message} required suggestions={OCCUPATIONS} {...field} />
+              )} />
+            </div>
+            <Controller name="sexual_orientation" control={control} render={({ field }) => (
+              <RadioCardGroup label={t('steps.s2.orientation')} options={orientationOptions}
+                value={field.value ?? ''} onChange={field.onChange}
+                error={errors.sexual_orientation?.message} columns={2} />
+            )} />
+            <Controller name="religion" control={control} render={({ field }) => (
+              <Autocomplete label={t('steps.s2.religion')} placeholder={t('steps.s2.religionPlaceholder')}
+                error={errors.religion?.message} required suggestions={RELIGIONS} {...field} />
+            )} />
+          </div>
+        </div>
       </SectionCard>
 
       <SectionCard>
@@ -150,9 +232,7 @@ export default function EditProfileForm() {
       {/* Final touches — same fields as the wizard's last step, minus the one-time consent */}
       <SectionCard>
         <div className="flex flex-col gap-6">
-          <div className="flex flex-col gap-1">
-            <h2 className="text-2xl font-semibold text-primary tracking-tight">{t('steps.s5.title')}</h2>
-          </div>
+          <h2 className="text-2xl font-semibold text-primary tracking-tight">{t('steps.s5.title')}</h2>
           <Controller name="physical_affection_importance" control={control} render={({ field }) => (
             <div className="rounded-xl border border-border bg-surface p-4">
               <Slider label={t('steps.s5.affection')} value={field.value ?? 5} onChange={field.onChange}
@@ -167,16 +247,42 @@ export default function EditProfileForm() {
         </div>
       </SectionCard>
 
-      {/* Sticky save bar — appears only when something changed */}
-      <div className="sticky bottom-0 -mx-1 px-1 pb-4 pt-2 bg-gradient-to-t from-bg via-bg to-transparent">
-        <div className="bg-surface border border-border rounded-2xl px-5 py-3.5 shadow-raised flex items-center justify-between gap-4">
-          <span className="text-sm text-muted" aria-live="polite">
-            {isDirty ? t('portal.profile.unsaved') : ' '}
+      {/* Floating save bar — slides up when there's something to save */}
+      <div
+        className={`fixed bottom-4 inset-x-4 sm:inset-x-auto sm:left-1/2 sm:-translate-x-1/2 sm:w-full sm:max-w-2xl z-40 px-2 transition-all duration-300 ease-out ${
+          isDirty || justSaved || saveFailed
+            ? 'translate-y-0 opacity-100'
+            : 'translate-y-24 opacity-0 pointer-events-none'
+        }`}
+      >
+        <div className="bg-surface/95 backdrop-blur border border-border rounded-2xl px-5 py-3.5 shadow-raised flex items-center justify-between gap-4">
+          <span className="flex items-center gap-2 text-sm text-muted min-w-0" aria-live="polite">
+            {isDirty ? (
+              <>
+                <span className="h-2 w-2 rounded-full bg-accent animate-pulse flex-shrink-0" aria-hidden="true" />
+                <span className="truncate">{t('portal.profile.unsaved')}</span>
+              </>
+            ) : justSaved ? (
+              <span className="flex items-center gap-2 text-success">
+                <CheckIcon />
+                {t('portal.profile.saved')}
+              </span>
+            ) : null}
           </span>
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-3 flex-shrink-0">
             {saveFailed && <p role="alert" className="text-sm text-error">{t('portal.profile.saveError')}</p>}
-            <Button type="submit" variant="primary" loading={isSubmitting} disabled={!isDirty}>
-              {t('portal.profile.save')}
+            <Button
+              type="submit"
+              variant="primary"
+              loading={isSubmitting}
+              disabled={!isDirty}
+              className={`transition-all duration-200 active:scale-[0.97] ${justSaved && !isDirty ? '!bg-success !text-bg !opacity-100' : ''}`}
+            >
+              {justSaved && !isDirty ? (
+                <span className="flex items-center gap-2"><CheckIcon />{t('portal.profile.savedButton')}</span>
+              ) : (
+                t('portal.profile.save')
+              )}
             </Button>
           </div>
         </div>

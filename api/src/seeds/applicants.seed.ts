@@ -252,6 +252,20 @@ function randInt(min: number, max: number): number {
   return Math.floor(randomFloat() * (max - min + 1)) + min;
 }
 
+/** YYYY-MM-DD for someone between minAge and maxAge years old today. */
+function randomBirthDate(minAge: number, maxAge: number): string {
+  const age = randInt(minAge, maxAge);
+  const today = new Date();
+  const year = today.getUTCFullYear() - age;
+  const month = randInt(1, 12);
+  const day = randInt(1, 28); // stay safe for February
+  // Keep the birthday in the past so the age holds today
+  const candidate = new Date(Date.UTC(year, month - 1, day));
+  const cutoff = new Date(Date.UTC(today.getUTCFullYear() - age, today.getUTCMonth(), today.getUTCDate()));
+  const finalDate = candidate > cutoff ? new Date(Date.UTC(year - 1, month - 1, day)) : candidate;
+  return finalDate.toISOString().slice(0, 10);
+}
+
 function fakeInstagram(): string {
   const prefix = pick(INSTAGRAM_PREFIXES);
   const name = pick(FIRST_NAMES);
@@ -323,7 +337,7 @@ async function seed() {
 
     const answers: Record<string, unknown> = {
       location: pick(LOCATIONS),
-      age: randInt(21, 38),
+      birth_date: randomBirthDate(21, 38),
       height_cm: gender === "Male" ? randInt(170, 192) : gender === "Female" ? randInt(158, 178) : randInt(160, 185),
       work: pick(JOBS),
       gender_identity: gender,

@@ -1,5 +1,8 @@
 import { step1Schema, step2Schema, step4Schema, step5Schema } from '../../../types/form'
 
+// Jan 1 birthdays always count as "had this year", so age = currentYear - birthYear
+const birthDateForAge = (age: number): string => `${new Date().getUTCFullYear() - age}-01-01`
+
 describe('form schemas', () => {
   describe('step1 — identity', () => {
     it('accepts a valid handle and location', () => {
@@ -24,7 +27,7 @@ describe('form schemas', () => {
 
   describe('step2 — about you', () => {
     const base = {
-      age: 25,
+      birth_date: birthDateForAge(25),
       work: 'Engineer',
       gender_identity: 'Male',
       sexual_orientation: 'Straight',
@@ -35,12 +38,16 @@ describe('form schemas', () => {
       expect(step2Schema.safeParse(base).success).toBe(true)
     })
 
-    it('rejects age below 18', () => {
-      expect(step2Schema.safeParse({ ...base, age: 17 }).success).toBe(false)
+    it('rejects a birth_date for someone under 18', () => {
+      expect(step2Schema.safeParse({ ...base, birth_date: birthDateForAge(17) }).success).toBe(false)
     })
 
-    it('rejects age above 99', () => {
-      expect(step2Schema.safeParse({ ...base, age: 100 }).success).toBe(false)
+    it('rejects a birth_date for someone over 99', () => {
+      expect(step2Schema.safeParse({ ...base, birth_date: birthDateForAge(100) }).success).toBe(false)
+    })
+
+    it('rejects a malformed birth_date', () => {
+      expect(step2Schema.safeParse({ ...base, birth_date: '01/01/2000' }).success).toBe(false)
     })
 
     it('accepts optional height_cm when omitted', () => {

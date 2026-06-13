@@ -17,7 +17,7 @@ const mockUpdateMyAnswers = vi.mocked(profileClient.updateMyAnswers)
 
 const ANSWERS: Record<string, unknown> = {
   location: 'Paris, France',
-  age: 27,
+  birth_date: `${new Date().getFullYear() - 28}-05-15`,
   work: 'Student',
   gender_identity: 'Female',
   sexual_orientation: 'Straight',
@@ -62,7 +62,7 @@ describe('EditProfileForm', () => {
   it('shows the locked Instagram note instead of an editable field', async () => {
     renderForm()
     await waitFor(() =>
-      expect(screen.getByText('portal.profile.instagramLocked')).toBeInTheDocument(),
+      expect(screen.getByText(/portal\.profile\.instagramLocked/)).toBeInTheDocument(),
     )
     // No input is rendered for the handle — only the note
     expect(screen.queryByDisplayValue(/@/)).not.toBeInTheDocument()
@@ -95,6 +95,8 @@ describe('EditProfileForm', () => {
     expect(payload.work).toBe('Students')
     expect(payload).not.toHaveProperty('instagram_handle')
     expect(payload).not.toHaveProperty('disclaimer_agreed')
+    expect(payload).not.toHaveProperty('birth_date')
+    expect(payload).not.toHaveProperty('gender_identity')
   })
 
   it('shows an error message when loading fails', async () => {
@@ -133,6 +135,8 @@ describe('toAnswersPayload', () => {
     const payload = toAnswersPayload(baseValues)
     expect(payload).not.toHaveProperty('instagram_handle')
     expect(payload).not.toHaveProperty('disclaimer_agreed')
+    expect(payload).not.toHaveProperty('birth_date')
+    expect(payload).not.toHaveProperty('gender_identity')
     expect(payload.location).toBe('Paris, France')
   })
 

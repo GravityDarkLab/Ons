@@ -49,11 +49,19 @@ export const outcomeSchema = z.object({
  * - instagram_handle lives encrypted in the identities collection and can
  *   only be changed by an admin
  * - disclaimer_agreed is a one-time consent given at submission
- * `.strict()` rejects both (and any unknown key) instead of silently dropping.
+ * - birth_date and gender_identity are identity facts that drive matching —
+ *   changing them requires contacting an admin
+ * `.strict()` rejects all of them (and any unknown key) instead of silently
+ * dropping.
  */
 export const updateAnswersSchema = z.object({
   answers: formSubmissionSchema.shape.answers
-    .omit({ instagram_handle: true, disclaimer_agreed: true })
+    .omit({
+      instagram_handle: true,
+      disclaimer_agreed: true,
+      birth_date: true,
+      gender_identity: true,
+    })
     .strict(),
 });
 

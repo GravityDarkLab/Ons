@@ -68,8 +68,7 @@
     "s2": {
       "title": "About you",
       "subtitle": "Help us understand who you are.",
-      "age": "Age",
-      "agePlaceholder": "25",
+      "birthDate": "Birth date",
       "height": "Height (cm)",
       "heightPlaceholder": "175",
       "heightHint": "Optional",
@@ -472,7 +471,10 @@
       "saved": "Your profile has been updated.",
       "saveError": "Couldn't save your changes. Please try again.",
       "loadError": "Couldn't load your profile.",
-      "unsaved": "You have unsaved changes"
+      "unsaved": "You have unsaved changes",
+      "adminLockedNote": "These details can only be changed by an admin — get in touch if something needs fixing.",
+      "savedButton": "Saved",
+      "yearsOld": "{{age}} years old"
     }
   }
 }

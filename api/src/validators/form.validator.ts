@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { ageFromBirthDate, BIRTH_DATE_PATTERN } from "../utils/age.js";
 
 /**
  * Base Zod schema for form submission.
@@ -21,7 +22,13 @@ export const formSubmissionSchema = z.object({
 
       // Personal info
       location: z.string().min(1).max(200),
-      age: z.number().int().min(18, "Must be at least 18 years old").max(120),
+      birth_date: z
+        .string()
+        .regex(BIRTH_DATE_PATTERN, "birth_date must be YYYY-MM-DD")
+        .refine((d) => {
+          const age = ageFromBirthDate(d);
+          return age !== null && age >= 18 && age <= 120;
+        }, "Must be a valid date of someone at least 18 years old"),
       height_cm: z.number().int().min(100).max(250).optional(),
       work: z.string().min(1).max(200),
       gender_identity: z.string().min(1).max(100),

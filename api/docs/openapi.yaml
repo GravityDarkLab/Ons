@@ -155,7 +155,7 @@ components:
             items:
               type: string
           example:
-            age: ["Must be at least 18 years old"]
+            birth_date: ["Must be a valid date of someone at least 18 years old"]
             disclaimer_agreed: ["You must agree to the disclaimer"]
 
     # ── Form ──────────────────────────────────────────────────────────────────
@@ -164,7 +164,7 @@ components:
       required:
         - instagram_handle
         - location
-        - age
+        - birth_date
         - work
         - gender_identity
         - sexual_orientation
@@ -190,10 +190,12 @@ components:
         location:
           type: string
           example: "Paris, France"
-        age:
-          type: integer
-          minimum: 18
-          example: 27
+        birth_date:
+          type: string
+          format: date
+          pattern: '^\d{4}-\d{2}-\d{2}$'
+          example: "1997-06-15"
+          description: "YYYY-MM-DD. Applicant must be between 18 and 120 years old."
         height_cm:
           type: integer
           minimum: 100
@@ -268,7 +270,7 @@ components:
           example: "Instagram Handle"
         type:
           type: string
-          enum: [text, number, select, multiselect, range, boolean, textarea]
+          enum: [text, number, date, select, multiselect, range, boolean, textarea]
         sensitive:
           type: boolean
           description: "If true, the answer is encrypted and stored separately."
@@ -691,7 +693,7 @@ components:
           additionalProperties: true
           example:
             location: "Paris, France"
-            age: 27
+            birth_date: "1997-06-15"
             height_cm: 178
             work: "Software Engineer"
             relationship_type: "Long Term"
@@ -1136,7 +1138,7 @@ paths:
               answers:
                 instagram_handle: "@example_user"
                 location: "Paris, France"
-                age: 27
+                birth_date: "1997-06-15"
                 height_cm: 178
                 work: "Software Engineer"
                 gender_identity: "Male"
@@ -2029,7 +2031,9 @@ paths:
         Returns the authenticated applicant's own questionnaire answers for
         self-service editing. `instagram_handle` is never included — identity
         answers live encrypted in a separate collection — and the one-time
-        `disclaimer_agreed` consent is filtered out as well.
+        `disclaimer_agreed` consent is filtered out as well. `birth_date` and
+        `gender_identity` are included for display but are read-only — see
+        `PUT` below.
       responses:
         '200':
           description: The applicant's editable answers
@@ -2054,7 +2058,8 @@ paths:
                 data:
                   answers:
                     location: "Paris, France"
-                    age: 27
+                    birth_date: "1997-06-15"
+                    gender_identity: "Female"
                     work: "Student"
         '401':
           $ref: '#/components/responses/Unauthorized'
@@ -2075,8 +2080,10 @@ paths:
         Replaces the applicant's editable questionnaire answers. Field rules
         match the original submission. `instagram_handle` and
         `disclaimer_agreed` are rejected — changing the Instagram handle
-        requires contacting an admin. Embeddings are refreshed in the
-        background so the next matching run uses the updated answers.
+        requires contacting an admin. `birth_date` and `gender_identity` are
+        also rejected — these identity facts can only be changed by an admin.
+        Embeddings are refreshed in the background so the next matching run
+        uses the updated answers.
       requestBody:
         required: true
         content:
@@ -2090,12 +2097,12 @@ paths:
                   additionalProperties: true
                   description: |
                     All editable questionnaire answers (full replacement of the
-                    editable set). Unknown keys, `instagram_handle`, and
-                    `disclaimer_agreed` are rejected with a 422.
+                    editable set). Unknown keys, `instagram_handle`,
+                    `disclaimer_agreed`, `birth_date`, and `gender_identity`
+                    are rejected with a 422.
             example:
               answers:
                 location: "Paris, France"
-                age: 27
                 work: "Student"
       responses:
         '200':
@@ -2111,7 +2118,7 @@ paths:
               example:
                 success: true
         '422':
-          description: Validation failed (unknown key, instagram_handle, disclaimer_agreed, or invalid value)
+          description: Validation failed (unknown key, instagram_handle, disclaimer_agreed, birth_date, gender_identity, or invalid value)
           content:
             application/json:
               schema:

@@ -3,6 +3,7 @@ import { ObjectId } from "mongodb";
 export type QuestionType =
   | "text"
   | "number"
+  | "date"
   | "select"
   | "multiselect"
   | "range"

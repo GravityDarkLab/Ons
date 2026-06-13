@@ -59,7 +59,7 @@ function validBody() {
     answers: {
       instagram_handle: "@test_user",
       location: "Tunis",
-      age: 25,
+      birth_date: "2000-05-15",
       work: "Engineer",
       gender_identity: "Male",
       sexual_orientation: "Straight",
@@ -190,8 +190,10 @@ describe("POST /form/submit", () => {
     expect(res.status).toBe(422);
   });
 
-  it("returns 422 when age is below 18", async () => {
-    const bad = { ...validBody(), answers: { ...validBody().answers, age: 16 } };
+  it("returns 422 when the birth date is under 18 years ago", async () => {
+    const tooYoung = new Date();
+    tooYoung.setUTCFullYear(tooYoung.getUTCFullYear() - 16);
+    const bad = { ...validBody(), answers: { ...validBody().answers, birth_date: tooYoung.toISOString().slice(0, 10) } };
     const res = await post("/form/submit", bad);
     expect(res.status).toBe(422);
   });

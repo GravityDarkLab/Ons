@@ -132,10 +132,18 @@ export async function getMyProfile(applicantId: string): Promise<ApplicantProfil
 
 // ── Answers (self-service questionnaire edits) ───────────────────────────────
 
-// Never sent to the applicant editor and never overwritten by it:
-// instagram_handle is defense in depth (identities live in a separate,
-// encrypted collection), disclaimer_agreed is a one-time consent.
-const NON_EDITABLE_ANSWER_KEYS = new Set(["instagram_handle", "disclaimer_agreed"]);
+// Never sent to the applicant editor: instagram_handle is defense in depth
+// (identities live in a separate, encrypted collection), disclaimer_agreed
+// is a one-time consent with no display value.
+const HIDDEN_ANSWER_KEYS = new Set(["instagram_handle", "disclaimer_agreed"]);
+
+// Shown to the applicant (read-only) but never overwritten by them:
+// birth_date and gender_identity are identity facts only admins may change.
+const LOCKED_ANSWER_KEYS = new Set([
+  ...HIDDEN_ANSWER_KEYS,
+  "birth_date",
+  "gender_identity",
+]);
 
 export async function getMyAnswers(
   applicantId: string
@@ -150,7 +158,7 @@ export async function getMyAnswers(
   if (!doc) return null;
 
   return Object.fromEntries(
-    Object.entries(doc.answers ?? {}).filter(([key]) => !NON_EDITABLE_ANSWER_KEYS.has(key))
+    Object.entries(doc.answers ?? {}).filter(([key]) => !HIDDEN_ANSWER_KEYS.has(key))
   );
 }
 
@@ -165,12 +173,12 @@ export async function updateMyAnswers(
   const doc = await col.findOne({ _id: oid }, { projection: { answers: 1, alias: 1 } });
   if (!doc) throw new AppError("Not found", 404);
 
-  // Merge over the stored answers so non-editable keys survive untouched.
+  // Merge over the stored answers so locked keys survive untouched.
   // The validator already rejects them in `updates`; filtering again here
   // keeps the invariant even if a future caller skips validation.
   const merged: Record<string, unknown> = { ...(doc.answers ?? {}) };
   for (const [key, value] of Object.entries(updates)) {
-    if (NON_EDITABLE_ANSWER_KEYS.has(key)) continue;
+    if (LOCKED_ANSWER_KEYS.has(key)) continue;
     merged[key] = value;
   }
   // height_cm is the only optional field — absence in a full-form update means cleared
