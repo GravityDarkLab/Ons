@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { fetchAuditLogs } from '../api/client'
-import { useTimeAgo } from '../utils/timeAgo'
+import { useTimeAgo } from '../../lib/timeAgo'
 import Skeleton from '../../components/ui/Skeleton'
 import EmptyState from '../../components/ui/EmptyState'
 import type { AuditLog } from '../types'

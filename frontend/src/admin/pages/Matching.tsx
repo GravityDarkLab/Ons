@@ -5,7 +5,7 @@ import { runMatching, fetchMatchingLastRun } from '../api/client'
 import Spinner from '../../components/ui/Spinner'
 import ConfirmDialog from '../../components/ui/ConfirmDialog'
 import MatchingPulse, { type PulseState } from '../components/MatchingPulse'
-import { useTimeAgo } from '../utils/timeAgo'
+import { useTimeAgo } from '../../lib/timeAgo'
 import type { MatchingRun, MatchingLastRun } from '../types'
 
 const RUN_PHASES = ['phaseLoading', 'phaseScoring', 'phaseSaving'] as const

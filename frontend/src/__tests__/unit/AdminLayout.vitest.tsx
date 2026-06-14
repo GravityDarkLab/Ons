@@ -54,7 +54,7 @@ describe('AdminLayout', () => {
     // Before collapse: nav link labels visible
     expect(screen.getByText('admin.nav.applicants')).toBeInTheDocument()
 
-    const toggleButton = screen.getByRole('button', { name: /Toggle sidebar/i })
+    const toggleButton = screen.getByRole('button', { name: 'admin.nav.toggleSidebar' })
     await userEvent.click(toggleButton)
 
     // After collapse: labels are hidden (collapsed sidebar renders icons only)
@@ -65,7 +65,19 @@ describe('AdminLayout', () => {
 
   it('shows role badge in topbar', () => {
     renderLayout()
-    // Role badge shows the role value
-    expect(screen.getByText('admin')).toBeInTheDocument()
+    // Role badge shows a translated label for the role
+    expect(screen.getByText('admin.nav.roleAdmin')).toBeInTheDocument()
+  })
+
+  it('shows the super-admin role badge label for super_admin role', () => {
+    mockUseAuth.mockReturnValue({
+      isAuthenticated: true,
+      isLoading: false,
+      role: 'super_admin',
+      login: vi.fn(),
+      logout: vi.fn(),
+    })
+    renderLayout()
+    expect(screen.getByText('admin.nav.roleSuperAdmin')).toBeInTheDocument()
   })
 })

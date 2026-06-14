@@ -3,6 +3,7 @@
   "common": {
     "yes": "Oui",
     "no": "Non",
+    "dismiss": "Fermer",
     "timeAgo": {
       "justNow": "à l'instant",
       "minutesAgo_one": "il y a {{count}} minute",
@@ -121,6 +122,7 @@
     "subtitle": "Sauvegardez ce lien — c'est le seul moyen d'accéder à votre profil.",
     "aliasLabel": "Votre alias est",
     "aliasHint": "C'est votre nom de code. Nous l'utiliserons lorsque nous vous contacterons.",
+    "unknownAlias": "Personne mystère",
     "warning": "C'est le seul moyen d'accéder à votre profil. Une fois que vous quittez cette page, nous ne pourrons plus vous le montrer.",
     "linkLabel": "Votre lien de profil",
     "copyLink": "Copier le lien",
@@ -134,6 +136,8 @@
     "subtitle": "Admin",
     "login": {
       "title": "Accès administrateur",
+      "tagline": "Là où les cœurs compatibles se rencontrent.",
+      "subtitle": "Accédez à votre tableau de bord",
       "username": "Nom d'utilisateur",
       "password": "Mot de passe",
       "submit": "Se connecter",
@@ -145,7 +149,10 @@
       "matching": "Matching",
       "matches": "Couples",
       "auditLogs": "Journal d'audit",
-      "signOut": "Se déconnecter"
+      "signOut": "Se déconnecter",
+      "toggleSidebar": "Afficher/masquer la barre latérale",
+      "roleAdmin": "Administrateur",
+      "roleSuperAdmin": "Super administrateur"
     },
     "dashboard": {
       "title": "Tableau de bord",
@@ -157,7 +164,23 @@
       "quickActions": "Actions rapides",
       "runMatching": "Lancer le matching",
       "viewApplicants": "Voir les candidats",
-      "auditLogs": "Journal d'audit"
+      "auditLogs": "Journal d'audit",
+      "recentMatches": "Couples récents",
+      "recentActivity": "Activité récente",
+      "noMatchesYet": "Aucun couple pour l'instant.",
+      "noActivityYet": "Aucune activité pour l'instant.",
+      "viewAll": "Voir tout →",
+      "scoreLabel": "Score : {{score}} %",
+      "auditActions": {
+        "RESOLVE_IDENTITY": "Identité résolue",
+        "APPLICANT_REVEAL_IDENTITY": "Identifiant Instagram révélé",
+        "VIEW_APPLICANT": "Candidat consulté",
+        "DEACTIVATE_APPLICANT": "Candidat désactivé",
+        "ADMIN_LOGIN": "Connexion admin",
+        "CREATE_QUESTIONNAIRE": "Questionnaire créé",
+        "REGENERATE_MAGIC_LINK": "Lien magique régénéré",
+        "APPLICANT_SELF_DELETE": "Auto-suppression du candidat"
+      }
     },
     "applicants": {
       "title": "Candidats",
@@ -181,7 +204,13 @@
       "deletedToast": "{{alias}} supprimé",
       "scheduledDeletion": "Suppression programmée",
       "colDeletesOn": "Suppression le",
-      "deleteDescription": "Désactive ce candidat immédiatement et programme sa suppression définitive dans 180 jours."
+      "deleteDescription": "Désactive ce candidat immédiatement et programme sa suppression définitive dans 180 jours.",
+      "viewApplicant": "Voir le candidat",
+      "viewApplicantAria": "Voir {{alias}}",
+      "deleteApplicant": "Supprimer le candidat",
+      "deleteApplicantAria": "Supprimer {{alias}}",
+      "deleteConfirmTitle": "Supprimer {{alias}} ?",
+      "deleteError": "Échec de la suppression"
     },
     "detail": {
       "back": "Candidats",
@@ -324,6 +353,7 @@
     },
     "dashboard": {
       "loading": "Chargement…",
+      "loadError": "Échec du chargement du profil",
       "openSettings": "Ouvrir les réglages",
       "hello": "Bonjour, {{alias}}",
       "findingMatches": "Nous recherchons tes meilleurs matchs. Tu seras notifié·e dès qu'ils seront prêts.",

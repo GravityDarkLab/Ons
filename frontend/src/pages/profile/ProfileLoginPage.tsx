@@ -1,9 +1,9 @@
 import { useState, useEffect, type FormEvent } from 'react'
 import { useTranslation } from 'react-i18next'
-import ThemeToggle from '../../theme/ThemeToggle'
-import LanguageSwitcher from '../../components/LanguageSwitcher'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { profileLogin, setPassword, suggestPassword } from '../../api/profile.client'
+import Spinner from '../../components/ui/Spinner'
+import AuthPageShell from '../../components/layout/AuthPageShell'
 
 // ── Sub-components ────────────────────────────────────────────────────────────
 
@@ -236,23 +236,20 @@ export default function ProfileLoginPage() {
 
   if (mode === 'no-token') {
     return (
-      <div className="min-h-screen bg-bg flex items-center justify-center px-4 relative">
-        <div className="absolute top-4 right-4 flex items-center gap-1.5"><LanguageSwitcher /><ThemeToggle /></div>
-        <div className="w-full max-w-sm">
-          <div className="bg-surface border border-border rounded-2xl p-8 shadow-card text-center space-y-4">
-            <h1 className="text-2xl font-semibold text-primary tracking-tight">{t('portal.login.yourProfile')}</h1>
-            <p className="text-sm text-muted leading-relaxed">
-              {t('portal.login.magicLinkHint')}
-            </p>
-            <a
-              href="/"
-              className="inline-block text-xs text-accent hover:underline"
-            >
-              {t('portal.login.backToHome')}
-            </a>
-          </div>
+      <AuthPageShell>
+        <div className="bg-surface border border-border rounded-2xl p-8 shadow-card text-center space-y-4">
+          <h1 className="text-2xl font-semibold text-primary tracking-tight">{t('portal.login.yourProfile')}</h1>
+          <p className="text-sm text-muted leading-relaxed">
+            {t('portal.login.magicLinkHint')}
+          </p>
+          <a
+            href="/"
+            className="inline-block text-xs text-accent hover:underline"
+          >
+            {t('portal.login.backToHome')}
+          </a>
         </div>
-      </div>
+      </AuthPageShell>
     )
   }
 
@@ -260,24 +257,12 @@ export default function ProfileLoginPage() {
 
   if (mode === 'probing' || mode === 'idle') {
     return (
-      <div className="min-h-screen bg-bg flex items-center justify-center px-4 relative">
-        <div className="absolute top-4 right-4 flex items-center gap-1.5"><LanguageSwitcher /><ThemeToggle /></div>
-        <div className="w-full max-w-sm">
-          <div className="bg-surface border border-border rounded-2xl p-8 shadow-card flex flex-col items-center gap-4">
-            <svg
-              className="h-6 w-6 animate-spin text-accent"
-              xmlns="http://www.w3.org/2000/svg"
-              fill="none"
-              viewBox="0 0 24 24"
-              aria-hidden="true"
-            >
-              <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-              <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
-            </svg>
-            <p className="text-sm text-muted">{t('portal.login.verifying')}</p>
-          </div>
+      <AuthPageShell>
+        <div className="bg-surface border border-border rounded-2xl p-8 shadow-card flex flex-col items-center gap-4">
+          <Spinner className="h-6 w-6 text-accent" />
+          <p className="text-sm text-muted">{t('portal.login.verifying')}</p>
         </div>
-      </div>
+      </AuthPageShell>
     )
   }
 
@@ -285,18 +270,15 @@ export default function ProfileLoginPage() {
 
   if (mode === 'error') {
     return (
-      <div className="min-h-screen bg-bg flex items-center justify-center px-4 relative">
-        <div className="absolute top-4 right-4 flex items-center gap-1.5"><LanguageSwitcher /><ThemeToggle /></div>
-        <div className="w-full max-w-sm">
-          <div className="bg-surface border border-border rounded-2xl p-8 shadow-card text-center space-y-4">
-            <h1 className="text-2xl font-semibold text-primary tracking-tight">{t('portal.login.linkInvalid')}</h1>
-            <p className="text-sm text-error">{errorMessage}</p>
-            <a href="/" className="inline-block text-xs text-accent hover:underline">
-              {t('portal.login.backToHome')}
-            </a>
-          </div>
+      <AuthPageShell>
+        <div className="bg-surface border border-border rounded-2xl p-8 shadow-card text-center space-y-4">
+          <h1 className="text-2xl font-semibold text-primary tracking-tight">{t('portal.login.linkInvalid')}</h1>
+          <p className="text-sm text-error">{errorMessage}</p>
+          <a href="/" className="inline-block text-xs text-accent hover:underline">
+            {t('portal.login.backToHome')}
+          </a>
         </div>
-      </div>
+      </AuthPageShell>
     )
   }
 
@@ -304,45 +286,39 @@ export default function ProfileLoginPage() {
 
   if (mode === 'enter-password') {
     return (
-      <div className="min-h-screen bg-bg flex items-center justify-center px-4 relative">
-        <div className="absolute top-4 right-4 flex items-center gap-1.5"><LanguageSwitcher /><ThemeToggle /></div>
-        <div className="w-full max-w-sm">
-          {/* Header */}
-          <div className="mb-8 text-center">
-            <h1 className="text-2xl font-semibold text-primary tracking-tight">{t('portal.login.welcomeBack')}</h1>
-            <p className="text-sm text-muted mt-1 leading-relaxed">
-              {t('portal.login.enterPasswordHint')}
-            </p>
-          </div>
-
-          {/* Card */}
-          <div className="bg-surface border border-border rounded-2xl p-8 shadow-card">
-            <EnterPasswordForm magicToken={token!} />
-          </div>
+      <AuthPageShell>
+        {/* Header */}
+        <div className="mb-8 text-center">
+          <h1 className="text-2xl font-semibold text-primary tracking-tight">{t('portal.login.welcomeBack')}</h1>
+          <p className="text-sm text-muted mt-1 leading-relaxed">
+            {t('portal.login.enterPasswordHint')}
+          </p>
         </div>
-      </div>
+
+        {/* Card */}
+        <div className="bg-surface border border-border rounded-2xl p-8 shadow-card">
+          <EnterPasswordForm magicToken={token!} />
+        </div>
+      </AuthPageShell>
     )
   }
 
   // ── Render: set-password ──────────────────────────────────────────────────────
 
   return (
-    <div className="min-h-screen bg-bg flex items-center justify-center px-4 relative">
-        <div className="absolute top-4 right-4 flex items-center gap-1.5"><LanguageSwitcher /><ThemeToggle /></div>
-      <div className="w-full max-w-sm">
-        {/* Header */}
-        <div className="mb-8 text-center">
-          <h1 className="text-2xl font-semibold text-primary tracking-tight">{t('portal.login.welcome')}</h1>
-          <p className="text-sm text-muted mt-1 leading-relaxed">
-            {t('portal.login.firstTimeSetup')}
-          </p>
-        </div>
-
-        {/* Card */}
-        <div className="bg-surface border border-border rounded-2xl p-8 shadow-card">
-          <SetPasswordForm magicToken={token!} />
-        </div>
+    <AuthPageShell>
+      {/* Header */}
+      <div className="mb-8 text-center">
+        <h1 className="text-2xl font-semibold text-primary tracking-tight">{t('portal.login.welcome')}</h1>
+        <p className="text-sm text-muted mt-1 leading-relaxed">
+          {t('portal.login.firstTimeSetup')}
+        </p>
       </div>
-    </div>
+
+      {/* Card */}
+      <div className="bg-surface border border-border rounded-2xl p-8 shadow-card">
+        <SetPasswordForm magicToken={token!} />
+      </div>
+    </AuthPageShell>
   )
 }

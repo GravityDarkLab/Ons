@@ -7,7 +7,7 @@ import { vi } from 'vitest'
 
 vi.mock('../../admin/api/client', () => ({
   fetchApplicants: vi.fn(),
-  deleteApplicant: vi.fn(),
+  deactivateApplicant: vi.fn(),
 }))
 
 import * as client from '../../admin/api/client'
@@ -132,7 +132,7 @@ describe('Applicants page', () => {
     renderApplicants()
     await screen.findAllByText('Lunar Ocean')
 
-    await userEvent.click(screen.getByRole('button', { name: /Delete Lunar Ocean/i }))
+    await userEvent.click(screen.getByRole('button', { name: /admin\.applicants\.deleteApplicantAria.*Lunar Ocean/ }))
 
     const dialog = await screen.findByRole('alertdialog')
     expect(dialog).toHaveTextContent('admin.applicants.deleteDescription')

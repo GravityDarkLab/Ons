@@ -1,12 +1,13 @@
 import { useEffect, useState } from 'react'
 import { useSearchParams, useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
-import { fetchApplicants, deleteApplicant } from '../api/client'
+import { fetchApplicants, deactivateApplicant } from '../api/client'
 import Badge from '../../components/ui/Badge'
 import ConfirmDialog from '../../components/ui/ConfirmDialog'
 import Skeleton from '../../components/ui/Skeleton'
 import { useToast } from '../../components/ui/Toast'
 import { applicantStatusTone } from '../../components/ui/statusTones'
+import { Th, PageButton, TrashIcon } from '../components/Table'
 import type { Applicant } from '../types'
 
 const LIMIT = 20
@@ -16,18 +17,6 @@ function EyeIcon() {
     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
       <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
       <circle cx="12" cy="12" r="3" />
-    </svg>
-  )
-}
-
-function TrashIcon() {
-  return (
-    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-      <polyline points="3 6 5 6 21 6" />
-      <path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6" />
-      <path d="M10 11v6" />
-      <path d="M14 11v6" />
-      <path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2" />
     </svg>
   )
 }
@@ -93,12 +82,12 @@ export function Applicants() {
     if (!pendingDelete) return
     setDeleteLoading(true)
     try {
-      await deleteApplicant(pendingDelete.id)
+      await deactivateApplicant(pendingDelete.id)
       success(t('admin.applicants.deletedToast', { alias: pendingDelete.alias }))
       setPendingDelete(null)
       loadApplicants()
     } catch (err) {
-      toastError(err instanceof Error ? err.message : 'Delete failed')
+      toastError(err instanceof Error ? err.message : t('admin.applicants.deleteError'))
     } finally {
       setDeleteLoading(false)
     }
@@ -196,16 +185,16 @@ export function Applicants() {
                       <button
                         onClick={() => navigate(`/admin/applicants/${a.id}`)}
                         className="p-1.5 rounded-lg text-muted hover:text-primary hover:bg-surface-subtle focus-visible:ring-2 focus-visible:ring-accent/40 outline-none transition-colors"
-                        title="View applicant"
-                        aria-label={`View ${a.alias}`}
+                        title={t('admin.applicants.viewApplicant')}
+                        aria-label={t('admin.applicants.viewApplicantAria', { alias: a.alias })}
                       >
                         <EyeIcon />
                       </button>
                       <button
                         onClick={() => setPendingDelete(a)}
                         className="p-1.5 rounded-lg text-muted hover:text-error hover:bg-error-light focus-visible:ring-2 focus-visible:ring-accent/40 outline-none transition-colors"
-                        title="Delete applicant"
-                        aria-label={`Delete ${a.alias}`}
+                        title={t('admin.applicants.deleteApplicant')}
+                        aria-label={t('admin.applicants.deleteApplicantAria', { alias: a.alias })}
                       >
                         <TrashIcon />
                       </button>
@@ -252,10 +241,10 @@ export function Applicants() {
 
       <ConfirmDialog
         open={pendingDelete !== null}
-        title={pendingDelete ? `Delete ${pendingDelete.alias}?` : ''}
+        title={pendingDelete ? t('admin.applicants.deleteConfirmTitle', { alias: pendingDelete.alias }) : ''}
         description={t('admin.applicants.deleteDescription')}
-        confirmLabel="Delete"
-        cancelLabel="Cancel"
+        confirmLabel={t('admin.matches.delete')}
+        cancelLabel={t('admin.matching.cancel')}
         tone="danger"
         loading={deleteLoading}
         onConfirm={handleDelete}
@@ -272,18 +261,5 @@ export function Applicants() {
         </div>
       )}
     </div>
-  )
-}
-
-function Th({ children }: { children?: React.ReactNode }) {
-  return <th className="px-4 py-3 text-left text-xs font-medium text-muted uppercase tracking-wider">{children}</th>
-}
-
-function PageButton({ children, onClick, disabled }: { children: React.ReactNode; onClick: () => void; disabled: boolean }) {
-  return (
-    <button onClick={onClick} disabled={disabled}
-      className="px-3 py-1.5 rounded-full border border-border text-sm disabled:opacity-40 hover:bg-bg transition-colors">
-      {children}
-    </button>
   )
 }

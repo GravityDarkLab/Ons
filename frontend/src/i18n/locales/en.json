@@ -3,6 +3,7 @@
   "common": {
     "yes": "Yes",
     "no": "No",
+    "dismiss": "Dismiss",
     "timeAgo": {
       "justNow": "just now",
       "minutesAgo_one": "{{count}} minute ago",
@@ -121,6 +122,7 @@
     "subtitle": "Save this link — it's the only way to access your profile.",
     "aliasLabel": "Your alias is",
     "aliasHint": "This is your codename. We'll use it when we reach out.",
+    "unknownAlias": "Mystery Person",
     "warning": "This is the only way to access your profile. Once you leave this page, we cannot show it to you again.",
     "linkLabel": "Your profile link",
     "copyLink": "Copy link",
@@ -134,6 +136,8 @@
     "subtitle": "Admin",
     "login": {
       "title": "Admin access",
+      "tagline": "Where compatible hearts meet.",
+      "subtitle": "Access your dashboard",
       "username": "Username",
       "password": "Password",
       "submit": "Sign in",
@@ -145,7 +149,10 @@
       "matching": "Matching",
       "matches": "Matches",
       "auditLogs": "Audit Logs",
-      "signOut": "Sign out"
+      "signOut": "Sign out",
+      "toggleSidebar": "Toggle sidebar",
+      "roleAdmin": "Admin",
+      "roleSuperAdmin": "Super Admin"
     },
     "dashboard": {
       "title": "Dashboard",
@@ -157,7 +164,23 @@
       "quickActions": "Quick actions",
       "runMatching": "Run matching",
       "viewApplicants": "View applicants",
-      "auditLogs": "Audit logs"
+      "auditLogs": "Audit logs",
+      "recentMatches": "Recent Matches",
+      "recentActivity": "Recent Activity",
+      "noMatchesYet": "No matches yet.",
+      "noActivityYet": "No activity yet.",
+      "viewAll": "View all →",
+      "scoreLabel": "Score: {{score}}%",
+      "auditActions": {
+        "RESOLVE_IDENTITY": "Identity resolved",
+        "APPLICANT_REVEAL_IDENTITY": "Instagram handle revealed",
+        "VIEW_APPLICANT": "Applicant viewed",
+        "DEACTIVATE_APPLICANT": "Applicant deactivated",
+        "ADMIN_LOGIN": "Admin login",
+        "CREATE_QUESTIONNAIRE": "Questionnaire created",
+        "REGENERATE_MAGIC_LINK": "Magic link regenerated",
+        "APPLICANT_SELF_DELETE": "Applicant self-deleted"
+      }
     },
     "applicants": {
       "title": "Applicants",
@@ -181,7 +204,13 @@
       "deletedToast": "{{alias}} deleted",
       "scheduledDeletion": "Scheduled for deletion",
       "colDeletesOn": "Deletes on",
-      "deleteDescription": "Deactivates this applicant immediately and schedules permanent deletion in 180 days."
+      "deleteDescription": "Deactivates this applicant immediately and schedules permanent deletion in 180 days.",
+      "viewApplicant": "View applicant",
+      "viewApplicantAria": "View {{alias}}",
+      "deleteApplicant": "Delete applicant",
+      "deleteApplicantAria": "Delete {{alias}}",
+      "deleteConfirmTitle": "Delete {{alias}}?",
+      "deleteError": "Delete failed"
     },
     "detail": {
       "back": "Applicants",
@@ -324,6 +353,7 @@
     },
     "dashboard": {
       "loading": "Loading…",
+      "loadError": "Failed to load profile",
       "openSettings": "Open settings",
       "hello": "Hello, {{alias}}",
       "findingMatches": "We're finding your best matches. You'll be notified when they're ready.",

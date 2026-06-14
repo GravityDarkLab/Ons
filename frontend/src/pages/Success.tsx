@@ -1,13 +1,14 @@
 import { useState } from 'react'
-import { useSearchParams, Link } from 'react-router-dom'
+import { useSearchParams, useLocation, Link } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 
 export default function Success() {
   const { t, i18n } = useTranslation()
   const isRTL = i18n.dir() === 'rtl'
   const [params] = useSearchParams()
-  const alias = params.get('alias') ?? 'Mystery Person'
-  const token = params.get('token') ?? null
+  const location = useLocation()
+  const alias = params.get('alias') ?? t('success.unknownAlias')
+  const token = (location.state as { magicToken?: string | null } | null)?.magicToken ?? null
 
   const origin = typeof window !== 'undefined' ? window.location.origin : ''
   const profileUrl = token

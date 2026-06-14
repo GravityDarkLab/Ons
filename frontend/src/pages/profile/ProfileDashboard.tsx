@@ -81,7 +81,7 @@ export default function ProfileDashboard() {
       setThreshold(prof.scoreThreshold ?? 0.8)
       setMatches(matchList)
     } catch (err) {
-      const message = err instanceof Error ? err.message : 'Failed to load profile'
+      const message = err instanceof Error ? err.message : t('portal.dashboard.loadError')
       if (message === 'Session expired') {
         navigate('/profile/login', { replace: true })
         return

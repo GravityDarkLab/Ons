@@ -7,6 +7,7 @@ import {
   useState,
   type ReactNode,
 } from 'react'
+import { useTranslation } from 'react-i18next'
 
 type ToastKind = 'success' | 'error' | 'info'
 
@@ -65,6 +66,7 @@ const kindStyles: Record<ToastKind, { bar: string; icon: ReactNode }> = {
 }
 
 export function ToastProvider({ children }: { children: ReactNode }) {
+  const { t } = useTranslation()
   const [toasts, setToasts] = useState<ToastItem[]>([])
   const nextId = useRef(1)
   const timers = useRef(new Map<number, ReturnType<typeof setTimeout>>())
@@ -127,22 +129,22 @@ export function ToastProvider({ children }: { children: ReactNode }) {
     <ToastContext.Provider value={api.current}>
       {children}
       <div className="fixed z-[60] bottom-4 inset-x-4 sm:inset-x-auto sm:right-4 sm:w-80 flex flex-col gap-2 pointer-events-none">
-        {toasts.map(t => (
+        {toasts.map(toast => (
           <div
-            key={t.id}
-            role={t.kind === 'error' ? 'alert' : 'status'}
-            aria-live={t.kind === 'error' ? 'assertive' : 'polite'}
-            onMouseEnter={() => pause(t.id)}
-            onMouseLeave={() => resume(t.id)}
+            key={toast.id}
+            role={toast.kind === 'error' ? 'alert' : 'status'}
+            aria-live={toast.kind === 'error' ? 'assertive' : 'polite'}
+            onMouseEnter={() => pause(toast.id)}
+            onMouseLeave={() => resume(toast.id)}
             className="pointer-events-auto flex items-center gap-3 bg-surface border border-border rounded-xl pl-3 pr-2 py-3 shadow-raised overflow-hidden relative"
           >
-            <span className={`absolute left-0 top-0 bottom-0 w-1 ${kindStyles[t.kind].bar}`} aria-hidden="true" />
-            {kindStyles[t.kind].icon}
-            <p className="flex-1 text-sm text-primary leading-snug">{t.message}</p>
+            <span className={`absolute left-0 top-0 bottom-0 w-1 ${kindStyles[toast.kind].bar}`} aria-hidden="true" />
+            {kindStyles[toast.kind].icon}
+            <p className="flex-1 text-sm text-primary leading-snug">{toast.message}</p>
             <button
               type="button"
-              onClick={() => dismiss(t.id)}
-              aria-label="Dismiss"
+              onClick={() => dismiss(toast.id)}
+              aria-label={t('common.dismiss')}
               className="p-1.5 rounded-lg text-muted hover:text-primary hover:bg-bg transition-colors"
             >
               <svg className="h-3.5 w-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden="true">

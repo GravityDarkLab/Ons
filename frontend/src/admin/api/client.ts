@@ -101,8 +101,6 @@ export async function regenerateMagicLink(id: string): Promise<{ alias: string; 
   return res.data
 }
 
-export const deleteApplicant = deactivateApplicant
-
 // ── Audit logs ────────────────────────────────────────────────────────────────
 
 export async function fetchAuditLogs(
@@ -143,8 +141,6 @@ export async function updateMatch(
 export async function removeMatch(id: string): Promise<void> {
   await request(`/api/v1/admin/matches/${id}`, { method: 'DELETE' })
 }
-
-export const deleteMatch = removeMatch
 
 // ── Matching ──────────────────────────────────────────────────────────────────
 

@@ -3,6 +3,7 @@
   "common": {
     "yes": "Ja",
     "no": "Nein",
+    "dismiss": "Schließen",
     "timeAgo": {
       "justNow": "gerade eben",
       "minutesAgo_one": "vor {{count}} Minute",
@@ -121,6 +122,7 @@
     "subtitle": "Speichere diesen Link — er ist der einzige Weg zu deinem Profil.",
     "aliasLabel": "Dein Aliasname ist",
     "aliasHint": "Das ist dein Codename. Wir verwenden ihn, wenn wir uns bei dir melden.",
+    "unknownAlias": "Mysteriöse Person",
     "warning": "Das ist der einzige Weg zu deinem Profil. Sobald du diese Seite verlässt, können wir ihn dir nicht mehr zeigen.",
     "linkLabel": "Dein Profillink",
     "copyLink": "Link kopieren",
@@ -134,6 +136,8 @@
     "subtitle": "Admin",
     "login": {
       "title": "Admin-Zugang",
+      "tagline": "Wo passende Herzen sich treffen.",
+      "subtitle": "Zugriff auf dein Dashboard",
       "username": "Benutzername",
       "password": "Passwort",
       "submit": "Anmelden",
@@ -145,7 +149,10 @@
       "matching": "Matching",
       "matches": "Paare",
       "auditLogs": "Audit-Protokoll",
-      "signOut": "Abmelden"
+      "signOut": "Abmelden",
+      "toggleSidebar": "Seitenleiste umschalten",
+      "roleAdmin": "Admin",
+      "roleSuperAdmin": "Super-Admin"
     },
     "dashboard": {
       "title": "Dashboard",
@@ -157,7 +164,23 @@
       "quickActions": "Schnellaktionen",
       "runMatching": "Matching starten",
       "viewApplicants": "Bewerber anzeigen",
-      "auditLogs": "Audit-Protokoll"
+      "auditLogs": "Audit-Protokoll",
+      "recentMatches": "Neueste Paare",
+      "recentActivity": "Letzte Aktivität",
+      "noMatchesYet": "Noch keine Paare.",
+      "noActivityYet": "Noch keine Aktivität.",
+      "viewAll": "Alle anzeigen →",
+      "scoreLabel": "Score: {{score}} %",
+      "auditActions": {
+        "RESOLVE_IDENTITY": "Identität aufgelöst",
+        "APPLICANT_REVEAL_IDENTITY": "Instagram-Handle aufgedeckt",
+        "VIEW_APPLICANT": "Bewerber angesehen",
+        "DEACTIVATE_APPLICANT": "Bewerber deaktiviert",
+        "ADMIN_LOGIN": "Admin-Anmeldung",
+        "CREATE_QUESTIONNAIRE": "Fragebogen erstellt",
+        "REGENERATE_MAGIC_LINK": "Magic Link erneuert",
+        "APPLICANT_SELF_DELETE": "Bewerber-Selbstlöschung"
+      }
     },
     "applicants": {
       "title": "Bewerber",
@@ -181,7 +204,13 @@
       "deletedToast": "{{alias}} gelöscht",
       "scheduledDeletion": "Zur Löschung vorgemerkt",
       "colDeletesOn": "Löschung am",
-      "deleteDescription": "Deaktiviert diesen Bewerber sofort und plant die endgültige Löschung in 180 Tagen."
+      "deleteDescription": "Deaktiviert diesen Bewerber sofort und plant die endgültige Löschung in 180 Tagen.",
+      "viewApplicant": "Bewerber ansehen",
+      "viewApplicantAria": "{{alias}} ansehen",
+      "deleteApplicant": "Bewerber löschen",
+      "deleteApplicantAria": "{{alias}} löschen",
+      "deleteConfirmTitle": "{{alias}} löschen?",
+      "deleteError": "Löschen fehlgeschlagen"
     },
     "detail": {
       "back": "Bewerber",
@@ -324,6 +353,7 @@
     },
     "dashboard": {
       "loading": "Wird geladen…",
+      "loadError": "Profil konnte nicht geladen werden",
       "openSettings": "Einstellungen öffnen",
       "hello": "Hallo, {{alias}}",
       "findingMatches": "Wir suchen deine besten Matches. Du wirst benachrichtigt, sobald sie bereit sind.",

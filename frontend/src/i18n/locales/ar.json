@@ -3,6 +3,7 @@
   "common": {
     "yes": "نعم",
     "no": "لا",
+    "dismiss": "إغلاق",
     "timeAgo": {
       "justNow": "الآن",
       "minutesAgo_zero": "منذ أقل من دقيقة",
@@ -133,6 +134,7 @@
     "subtitle": "احفظ هذا الرابط — إنه الطريقة الوحيدة للوصول إلى ملفك الشخصي.",
     "aliasLabel": "اسمك المستعار هو",
     "aliasHint": "هذا هو اسمك الرمزي. سنستخدمه عند التواصل معك.",
+    "unknownAlias": "شخص مجهول",
     "warning": "هذه هي الطريقة الوحيدة للوصول إلى ملفك الشخصي. بمجرد مغادرتك لهذه الصفحة، لن نتمكن من إظهاره لك مرة أخرى.",
     "linkLabel": "رابط ملفك الشخصي",
     "copyLink": "نسخ الرابط",
@@ -146,6 +148,8 @@
     "subtitle": "المسؤول",
     "login": {
       "title": "وصول المسؤول",
+      "tagline": "حيث تلتقي القلوب المتوافقة.",
+      "subtitle": "الوصول إلى لوحة التحكم",
       "username": "اسم المستخدم",
       "password": "كلمة المرور",
       "submit": "تسجيل الدخول",
@@ -157,7 +161,10 @@
       "matching": "التطابق",
       "matches": "الأزواج",
       "auditLogs": "سجل التدقيق",
-      "signOut": "تسجيل الخروج"
+      "signOut": "تسجيل الخروج",
+      "toggleSidebar": "تبديل الشريط الجانبي",
+      "roleAdmin": "مدير",
+      "roleSuperAdmin": "مدير عام"
     },
     "dashboard": {
       "title": "لوحة التحكم",
@@ -169,7 +176,23 @@
       "quickActions": "إجراءات سريعة",
       "runMatching": "تشغيل التطابق",
       "viewApplicants": "عرض المتقدمين",
-      "auditLogs": "سجل التدقيق"
+      "auditLogs": "سجل التدقيق",
+      "recentMatches": "أحدث الأزواج",
+      "recentActivity": "النشاط الأخير",
+      "noMatchesYet": "لا توجد أزواج حتى الآن.",
+      "noActivityYet": "لا يوجد نشاط حتى الآن.",
+      "viewAll": "عرض الكل ←",
+      "scoreLabel": "الدرجة: {{score}}%",
+      "auditActions": {
+        "RESOLVE_IDENTITY": "تم الكشف عن الهوية",
+        "APPLICANT_REVEAL_IDENTITY": "تم الكشف عن حساب إنستغرام",
+        "VIEW_APPLICANT": "تم عرض المتقدم",
+        "DEACTIVATE_APPLICANT": "تم إلغاء تنشيط المتقدم",
+        "ADMIN_LOGIN": "تسجيل دخول المسؤول",
+        "CREATE_QUESTIONNAIRE": "تم إنشاء الاستبيان",
+        "REGENERATE_MAGIC_LINK": "تم تجديد الرابط السحري",
+        "APPLICANT_SELF_DELETE": "حذف المتقدم لحسابه"
+      }
     },
     "applicants": {
       "title": "المتقدمون",
@@ -193,7 +216,13 @@
       "deletedToast": "تم حذف {{alias}}",
       "scheduledDeletion": "مجدول للحذف",
       "colDeletesOn": "تاريخ الحذف",
-      "deleteDescription": "يعطّل هذا المتقدم فورًا ويجدول حذفه نهائيًا بعد 180 يومًا."
+      "deleteDescription": "يعطّل هذا المتقدم فورًا ويجدول حذفه نهائيًا بعد 180 يومًا.",
+      "viewApplicant": "عرض المتقدم",
+      "viewApplicantAria": "عرض {{alias}}",
+      "deleteApplicant": "حذف المتقدم",
+      "deleteApplicantAria": "حذف {{alias}}",
+      "deleteConfirmTitle": "حذف {{alias}}؟",
+      "deleteError": "فشل الحذف"
     },
     "detail": {
       "back": "المتقدمون",
@@ -336,6 +365,7 @@
     },
     "dashboard": {
       "loading": "جارٍ التحميل…",
+      "loadError": "فشل تحميل الملف الشخصي",
       "openSettings": "فتح الإعدادات",
       "hello": "مرحبًا، {{alias}}",
       "findingMatches": "نبحث عن أفضل التوافقات لك. سيتم إشعارك عندما تكون جاهزة.",

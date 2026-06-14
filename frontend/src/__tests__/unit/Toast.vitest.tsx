@@ -58,7 +58,7 @@ describe('Toast', () => {
   it('can be dismissed manually', async () => {
     renderWithProvider()
     await userEvent.click(screen.getByText('fire-success'))
-    await userEvent.click(screen.getByRole('button', { name: 'Dismiss' }))
+    await userEvent.click(screen.getByRole('button', { name: 'common.dismiss' }))
     expect(screen.queryByRole('status')).not.toBeInTheDocument()
   })
 

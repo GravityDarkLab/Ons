@@ -2,8 +2,9 @@ import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import Badge from '../../components/ui/Badge'
 import ConfirmDialog from '../../components/ui/ConfirmDialog'
+import Spinner from '../../components/ui/Spinner'
 import { matchStatusTone } from '../../components/ui/statusTones'
-import { useTimeAgo } from '../../admin/utils/timeAgo'
+import { useTimeAgo } from '../../lib/timeAgo'
 import { getBreakdownEntry } from './matchBreakdownLabels'
 import type { MatchView, ContactResult } from '../../api/profile.client'
 
@@ -293,7 +294,7 @@ export function MatchCard({ match, onContactRequest, onRespond, onWithdraw, onOu
             className="flex-1 inline-flex items-center justify-center gap-2 bg-accent text-bg rounded-full px-4 py-2.5 text-sm font-medium transition-all duration-200 hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {loadingAccept ? (
-              <LoadingSpinner />
+              <Spinner />
             ) : null}
             {t('portal.matches.accept')}
           </button>
@@ -303,7 +304,7 @@ export function MatchCard({ match, onContactRequest, onRespond, onWithdraw, onOu
             className="flex-1 inline-flex items-center justify-center gap-2 bg-surface border border-border text-muted rounded-xl px-4 py-2.5 text-sm font-medium transition-all duration-200 hover:bg-bg disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {loadingDecline ? (
-              <LoadingSpinner />
+              <Spinner />
             ) : null}
             {t('portal.matches.decline')}
           </button>
@@ -389,7 +390,7 @@ export function MatchCard({ match, onContactRequest, onRespond, onWithdraw, onOu
               disabled={loadingSuccess || loadingFailed}
               className="flex-1 inline-flex items-center justify-center gap-2 bg-success text-bg rounded-full px-4 py-2.5 text-sm font-medium transition-all duration-200 hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              {loadingSuccess ? <LoadingSpinner /> : null}
+              {loadingSuccess ? <Spinner /> : null}
               {t('portal.matches.workedOut')}
             </button>
             <button
@@ -397,7 +398,7 @@ export function MatchCard({ match, onContactRequest, onRespond, onWithdraw, onOu
               disabled={loadingSuccess || loadingFailed}
               className="flex-1 inline-flex items-center justify-center gap-2 bg-surface border border-border text-muted rounded-xl px-4 py-2.5 text-sm font-medium transition-all duration-200 hover:bg-bg disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              {loadingFailed ? <LoadingSpinner /> : null}
+              {loadingFailed ? <Spinner /> : null}
               {t('portal.matches.didntWork')}
             </button>
           </div>
@@ -474,7 +475,7 @@ export function MatchCard({ match, onContactRequest, onRespond, onWithdraw, onOu
           disabled={loadingContact || !onContactRequest}
           className="inline-flex items-center justify-center gap-2 bg-accent text-bg rounded-full px-5 py-2.5 text-sm font-medium transition-all duration-200 hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed"
         >
-          {loadingContact ? <LoadingSpinner /> : null}
+          {loadingContact ? <Spinner /> : null}
           {t('portal.matches.reachOut')}
         </button>
         {actionError && <p role="alert" className="text-sm text-error mt-3">{actionError}</p>}
@@ -494,33 +495,5 @@ export function MatchCard({ match, onContactRequest, onRespond, onWithdraw, onOu
         onClose={confirmContact}
       />
     </div>
-  )
-}
-
-// ── Spinner helper ────────────────────────────────────────────────────────────
-
-function LoadingSpinner() {
-  return (
-    <svg
-      className="h-4 w-4 animate-spin"
-      xmlns="http://www.w3.org/2000/svg"
-      fill="none"
-      viewBox="0 0 24 24"
-      aria-hidden="true"
-    >
-      <circle
-        className="opacity-25"
-        cx="12"
-        cy="12"
-        r="10"
-        stroke="currentColor"
-        strokeWidth="4"
-      />
-      <path
-        className="opacity-75"
-        fill="currentColor"
-        d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"
-      />
-    </svg>
   )
 }

@@ -110,7 +110,7 @@ export function AdminLayout({ children }: { children: ReactNode }) {
           <button
             onClick={() => setCollapsed(c => !c)}
             className="flex items-center justify-center p-2 rounded-xl text-muted hover:text-primary hover:bg-bg transition-colors"
-            aria-label="Toggle sidebar"
+            aria-label={t('admin.nav.toggleSidebar')}
           >
             <MenuIcon />
           </button>
@@ -123,13 +123,13 @@ export function AdminLayout({ children }: { children: ReactNode }) {
           <ThemeToggle />
           <LanguageSwitcher />
           <Badge tone="accent" size="sm" className="ml-1.5">
-            {role ?? 'admin'}
+            {role === 'super_admin' ? t('admin.nav.roleSuperAdmin') : t('admin.nav.roleAdmin')}
           </Badge>
           <button
             onClick={handleLogout}
-            title="Sign out"
+            title={t('admin.nav.signOut')}
             className="flex items-center justify-center p-2 rounded-xl text-muted hover:text-primary hover:bg-bg transition-colors"
-            aria-label="Sign out"
+            aria-label={t('admin.nav.signOut')}
           >
             <LogOutIcon />
           </button>

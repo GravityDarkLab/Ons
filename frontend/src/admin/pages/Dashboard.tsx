@@ -2,7 +2,8 @@ import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { fetchApplicants, fetchMatches, fetchAuditLogs } from '../api/client'
-import { useTimeAgo } from '../utils/timeAgo'
+import { useTimeAgo } from '../../lib/timeAgo'
+import { useStatusLabels } from '../hooks/useStatusLabels'
 import Badge from '../../components/ui/Badge'
 import Skeleton from '../../components/ui/Skeleton'
 import { matchStatusTone } from '../../components/ui/statusTones'
@@ -74,16 +75,28 @@ function FeedRowSkeleton() {
 
 interface StatusCount { applied: number; matched: number; dating: number; inactive: number }
 
-const STAT_CARDS: Array<{ key: keyof StatusCount; label: string }> = [
-  { key: 'applied',  label: 'Applied' },
-  { key: 'matched',  label: 'Matched' },
-  { key: 'dating',   label: 'Dating' },
-  { key: 'inactive', label: 'Inactive' },
+const STAT_CARDS: Array<{ key: keyof StatusCount; labelKey: string }> = [
+  { key: 'applied',  labelKey: 'admin.applicants.applied' },
+  { key: 'matched',  labelKey: 'admin.applicants.matched' },
+  { key: 'dating',   labelKey: 'admin.applicants.dating' },
+  { key: 'inactive', labelKey: 'admin.applicants.inactive' },
 ]
 
 export function Dashboard() {
   const { t } = useTranslation()
   const timeAgo = useTimeAgo()
+  const { STATUS_LABEL } = useStatusLabels()
+
+  const AUDIT_ACTION_LABEL: Record<string, string> = {
+    RESOLVE_IDENTITY: t('admin.dashboard.auditActions.RESOLVE_IDENTITY'),
+    APPLICANT_REVEAL_IDENTITY: t('admin.dashboard.auditActions.APPLICANT_REVEAL_IDENTITY'),
+    VIEW_APPLICANT: t('admin.dashboard.auditActions.VIEW_APPLICANT'),
+    DEACTIVATE_APPLICANT: t('admin.dashboard.auditActions.DEACTIVATE_APPLICANT'),
+    ADMIN_LOGIN: t('admin.dashboard.auditActions.ADMIN_LOGIN'),
+    CREATE_QUESTIONNAIRE: t('admin.dashboard.auditActions.CREATE_QUESTIONNAIRE'),
+    REGENERATE_MAGIC_LINK: t('admin.dashboard.auditActions.REGENERATE_MAGIC_LINK'),
+    APPLICANT_SELF_DELETE: t('admin.dashboard.auditActions.APPLICANT_SELF_DELETE'),
+  }
 
   const [counts, setCounts]   = useState<StatusCount | null>(null)
   const [matches, setMatches] = useState<Match[] | null>(null)
@@ -127,7 +140,7 @@ export function Dashboard() {
 
       {/* Stat cards */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        {STAT_CARDS.map(({ key, label }) =>
+        {STAT_CARDS.map(({ key, labelKey }) =>
           counts ? (
             <div
               key={key}
@@ -138,7 +151,7 @@ export function Dashboard() {
               </p>
               <p className="text-sm text-muted mt-1 flex items-center gap-1.5">
                 <span style={{ color: STATUS_DOTS[key] }}>●</span>
-                {label}
+                {t(labelKey)}
               </p>
             </div>
           ) : (
@@ -152,7 +165,7 @@ export function Dashboard() {
         {/* Recent Matches */}
         <div className="bg-surface border border-border rounded-2xl p-6 shadow-card">
           <p className="text-sm font-medium text-primary uppercase tracking-wider mb-4">
-            Recent Matches
+            {t('admin.dashboard.recentMatches')}
           </p>
 
           {matches === null ? (
@@ -160,7 +173,7 @@ export function Dashboard() {
               {Array.from({ length: 3 }).map((_, i) => <FeedRowSkeleton key={i} />)}
             </div>
           ) : matches.length === 0 ? (
-            <p className="text-sm text-muted py-3">No matches yet.</p>
+            <p className="text-sm text-muted py-3">{t('admin.dashboard.noMatchesYet')}</p>
           ) : (
             <ul className="divide-y divide-border">
               {matches.map(m => (
@@ -172,11 +185,11 @@ export function Dashboard() {
                       {m.applicantBAlias}
                     </span>
                     <Badge tone={matchStatusTone(m.status)} size="sm" className="shrink-0">
-                      {m.status.replace('_', ' ')}
+                      {STATUS_LABEL[m.status]}
                     </Badge>
                   </div>
                   <p className="text-xs text-muted mt-0.5">
-                    Score: {Math.round(m.score * 100)}%
+                    {t('admin.dashboard.scoreLabel', { score: Math.round(m.score * 100) })}
                   </p>
                 </li>
               ))}
@@ -188,7 +201,7 @@ export function Dashboard() {
               to="/admin/matches"
               className="text-xs font-medium text-accent hover:underline"
             >
-              View all →
+              {t('admin.dashboard.viewAll')}
             </Link>
           </div>
         </div>
@@ -196,7 +209,7 @@ export function Dashboard() {
         {/* Recent Activity */}
         <div className="bg-surface border border-border rounded-2xl p-6 shadow-card">
           <p className="text-sm font-medium text-primary uppercase tracking-wider mb-4">
-            Recent Activity
+            {t('admin.dashboard.recentActivity')}
           </p>
 
           {logs === null ? (
@@ -204,13 +217,13 @@ export function Dashboard() {
               {Array.from({ length: 3 }).map((_, i) => <FeedRowSkeleton key={i} />)}
             </div>
           ) : logs.length === 0 ? (
-            <p className="text-sm text-muted py-3">No activity yet.</p>
+            <p className="text-sm text-muted py-3">{t('admin.dashboard.noActivityYet')}</p>
           ) : (
             <ul className="divide-y divide-border">
               {logs.map(log => (
                 <li key={log.id} className="py-3">
                   <p className={`text-sm font-medium ${auditActionColor(log.action)}`}>
-                    {log.action.replace(/_/g, ' ')}
+                    {AUDIT_ACTION_LABEL[log.action] ?? log.action.replace(/_/g, ' ')}
                   </p>
                   <p className="text-xs text-muted mt-0.5">
                     {timeAgo(new Date(log.timestamp).getTime())}
@@ -225,7 +238,7 @@ export function Dashboard() {
               to="/admin/audit-logs"
               className="text-xs font-medium text-accent hover:underline"
             >
-              View all →
+              {t('admin.dashboard.viewAll')}
             </Link>
           </div>
         </div>

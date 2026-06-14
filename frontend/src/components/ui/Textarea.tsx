@@ -27,7 +27,7 @@ export default function Textarea({
           className="text-sm font-medium text-primary"
         >
           {label}
-          {rest.required && <span className="ml-1 text-accent">*</span>}
+          {rest.required && <span className="ms-1 text-accent">*</span>}
         </label>
       )}
       <textarea

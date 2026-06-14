@@ -269,7 +269,7 @@ function MatchHistory({ matches, applicantId }: MatchHistoryProps) {
 
   if (matches.length === 0) {
     return (
-      <p className="text-sm text-muted">No matches yet</p>
+      <p className="text-sm text-muted">{t('admin.dashboard.noMatchesYet')}</p>
     )
   }
 
