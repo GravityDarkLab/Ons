@@ -1,33 +1,18 @@
 import { Context, Next } from "hono";
-import { jwtVerify, SignJWT } from "jose";
-import { getCookie } from "hono/cookie";
-import { env } from "../config/env.js";
+import { signJwt, verifyJwt, expiryToSeconds, extractToken } from "./jwt.util.js";
 
-const SECRET    = new TextEncoder().encode(env.jwtSecret);
-const ALGORITHM = "HS256";
-const EXPIRY    = "30d";
+const EXPIRY = "30d";
 
 export const APPLICANT_COOKIE = "ons_applicant_session";
+export const APPLICANT_COOKIE_MAX_AGE = expiryToSeconds(EXPIRY);
 
 export async function signApplicantToken(applicantId: string, alias: string): Promise<string> {
-  return new SignJWT({ sub: applicantId, alias, type: "applicant" })
-    .setProtectedHeader({ alg: ALGORITHM })
-    .setIssuedAt()
-    .setExpirationTime(EXPIRY)
-    .sign(SECRET);
-}
-
-function extractApplicantToken(c: Context): string | null {
-  // Prefer Bearer header for API clients; fall back to HttpOnly session cookie
-  const cookieToken = getCookie(c, APPLICANT_COOKIE);
-  const header = c.req.header("Authorization");
-  const bearerToken = header?.startsWith("Bearer ") ? header.slice(7) : null;
-  return bearerToken ?? cookieToken ?? null;
+  return signJwt({ sub: applicantId, alias, type: "applicant" }, EXPIRY);
 }
 
 async function verifyApplicantToken(token: string): Promise<{ sub: string; alias: string } | null> {
   try {
-    const { payload } = await jwtVerify(token, SECRET, { algorithms: [ALGORITHM] });
+    const payload = await verifyJwt(token);
     if (!payload.sub || payload.type !== "applicant") return null;
     return { sub: payload.sub as string, alias: payload.alias as string };
   } catch {
@@ -36,7 +21,8 @@ async function verifyApplicantToken(token: string): Promise<{ sub: string; alias
 }
 
 export async function requireApplicant(c: Context, next: Next): Promise<Response | void> {
-  const token = extractApplicantToken(c);
+  // Prefer Bearer header for API clients; fall back to HttpOnly session cookie
+  const token = extractToken(c, APPLICANT_COOKIE, false);
   if (!token) {
     return c.json({ success: false, error: "Unauthorized" }, 401);
   }
@@ -58,7 +44,7 @@ export async function requireApplicant(c: Context, next: Next): Promise<Response
  * requiring authentication.
  */
 export async function tryGetApplicantSession(c: Context): Promise<string | null> {
-  const token = extractApplicantToken(c);
+  const token = extractToken(c, APPLICANT_COOKIE, false);
   if (!token) return null;
   const claims = await verifyApplicantToken(token);
   return claims?.sub ?? null;
