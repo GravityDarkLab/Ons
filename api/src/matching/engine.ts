@@ -1,3 +1,5 @@
+import { ObjectId } from "mongodb";
+import { AppError } from "../errors.js";
 import type { ApplicantDoc } from "../models/applicant.model.js";
 import type { QuestionnaireDoc } from "../models/questionnaire.model.js";
 import { getDb } from "../db/connection.js";
@@ -79,28 +81,27 @@ export async function getCandidates(
 ): Promise<RankedCandidate[]> {
   const algorithm = ALGORITHM_REGISTRY[algorithmName];
   if (!algorithm) {
-    throw new Error(`Unknown algorithm: ${algorithmName}`);
+    throw new AppError(`Unknown algorithm: ${algorithmName}`, 400);
   }
 
   const questionnaire = await getActiveQuestionnaire();
   if (!questionnaire) {
-    throw new Error("No active questionnaire found");
+    throw new AppError("No active questionnaire found", 404);
   }
 
   const db = await getDb();
   const col = getApplicantsCollection(db);
 
-  const { ObjectId } = await import("mongodb");
-  let targetId: import("mongodb").ObjectId;
+  let targetId: ObjectId;
   try {
     targetId = new ObjectId(applicantId);
   } catch {
-    throw new Error(`Invalid applicant ID: ${applicantId}`);
+    throw new AppError(`Invalid applicant ID: ${applicantId}`, 400);
   }
 
   const target = await col.findOne({ _id: targetId, status: { $in: ["applied", "matched"] } });
   if (!target) {
-    throw new Error(`Active applicant not found: ${applicantId}`);
+    throw new AppError(`Active applicant not found: ${applicantId}`, 404);
   }
 
   // Applicants mid-contact (in_progress) are not eligible for new suggestions
@@ -148,12 +149,12 @@ export async function runFullMatchingPass(
 ): Promise<Record<string, RankedCandidate[]>> {
   const algorithm = ALGORITHM_REGISTRY[algorithmName];
   if (!algorithm) {
-    throw new Error(`Unknown algorithm: ${algorithmName}`);
+    throw new AppError(`Unknown algorithm: ${algorithmName}`, 400);
   }
 
   const questionnaire = await getActiveQuestionnaire();
   if (!questionnaire) {
-    throw new Error("No active questionnaire found");
+    throw new AppError("No active questionnaire found", 404);
   }
 
   const db = await getDb();

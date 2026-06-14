@@ -1,6 +1,6 @@
 import { describe, expect, it } from "bun:test";
 import { ObjectId } from "mongodb";
-import { toMatchView } from "../../../services/match.service";
+import { toMatchView } from "../../../services/match-state.service";
 import type { MatchDoc } from "../../../models/match.model";
 
 function makeMatch(overrides: Partial<MatchDoc> = {}): MatchDoc {

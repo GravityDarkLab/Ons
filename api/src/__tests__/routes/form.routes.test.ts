@@ -1,4 +1,5 @@
 import { describe, it, expect, mock, beforeEach } from "bun:test";
+import { AppError } from "../../errors.js";
 
 // ── Mock all dependencies before any imports ──────────────────────────────────
 
@@ -213,21 +214,21 @@ describe("POST /form/submit", () => {
     expect(res.status).toBe(422);
   });
 
-  it("returns 400 when the service throws (e.g. invalid submission key)", async () => {
-    mockProcessFormSubmission.mockRejectedValue(new Error("Invalid submission key."));
+  it("returns 401 when the service throws (e.g. invalid submission key)", async () => {
+    mockProcessFormSubmission.mockRejectedValue(new AppError("Invalid or missing submission key.", 401));
     const res = await post("/form/submit", validBody(), { "X-Submission-Key": "bad" });
-    expect(res.status).toBe(400);
+    expect(res.status).toBe(401);
     const body = await res.json() as any;
     expect(body.success).toBe(false);
-    expect(body.error).toMatch(/invalid submission key/i);
+    expect(body.error).toMatch(/invalid.*submission key/i);
   });
 
-  it("returns 400 when questionnaire version is not found by the service", async () => {
-    mockProcessFormSubmission.mockRejectedValue(new Error("Questionnaire not found"));
+  it("returns 404 when questionnaire version is not found by the service", async () => {
+    mockProcessFormSubmission.mockRejectedValue(new AppError("Questionnaire not found", 404));
     const key = generateSubmissionKey("99.0.0");
     const bad = { ...validBody(), questionnaireVersion: "99.0.0" };
     const res = await post("/form/submit", bad, { "X-Submission-Key": key });
-    expect(res.status).toBe(400);
+    expect(res.status).toBe(404);
     const body = await res.json() as any;
     expect(body.error).toMatch(/not found/i);
   });

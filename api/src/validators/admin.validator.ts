@@ -29,6 +29,8 @@ export const matchingRunSchema = z.object({
   algorithm: z.enum(["baseline", "cosine", "embedding-cosine"]).default("embedding-cosine"),
 });
 
+export type MatchingRunInput = z.infer<typeof matchingRunSchema>;
+
 export const createQuestionnaireSchema = z.object({
   version: z
     .string()

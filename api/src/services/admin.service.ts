@@ -1,4 +1,5 @@
 import { ObjectId } from "mongodb";
+import { AppError } from "../errors.js";
 import { getDb } from "../db/connection.js";
 import {
   getApplicantsCollection,
@@ -12,8 +13,9 @@ import type { CreateQuestionnaireInput } from "../validators/admin.validator.js"
 import { revealIdentityById } from "../privacy/identity.service.js";
 import type { AuditContext } from "../middleware/audit.middleware.js";
 import { signAdminToken } from "../middleware/auth.middleware.js";
-import { DELETION_GRACE_MS } from "./match.service.js";
+import { DELETION_GRACE_MS } from "./match-state.service.js";
 import { generateMagicToken, hashMagicToken } from "../privacy/magic-token.js";
+import { escapeRegex } from "../utils/regex.js";
 
 export interface PaginatedResult<T> {
   data: T[];
@@ -69,7 +71,7 @@ export function buildApplicantFilter(
   } else {
     filter.deletionScheduledAt = { $exists: false };
   }
-  if (search) filter.alias = { $regex: search.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"), $options: "i" };
+  if (search) filter.alias = { $regex: escapeRegex(search), $options: "i" };
   return filter;
 }
 
@@ -130,7 +132,8 @@ export async function getApplicantById(
 
 /**
  * Resolves and returns the decrypted Instagram handle for an applicant.
- * This is an admin-only action; callers MUST write an audit log.
+ * Admin-only action. revealIdentityById writes the audit log internally —
+ * callers must not write a duplicate one.
  */
 export async function getApplicantIdentity(
   id: string,
@@ -237,7 +240,7 @@ export async function createQuestionnaire(
 
   const existing = await col.findOne({ version: input.version });
   if (existing) {
-    throw new Error(`Questionnaire version ${input.version} already exists.`);
+    throw new AppError(`Questionnaire version ${input.version} already exists.`, 409);
   }
 
   const now = new Date();

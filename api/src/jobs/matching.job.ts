@@ -1,8 +1,8 @@
 import {
   loadActiveApplicants,
   saveMatchProposals,
-  promoteAppliedToMatched,
 } from "../services/match.service.js";
+import { promoteAppliedToMatched } from "../services/match-state.service.js";
 import { runFullMatchingPass } from "../matching/engine.js";
 import { generateCoupleProposals } from "../matching/proposals.js";
 import { setConfig } from "../services/appConfig.service.js";

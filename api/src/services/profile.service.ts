@@ -7,16 +7,17 @@ import {
   getIdentitiesCollection,
   getEmbeddingsCollection,
 } from "../db/collections.js";
-import type { ApplicantDoc } from "../models/applicant.model.js";
+import type { ApplicantDoc, ApplicantStatus } from "../models/applicant.model.js";
 import type { MatchDoc } from "../models/match.model.js";
 import {
   toMatchView,
   assertMatchTransition,
   expireConflictingMatches,
   transitionApplicantStatus,
+  applyMatchStatusSideEffects,
   DELETION_GRACE_MS,
   type ApplicantMatchView,
-} from "./match.service.js";
+} from "./match-state.service.js";
 import {
   resolveIdentityById,
   revealIdentityById,
@@ -250,7 +251,7 @@ export async function getMyMatches(
     const handle = alreadyLogged
       ? await resolveIdentityById(partnerId)
       : await revealIdentityById(partnerId, {
-          actor: { adminId: applicantId, ipAddress: audit.ipAddress, userAgent: audit.userAgent },
+          actor: { actorId: applicantId, ipAddress: audit.ipAddress, userAgent: audit.userAgent },
           action: "APPLICANT_REVEAL_IDENTITY",
           targetAlias: d.applicantAId.equals(oid) ? d.applicantBAlias : d.applicantAAlias,
           metadata: {
@@ -325,9 +326,11 @@ export async function requestContact(
     ? await generateIceBreakers(actorDoc, targetDoc)
     : { questions: [], dateIdeas: [] };
 
-  // Pre-flight identity check before any mutation — prevents stuck state if
-  // identity is missing. Existence only: the decrypt (and its audit log)
-  // happens after the atomic claim below, via revealIdentityById.
+  // Pre-flight identity check before any mutation — avoids an atomic write
+  // attempt in the common case where the identity is already gone. This is
+  // existence-only; the decrypt (and its audit log) happens below via
+  // revealIdentityById, after the atomic claim but before any irreversible
+  // side effects on the actor's other matches.
   if (!(await identityExistsById(targetId))) {
     throw new AppError("Target identity not found", 404);
   }
@@ -358,15 +361,14 @@ export async function requestContact(
     throw new AppError("Match is no longer available for contact — it may have been claimed concurrently", 409);
   }
 
-  // Exclusive contact: committing to one match expires the initiator's other
-  // proposed/in_progress matches. The target's other matches are untouched —
-  // they haven't acted yet. (Accept later expires both sides as before.)
-  await expireConflictingMatches([actorId], matchOid);
-
   // Decrypt + audit log after winning the race — revealIdentityById logs
-  // before the plaintext is returned. Existence was verified pre-flight.
+  // before the plaintext is returned. Done before expireConflictingMatches
+  // below: if the target's identity vanished between the pre-flight check
+  // and here (e.g. they self-deleted concurrently), roll the claim back to
+  // "proposed" instead of leaving it stuck in_progress with the actor's
+  // other matches already expired.
   const targetInstagram = await revealIdentityById(targetId, {
-    actor: { adminId: applicantId, ipAddress: audit.ipAddress, userAgent: audit.userAgent },
+    actor: { actorId: applicantId, ipAddress: audit.ipAddress, userAgent: audit.userAgent },
     action: "APPLICANT_REVEAL_IDENTITY",
     targetAlias: match.applicantAId.equals(actorId)
       ? match.applicantBAlias
@@ -377,9 +379,30 @@ export async function requestContact(
       reason: "contact_request",
     },
   });
+
   if (!targetInstagram) {
+    await matchCol.updateOne(
+      { _id: matchOid, status: "in_progress", initiatorId: actorId },
+      {
+        $set:   { status: "proposed", updatedAt: new Date() },
+        $unset: {
+          initiatorId:           "",
+          iceBreakers:           "",
+          dateIdeas:             "",
+          contactRequestedAt:    "",
+          identityViewLoggedFor: "",
+        },
+      },
+    );
     throw new AppError("Target identity not found", 404);
   }
+
+  // Exclusive contact: committing to one match expires the initiator's other
+  // proposed/in_progress matches. The target's other matches are untouched —
+  // they haven't acted yet. (Accept later expires both sides as before.)
+  // Runs only after the reveal above succeeds, so a failed request never
+  // costs the actor their other matches.
+  await expireConflictingMatches([actorId], matchOid);
 
   return { targetInstagram, iceBreakers: questions, dateIdeas };
 }
@@ -426,8 +449,7 @@ export async function respondToContact(
 
   if (accept) {
     const ids = [match.applicantAId, match.applicantBId];
-    await transitionApplicantStatus(ids, "dating");
-    await expireConflictingMatches(ids);
+    await applyMatchStatusSideEffects("dating", ids);
   }
 }
 
@@ -511,12 +533,9 @@ export async function reportOutcome(
     throw new AppError("Outcome was already reported for this match", 409);
   }
 
-  if (outcome === "success") {
-    const deletionScheduledAt = new Date(now.getTime() + DELETION_GRACE_MS);
-    await transitionApplicantStatus(ids, "inactive", { deletionScheduledAt });
-  } else {
-    await transitionApplicantStatus(ids, "applied");
-  }
+  // Mirror deactivateMyAccount: a partner heading toward deletion shouldn't
+  // leave other proposed/in_progress matches around for someone else to contact.
+  await applyMatchStatusSideEffects(outcome, ids);
 }
 
 export async function deactivateMyAccount(applicantId: string): Promise<void> {
@@ -529,22 +548,34 @@ export async function deactivateMyAccount(applicantId: string): Promise<void> {
 /**
  * Cancels a pending account deletion and restores the applicant to the
  * matching pool. Only valid while a deletion is actually scheduled.
+ *
+ * Restores to "dating" rather than "applied" if the applicant still has a
+ * match in "dating" status — otherwise they'd re-enter the matching pool
+ * while still tied to an active match.
  */
 export async function cancelAccountDeletion(applicantId: string): Promise<void> {
-  const db  = await getDb();
-  const col = getApplicantsCollection(db);
-  const oid = new ObjectId(applicantId);
+  const db       = await getDb();
+  const appCol   = getApplicantsCollection(db);
+  const matchCol = getMatchesCollection(db);
+  const oid      = new ObjectId(applicantId);
 
-  const result = await col.findOneAndUpdate(
+  const datingMatch = await matchCol.findOne({
+    status: "dating",
+    $or: [{ applicantAId: oid }, { applicantBId: oid }],
+  });
+  const restoredStatus: ApplicantStatus = datingMatch ? "dating" : "applied";
+
+  const result = await appCol.findOneAndUpdate(
     { _id: oid, status: "inactive", deletionScheduledAt: { $exists: true } },
-    { $set: { status: "applied", updatedAt: new Date() }, $unset: { deletionScheduledAt: "" } },
+    { $set: { status: restoredStatus, updatedAt: new Date() }, $unset: { deletionScheduledAt: "" } },
   );
 
   if (!result) throw new AppError("No deletion is scheduled for this account", 409);
 }
 
 /**
- * Immediate, irreversible self-deletion — bypasses the 180-day grace period.
+ * Immediate, irreversible self-deletion — bypasses the configurable
+ * deletion grace period (DELETION_GRACE_DAYS / DELETION_GRACE_MS).
  * Removes the applicant document, their identity record, embeddings, and
  * any matches involving them.
  */
@@ -565,7 +596,7 @@ export async function deleteMyAccountNow(
 
   // Audit before the data it references is removed
   await writeAuditLog(
-    { adminId: applicantId, ipAddress: audit.ipAddress, userAgent: audit.userAgent },
+    { actorId: applicantId, ipAddress: audit.ipAddress, userAgent: audit.userAgent },
     "APPLICANT_SELF_DELETE",
     { targetApplicantId: oid, targetAlias: doc.alias, metadata: { actorType: "applicant" } },
   );

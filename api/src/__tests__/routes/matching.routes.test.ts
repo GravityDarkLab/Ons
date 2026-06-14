@@ -1,4 +1,5 @@
 import { describe, it, expect, mock, beforeEach } from "bun:test";
+import { AppError } from "../../errors.js";
 
 mock.module("../../middleware/rateLimit.middleware.js", () => {
   const noop = async (_c: unknown, next: () => Promise<void>) => { await next(); };
@@ -33,7 +34,12 @@ mock.module("../../matching/engine.js", () => ({
 mock.module("../../services/match.service.js", () => ({
   saveMatchProposals:       mockSaveMatchProposals,
   loadActiveApplicants:     mockLoadActiveApplicants,
-  promoteAppliedToMatched:  mock(async () => 0),
+}));
+
+// match-state.service is used by the matching controller to promote applicants
+// after a matching pass. Mock it so tests never attempt a real MongoDB connection.
+mock.module("../../services/match-state.service.js", () => ({
+  promoteAppliedToMatched: mock(async () => 0),
 }));
 
 const mockGetConfig = mock(async () => null as unknown);
@@ -130,17 +136,17 @@ describe("GET /matching/candidates/:applicantId", () => {
   });
 
   it("returns 404 when engine throws 'not found'", async () => {
-    mockGetCandidates.mockRejectedValue(new Error("Active applicant not found: abc123"));
+    mockGetCandidates.mockRejectedValue(new AppError("Active applicant not found: abc123", 404));
     const res = await get("/matching/candidates/abc123", await adminToken());
     expect(res.status).toBe(404);
     const body = await res.json() as any;
     expect(body.success).toBe(false);
   });
 
-  it("returns 404 for invalid applicant ID", async () => {
-    mockGetCandidates.mockRejectedValue(new Error("Invalid applicant ID: not-an-id"));
+  it("returns 400 for invalid applicant ID", async () => {
+    mockGetCandidates.mockRejectedValue(new AppError("Invalid applicant ID: not-an-id", 400));
     const res = await get("/matching/candidates/not-an-id", await adminToken());
-    expect(res.status).toBe(404);
+    expect(res.status).toBe(400);
   });
 
   it("returns 500 when engine throws an unexpected error", async () => {
@@ -197,11 +203,11 @@ describe("POST /matching/run", () => {
     expect(res.status).toBe(422);
   });
 
-  it("returns 500 when the engine throws", async () => {
-    mockRunFullMatchingPass.mockRejectedValue(new Error("No active questionnaire found"));
+  it("returns 404 when the engine throws", async () => {
+    mockRunFullMatchingPass.mockRejectedValue(new AppError("No active questionnaire found", 404));
     const token = await adminToken();
     const res = await post("/matching/run", { algorithm: "baseline" }, token);
-    expect(res.status).toBe(500);
+    expect(res.status).toBe(404);
     const body = await res.json() as any;
     expect(body.success).toBe(false);
     expect(body.error).toMatch(/questionnaire/i);

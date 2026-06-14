@@ -13,10 +13,14 @@ export const setPasswordSchema = z.object({
   newPassword: z.string().min(8, "password must be at least 8 characters"),
 });
 
+export type SetPasswordInput = z.infer<typeof setPasswordSchema>;
+
 export const changePasswordSchema = z.object({
   currentPassword: z.string().min(1, "currentPassword is required"),
   newPassword:     z.string().min(8, "newPassword must be at least 8 characters"),
 });
+
+export type ChangePasswordInput = z.infer<typeof changePasswordSchema>;
 
 export const matchQuerySchema = z.object({
   threshold: z
@@ -35,13 +39,19 @@ export const matchQuerySchema = z.object({
     }),
 });
 
+export type MatchQueryInput = z.infer<typeof matchQuerySchema>;
+
 export const respondSchema = z.object({
   accept: z.boolean(),
 });
 
+export type RespondInput = z.infer<typeof respondSchema>;
+
 export const outcomeSchema = z.object({
   outcome: z.enum(["success", "failed"]),
 });
+
+export type OutcomeInput = z.infer<typeof outcomeSchema>;
 
 /**
  * Self-service answer updates — same field rules as the original submission,

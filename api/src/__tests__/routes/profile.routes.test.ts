@@ -204,7 +204,7 @@ describe("POST /profile/set-password", () => {
 
   it("returns 409 when password is already set", async () => {
     mockSetPassword.mockRejectedValue(
-      Object.assign(new Error("Password already set."), { statusCode: 409 })
+      new AppError("Password already set.", 409)
     );
     const res = await post("/profile/set-password", {
       magicToken: VALID_MAGIC_TOKEN,
@@ -257,7 +257,7 @@ describe("POST /profile/change-password", () => {
 
   it("returns 401 when current password is wrong", async () => {
     mockChangePassword.mockRejectedValue(
-      Object.assign(new Error("Current password is incorrect"), { statusCode: 401 })
+      new AppError("Current password is incorrect", 401)
     );
     const token = await applicantToken();
     const res = await post("/profile/change-password", {
@@ -551,7 +551,7 @@ describe("POST /profile/matches/:id/withdraw", () => {
 
   it("maps a 403 service error (target cannot withdraw)", async () => {
     mockWithdrawContact.mockRejectedValue(
-      Object.assign(new Error("Only the initiator can withdraw their contact request"), { statusCode: 403 })
+      new AppError("Only the initiator can withdraw their contact request", 403)
     );
     const token = await applicantToken();
     const res = await post("/profile/matches/abc123/withdraw", {}, token);
@@ -560,7 +560,7 @@ describe("POST /profile/matches/:id/withdraw", () => {
 
   it("maps a 409 service error (not in_progress)", async () => {
     mockWithdrawContact.mockRejectedValue(
-      Object.assign(new Error('Match status is "declined" — nothing to withdraw'), { statusCode: 409 })
+      new AppError('Match status is "declined" — nothing to withdraw', 409)
     );
     const token = await applicantToken();
     const res = await post("/profile/matches/abc123/withdraw", {}, token);

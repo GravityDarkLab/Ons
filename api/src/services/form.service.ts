@@ -38,12 +38,13 @@ export async function processFormSubmission(
   const questionnaire = await getQuestionnaireByVersion(input.questionnaireVersion);
 
   if (!questionnaire) {
-    throw new Error("Questionnaire not found");
+    throw new AppError("Questionnaire not found", 404);
   }
 
   if (!questionnaire.isActive) {
-    throw new Error(
-      `Questionnaire version ${input.questionnaireVersion} is no longer active. Please use the latest version.`
+    throw new AppError(
+      `Questionnaire version ${input.questionnaireVersion} is no longer active. Please use the latest version.`,
+      409,
     );
   }
 
@@ -58,12 +59,12 @@ export async function processFormSubmission(
 
   const unknownKeys = Object.keys(input.answers).filter((key) => !questionMap.has(key));
   if (unknownKeys.length > 0) {
-    throw new Error(`Unknown answer keys: ${unknownKeys.join(", ")}`);
+    throw new AppError(`Unknown answer keys: ${unknownKeys.join(", ")}`, 400);
   }
 
   for (const [id, question] of questionMap) {
     if (question.required && !(id in input.answers)) {
-      throw new Error(`Required field missing: ${id}`);
+      throw new AppError(`Required field missing: ${id}`, 400);
     }
   }
 

@@ -34,7 +34,7 @@ mock.module("../../../db/collections.js", () => ({
   ensureIndexes:               async () => {},
 }));
 
-import { expireConflictingMatches } from "../../../services/match.service.js";
+import { expireConflictingMatches } from "../../../services/match-state.service.js";
 
 beforeEach(() => {
   fakeMatches.updateMany.mockReset();

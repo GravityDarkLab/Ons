@@ -1,14 +1,9 @@
 import { Hono } from "hono";
-import { z } from "zod";
 import { zValidator } from "@hono/zod-validator";
 import { requireAdmin } from "../middleware/auth.middleware.js";
 import { validationHook } from "../validators/validation-hook.js";
+import { patchMatchSchema } from "../validators/match.validator.js";
 import { getMatches, patchMatch, removeMatch } from "../controllers/match.controller.js";
-
-const patchMatchSchema = z.object({
-  status: z.enum(["proposed", "in_progress", "dating", "success", "failed", "declined", "expired"]).optional(),
-  notes:  z.string().max(1000).optional(),
-});
 
 const matchRoutes = new Hono();
 

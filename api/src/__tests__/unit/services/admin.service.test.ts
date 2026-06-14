@@ -9,7 +9,7 @@
 // documented in proposals.test.ts / engine.test.ts).
 import { describe, it, expect } from "bun:test";
 import { buildApplicantFilter } from "../../../services/admin.service.js";
-import { DELETION_GRACE_MS } from "../../../services/match.service.js";
+import { DELETION_GRACE_MS } from "../../../services/match-state.service.js";
 
 describe("buildApplicantFilter", () => {
   it("the 'All' tab (no status, no scheduledDeletion) excludes pending deletion", () => {

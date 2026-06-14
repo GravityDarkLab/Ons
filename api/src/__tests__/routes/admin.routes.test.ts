@@ -1,4 +1,5 @@
 import { describe, it, expect, mock, beforeEach } from "bun:test";
+import { AppError } from "../../errors.js";
 
 // ── Mock all DB-touching modules before any imports ───────────────────────────
 
@@ -380,13 +381,13 @@ describe("POST /admin/questionnaires", () => {
     expect(res.status).toBe(422);
   });
 
-  it("returns 400 when service throws (e.g. version already exists)", async () => {
+  it("returns 409 when service throws (e.g. version already exists)", async () => {
     mockCreateQuestionnaire.mockRejectedValue(
-      new Error("Questionnaire version 2.0.0 already exists.")
+      new AppError("Questionnaire version 2.0.0 already exists.", 409)
     );
     const token = await adminToken();
     const res = await post("/admin/questionnaires", minimalQuestionnaire, token);
-    expect(res.status).toBe(400);
+    expect(res.status).toBe(409);
     const body = await res.json() as any;
     expect(body.error).toMatch(/already exists/i);
   });

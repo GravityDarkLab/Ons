@@ -16,27 +16,38 @@ import {
   cancelAccountDeletion,
   deleteMyAccountNow,
 } from "../services/profile.service.js";
-import { signApplicantToken, tryGetApplicantSession, APPLICANT_COOKIE } from "../middleware/applicant.auth.middleware.js";
+import {
+  signApplicantToken,
+  tryGetApplicantSession,
+  APPLICANT_COOKIE,
+  APPLICANT_COOKIE_MAX_AGE,
+} from "../middleware/applicant.auth.middleware.js";
 import { generateReadablePassword } from "../privacy/magic-token.js";
+import { errorResponse } from "../utils/error-response.js";
+import type { ValidatedContext } from "../utils/validated-context.js";
+import type {
+  ProfileLoginInput,
+  SetPasswordInput,
+  ChangePasswordInput,
+  UpdateAnswersInput,
+  MatchQueryInput,
+  RespondInput,
+  OutcomeInput,
+} from "../validators/profile.validator.js";
 import { env } from "../config/env.js";
-
-const COOKIE_MAX_AGE = 60 * 60 * 24 * 30; // 30 days — matches JWT EXPIRY
 
 function setSessionCookie(c: Context, token: string): void {
   setCookie(c, APPLICANT_COOKIE, token, {
     httpOnly: true,
     secure: env.nodeEnv === "production",
     sameSite: "Lax",
-    maxAge: COOKIE_MAX_AGE,
+    maxAge: APPLICANT_COOKIE_MAX_AGE,
     path: "/",
   });
 }
 
-export async function login(c: Context): Promise<Response> {
-  const { magicToken, password } = c.req.valid("json" as never) as {
-    magicToken: string;
-    password?: string;
-  };
+export async function login(c: ValidatedContext<{ json: ProfileLoginInput }>): Promise<Response> {
+  const { magicToken, password } = c.req.valid("json");
 
   const currentApplicantId = await tryGetApplicantSession(c);
   const result = await loginWithMagicToken(magicToken, password, currentApplicantId);
@@ -58,11 +69,8 @@ export async function login(c: Context): Promise<Response> {
   return c.json({ success: true });
 }
 
-export async function setPassword(c: Context): Promise<Response> {
-  const { magicToken, newPassword } = c.req.valid("json" as never) as {
-    magicToken: string;
-    newPassword: string;
-  };
+export async function setPassword(c: ValidatedContext<{ json: SetPasswordInput }>): Promise<Response> {
+  const { magicToken, newPassword } = c.req.valid("json");
 
   try {
     const applicant = await setPasswordService(magicToken, newPassword);
@@ -71,26 +79,19 @@ export async function setPassword(c: Context): Promise<Response> {
     setSessionCookie(c, token);
     return c.json({ success: true });
   } catch (err: unknown) {
-    const e = err as { message?: string; statusCode?: number };
-    const code = (e.statusCode ?? 500) as Parameters<typeof c.json>[1];
-    return c.json({ success: false, error: e.message ?? "Error" }, code);
+    return errorResponse(c, err);
   }
 }
 
-export async function changePassword(c: Context): Promise<Response> {
+export async function changePassword(c: ValidatedContext<{ json: ChangePasswordInput }>): Promise<Response> {
   const applicantId = c.get("applicantId") as string;
-  const { currentPassword, newPassword } = c.req.valid("json" as never) as {
-    currentPassword: string;
-    newPassword: string;
-  };
+  const { currentPassword, newPassword } = c.req.valid("json");
 
   try {
     await changePasswordService(applicantId, currentPassword, newPassword);
     return c.json({ success: true });
   } catch (err: unknown) {
-    const e = err as { message?: string; statusCode?: number };
-    const code = (e.statusCode ?? 500) as Parameters<typeof c.json>[1];
-    return c.json({ success: false, error: e.message ?? "Error" }, code);
+    return errorResponse(c, err);
   }
 }
 
@@ -112,40 +113,25 @@ export async function answers(c: Context): Promise<Response> {
   return c.json({ success: true, data: { answers: data } });
 }
 
-export async function updateAnswers(c: Context): Promise<Response> {
+export async function updateAnswers(c: ValidatedContext<{ json: UpdateAnswersInput }>): Promise<Response> {
   const applicantId = c.get("applicantId") as string;
-  const { answers: updates } = c.req.valid("json" as never) as {
-    answers: Record<string, unknown>;
-  };
+  const { answers: updates } = c.req.valid("json");
 
   try {
     await updateMyAnswers(applicantId, updates);
     return c.json({ success: true });
   } catch (err: unknown) {
-    const e = err as { message?: string; statusCode?: number };
-    const code = (e.statusCode ?? 500) as Parameters<typeof c.json>[1];
-    return c.json({ success: false, error: e.message ?? "Error" }, code);
+    return errorResponse(c, err);
   }
 }
 
-export async function matches(c: Context): Promise<Response> {
+export async function matches(c: ValidatedContext<{ query: MatchQueryInput }>): Promise<Response> {
   const applicantId = c.get("applicantId") as string;
-  const { threshold, limit } = c.req.valid("query" as never) as {
-    threshold: number;
-    limit: number;
-  };
+  const { threshold, limit } = c.req.valid("query");
   const ipAddress = c.req.header("X-Forwarded-For") ?? c.req.header("X-Real-IP") ?? "unknown";
   const userAgent = c.req.header("User-Agent") ?? "unknown";
   const data = await getMyMatches(applicantId, threshold, limit, { ipAddress, userAgent });
   return c.json({ success: true, data });
-}
-
-function matchErrorResponse(c: Context, err: unknown): Response {
-  const e = err as { message?: string; statusCode?: number };
-  if (e.statusCode === 404) return c.json({ success: false, error: e.message }, 404);
-  if (e.statusCode === 409) return c.json({ success: false, error: e.message }, 409);
-  if (e.statusCode === 403) return c.json({ success: false, error: e.message ?? "Forbidden" }, 403);
-  return c.json({ success: false, error: "Internal server error" }, 500);
 }
 
 export async function contact(c: Context): Promise<Response> {
@@ -158,20 +144,20 @@ export async function contact(c: Context): Promise<Response> {
     const result = await requestContact(applicantId, matchId, { ipAddress, userAgent });
     return c.json({ success: true, data: result });
   } catch (err: unknown) {
-    return matchErrorResponse(c, err);
+    return errorResponse(c, err);
   }
 }
 
-export async function respond(c: Context): Promise<Response> {
+export async function respond(c: ValidatedContext<{ json: RespondInput }>): Promise<Response> {
   const applicantId = c.get("applicantId") as string;
   const matchId     = c.req.param("id") as string;
-  const { accept }  = c.req.valid("json" as never) as { accept: boolean };
+  const { accept }  = c.req.valid("json");
 
   try {
     await respondToContact(applicantId, matchId, accept);
     return c.json({ success: true });
   } catch (err: unknown) {
-    return matchErrorResponse(c, err);
+    return errorResponse(c, err);
   }
 }
 
@@ -183,22 +169,20 @@ export async function withdraw(c: Context): Promise<Response> {
     await withdrawContact(applicantId, matchId);
     return c.json({ success: true });
   } catch (err: unknown) {
-    return matchErrorResponse(c, err);
+    return errorResponse(c, err);
   }
 }
 
-export async function outcome(c: Context): Promise<Response> {
+export async function outcome(c: ValidatedContext<{ json: OutcomeInput }>): Promise<Response> {
   const applicantId = c.get("applicantId") as string;
   const matchId     = c.req.param("id") as string;
-  const { outcome: out } = c.req.valid("json" as never) as {
-    outcome: "success" | "failed";
-  };
+  const { outcome: out } = c.req.valid("json");
 
   try {
     await reportOutcome(applicantId, matchId, out);
     return c.json({ success: true });
   } catch (err: unknown) {
-    return matchErrorResponse(c, err);
+    return errorResponse(c, err);
   }
 }
 
@@ -221,9 +205,7 @@ export async function cancelDeletion(c: Context): Promise<Response> {
     await cancelAccountDeletion(applicantId);
     return c.json({ success: true });
   } catch (err: unknown) {
-    const e = err as { message?: string; statusCode?: number };
-    const code = (e.statusCode ?? 500) as Parameters<typeof c.json>[1];
-    return c.json({ success: false, error: e.message ?? "Error" }, code);
+    return errorResponse(c, err);
   }
 }
 
@@ -237,8 +219,6 @@ export async function deleteNow(c: Context): Promise<Response> {
     deleteCookie(c, APPLICANT_COOKIE, { path: "/" });
     return c.json({ success: true });
   } catch (err: unknown) {
-    const e = err as { message?: string; statusCode?: number };
-    const code = (e.statusCode ?? 500) as Parameters<typeof c.json>[1];
-    return c.json({ success: false, error: e.message ?? "Error" }, code);
+    return errorResponse(c, err);
   }
 }

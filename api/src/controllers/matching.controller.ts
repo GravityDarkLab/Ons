@@ -1,9 +1,13 @@
 import { Context } from "hono";
 import { getCandidates, runFullMatchingPass } from "../matching/engine.js";
 import { generateCoupleProposals } from "../matching/proposals.js";
-import { saveMatchProposals, loadActiveApplicants, promoteAppliedToMatched } from "../services/match.service.js";
+import { saveMatchProposals, loadActiveApplicants } from "../services/match.service.js";
+import { promoteAppliedToMatched } from "../services/match-state.service.js";
 import { getConfig, setConfig } from "../services/appConfig.service.js";
 import { APP_CONFIG_KEYS, type MatchingLastRun } from "../models/appConfig.model.js";
+import { errorResponse } from "../utils/error-response.js";
+import type { MatchingRunInput } from "../validators/admin.validator.js";
+import type { ValidatedContext } from "../utils/validated-context.js";
 
 /**
  * GET /api/v1/matching/candidates/:applicantId
@@ -24,9 +28,7 @@ export async function getMatchCandidates(c: Context): Promise<Response> {
       candidates,
     });
   } catch (err) {
-    const message = err instanceof Error ? err.message : "Failed to get candidates";
-    const status = message.includes("not found") || message.includes("Invalid") ? 404 : 500;
-    return c.json({ success: false, error: message }, status as 404 | 500);
+    return errorResponse(c, err, "Failed to get candidates");
   }
 }
 
@@ -34,8 +36,8 @@ export async function getMatchCandidates(c: Context): Promise<Response> {
  * POST /api/v1/matching/run
  * Admin triggers a full matching pass.
  */
-export async function runMatching(c: Context): Promise<Response> {
-  const body = c.req.valid("json" as never) as { algorithm: string };
+export async function runMatching(c: ValidatedContext<{ json: MatchingRunInput }>): Promise<Response> {
+  const body = c.req.valid("json");
   const algorithm = body.algorithm ?? "baseline";
 
   try {
@@ -84,8 +86,7 @@ export async function runMatching(c: Context): Promise<Response> {
       results,
     });
   } catch (err) {
-    const message = err instanceof Error ? err.message : "Matching failed";
-    return c.json({ success: false, error: message }, 500);
+    return errorResponse(c, err, "Matching failed");
   }
 }
 
@@ -98,7 +99,6 @@ export async function getMatchingLastRun(c: Context): Promise<Response> {
     const lastRun = await getConfig<MatchingLastRun>(APP_CONFIG_KEYS.matchingLastRun);
     return c.json({ success: true, data: lastRun });
   } catch (err) {
-    const message = err instanceof Error ? err.message : "Failed to load last run";
-    return c.json({ success: false, error: message }, 500);
+    return errorResponse(c, err, "Failed to load last run");
   }
 }

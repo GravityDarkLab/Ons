@@ -2,6 +2,8 @@ import { Context } from "hono";
 import { processFormSubmission } from "../services/form.service.js";
 import { getActiveQuestionnaire, getAllQuestionnaires } from "../services/questionnaire.service.js";
 import { generateSubmissionKey } from "../privacy/submission-key.js";
+import { errorResponse } from "../utils/error-response.js";
+import type { ValidatedContext } from "../utils/validated-context.js";
 import type { FormSubmissionInput } from "../validators/form.validator.js";
 
 /**
@@ -57,8 +59,8 @@ export async function getQuestionnaire(c: Context): Promise<Response> {
  * POST /api/v1/form/submit
  * Requires X-Submission-Key header — obtained from GET /questionnaire.
  */
-export async function submitForm(c: Context): Promise<Response> {
-  const body = c.req.valid("json" as never) as FormSubmissionInput;
+export async function submitForm(c: ValidatedContext<{ json: FormSubmissionInput }>): Promise<Response> {
+  const body = c.req.valid("json");
   const submissionKey = c.req.header("X-Submission-Key") ?? "";
 
   try {
@@ -75,10 +77,6 @@ export async function submitForm(c: Context): Promise<Response> {
       201
     );
   } catch (err: unknown) {
-    const e = err as { message?: string; statusCode?: number };
-    if (e.statusCode === 401) return c.json({ success: false, error: e.message }, 401);
-    if (e.statusCode === 409) return c.json({ success: false, error: e.message }, 409);
-    const message = err instanceof Error ? err.message : "Submission failed";
-    return c.json({ success: false, error: message }, 400);
+    return errorResponse(c, err, "Submission failed", 400);
   }
 }
