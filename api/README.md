@@ -182,7 +182,7 @@ api/
 - **No PII in applicant profiles** — Instagram handles are AES-256-GCM encrypted in a separate `identities` collection.
 - **Submission keys** — HMAC-SHA256(version, `FORM_SECRET`) prevents questionnaire version enumeration.
 - **Audit logs** — every identity decryption (admin lookup *or* mutual match reveal) is written to `audit_logs` with actor, IP, user-agent, and timestamp before plaintext is returned.
-- **Mutual identity reveal** — matched applicants can request to exchange Instagram handles via `/profile/matches/:id/contact`; handles are only decrypted once both sides accept.
+- **Mutual identity reveal** — an applicant calling `/profile/matches/:id/contact` immediately decrypts and is shown the partner's Instagram handle; the partner sees the initiator's handle as soon as they view that match (`GET /profile/matches`), before accepting or declining.
 - **Rate limiting** — in-memory sliding-window limiter on all public, admin, and applicant-portal routes.
 - **Orientation filter** — incompatible pairs are excluded *before* scoring, never just ranked low.
 - **Account deletion** — applicants can deactivate immediately or schedule a deletion with a cancellable grace period.
