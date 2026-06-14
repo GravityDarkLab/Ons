@@ -1,4 +1,6 @@
-export type ApplicantStatus = 'applied' | 'matched' | 'dating' | 'inactive'
+export type { ApplicantStatus, MatchStatus } from '../types/status'
+
+import type { ApplicantStatus, MatchStatus } from '../types/status'
 
 export interface Applicant {
   id: string
@@ -54,8 +56,6 @@ export interface MatchingLastRun {
   durationMs: number
   triggeredBy: 'admin' | 'scheduler'
 }
-
-export type MatchStatus = 'proposed' | 'in_progress' | 'dating' | 'success' | 'failed' | 'declined' | 'expired'
 
 export interface Match {
   id: string

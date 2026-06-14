@@ -1,16 +1,10 @@
+import type { ApplicantStatus, MatchStatus } from '../types/status'
+
 const BASE = (import.meta.env.VITE_API_URL ?? 'http://localhost:3001') + '/api/v1'
 
 // ── Types ────────────────────────────────────────────────────────────────────
 
-export type ApplicantStatus = 'applied' | 'matched' | 'dating' | 'inactive'
-export type MatchStatus =
-  | 'proposed'
-  | 'in_progress'
-  | 'dating'
-  | 'success'
-  | 'failed'
-  | 'declined'
-  | 'expired'
+export type { ApplicantStatus, MatchStatus }
 export type MatchPerspective = 'none' | 'initiator' | 'target'
 
 export interface MatchView {
