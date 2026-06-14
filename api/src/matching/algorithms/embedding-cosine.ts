@@ -57,6 +57,7 @@ import type { QuestionnaireDoc } from "../../models/questionnaire.model.js";
 import type { Algorithm, MatchScore } from "../engine.js";
 import { getEmbeddingProvider } from "../embeddings/provider.js";
 import { getOrComputeEmbeddings } from "../../services/embedding.service.js";
+import { buildNumericVector, cosine, round } from "../scorers/numeric.scorer.js";
 
 // ─── Weights ──────────────────────────────────────────────────────────────────
 
@@ -66,16 +67,6 @@ const WEIGHTS = {
   character_cross_match: 0.35, // 0.175 per direction
   deal_breakers: 0.20,
 } as const;
-
-// ─── Relationship type encoding (identical to cosine.ts) ─────────────────────
-
-const REL_TYPE_ENCODING: Record<string, [number, number]> = {
-  "Long Term":    [1.0, 0.0],
-  "Short Term":   [0.0, 1.0],
-  "Open to Both": [0.7, 0.7],
-  "Casual":       [0.1, 0.9],
-  "Not Sure":     [0.4, 0.4],
-};
 
 // ─── Per-applicant embedding cache ───────────────────────────────────────────
 //
@@ -89,51 +80,6 @@ interface CachedEmbeddings {
 }
 
 const cache = new Map<string, CachedEmbeddings>();
-
-// ─── Answer accessors ─────────────────────────────────────────────────────────
-
-function str(answers: Record<string, unknown>, key: string): string {
-  const v = answers[key];
-  return typeof v === "string" ? v.trim() : "";
-}
-
-function bool(answers: Record<string, unknown>, key: string): boolean | null {
-  const v = answers[key];
-  return typeof v === "boolean" ? v : null;
-}
-
-function num(answers: Record<string, unknown>, key: string): number | null {
-  const v = answers[key];
-  return typeof v === "number" ? v : null;
-}
-
-// ─── Numeric vector (no embeddings — exact compatibility) ─────────────────────
-
-function buildNumericVector(answers: Record<string, unknown>): number[] {
-  const relType = str(answers, "relationship_type");
-  const [relLong, relShort] = REL_TYPE_ENCODING[relType] ?? [0.4, 0.4];
-  const longDist = bool(answers, "open_to_long_distance") === true ? 1.0 : 0.0;
-  const affection = (num(answers, "physical_affection_importance") ?? 5) / 10;
-  const religionOpen = bool(answers, "religion_deal_breaker") === false ? 1.0 : 0.0;
-  return [relLong, relShort, longDist, affection, religionOpen];
-}
-
-// ─── Cosine similarity ────────────────────────────────────────────────────────
-
-function cosine(a: number[], b: number[]): number {
-  let dot = 0, normA = 0, normB = 0;
-  for (let i = 0; i < a.length; i++) {
-    dot   += a[i] * b[i];
-    normA += a[i] * a[i];
-    normB += b[i] * b[i];
-  }
-  if (normA === 0 || normB === 0) return 0;
-  return dot / (Math.sqrt(normA) * Math.sqrt(normB));
-}
-
-function round(n: number): number {
-  return Math.round(n * 100) / 100;
-}
 
 // ─── Algorithm ────────────────────────────────────────────────────────────────
 

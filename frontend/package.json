@@ -5,8 +5,12 @@
   "author": "Achraf Labidi <labidiachraf6@gmail.com> (https://github.com/GravityDarkLab)",
   "license": "SEE LICENSE IN LICENSE",
   "type": "module",
+  "engines": {
+    "bun": ">=1.2.0",
+    "node": ">=22.12 <23 || >=24 <25"
+  },
   "scripts": {
-    "dev": "vite",
+    "dev": "NODE_OPTIONS=--no-deprecation vite",
     "build": "tsc && vite build",
     "preview": "vite preview",
     "typecheck": "tsc --noEmit",

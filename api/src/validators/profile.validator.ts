@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { formSubmissionSchema } from "./form.validator.js";
 
 export const profileLoginSchema = z.object({
   magicToken: z.string().length(64, "magicToken must be exactly 64 characters"),
@@ -12,10 +13,14 @@ export const setPasswordSchema = z.object({
   newPassword: z.string().min(8, "password must be at least 8 characters"),
 });
 
+export type SetPasswordInput = z.infer<typeof setPasswordSchema>;
+
 export const changePasswordSchema = z.object({
   currentPassword: z.string().min(1, "currentPassword is required"),
   newPassword:     z.string().min(8, "newPassword must be at least 8 characters"),
 });
+
+export type ChangePasswordInput = z.infer<typeof changePasswordSchema>;
 
 export const matchQuerySchema = z.object({
   threshold: z
@@ -30,14 +35,44 @@ export const matchQuerySchema = z.object({
     .optional()
     .transform((v) => {
       const n = parseInt(v ?? "10", 10);
-      return Math.min(10, Math.max(1, isNaN(n) ? 10 : n));
+      return Math.min(50, Math.max(1, isNaN(n) ? 10 : n));
     }),
 });
+
+export type MatchQueryInput = z.infer<typeof matchQuerySchema>;
 
 export const respondSchema = z.object({
   accept: z.boolean(),
 });
 
+export type RespondInput = z.infer<typeof respondSchema>;
+
 export const outcomeSchema = z.object({
   outcome: z.enum(["success", "failed"]),
 });
+
+export type OutcomeInput = z.infer<typeof outcomeSchema>;
+
+/**
+ * Self-service answer updates — same field rules as the original submission,
+ * minus the fields an applicant must not change themselves:
+ * - instagram_handle lives encrypted in the identities collection and can
+ *   only be changed by an admin
+ * - disclaimer_agreed is a one-time consent given at submission
+ * - birth_date and gender_identity are identity facts that drive matching —
+ *   changing them requires contacting an admin
+ * `.strict()` rejects all of them (and any unknown key) instead of silently
+ * dropping.
+ */
+export const updateAnswersSchema = z.object({
+  answers: formSubmissionSchema.shape.answers
+    .omit({
+      instagram_handle: true,
+      disclaimer_agreed: true,
+      birth_date: true,
+      gender_identity: true,
+    })
+    .strict(),
+});
+
+export type UpdateAnswersInput = z.infer<typeof updateAnswersSchema>;

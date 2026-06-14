@@ -1,6 +1,19 @@
 {
   "brand": "Ons",
-
+  "common": {
+    "yes": "Oui",
+    "no": "Non",
+    "dismiss": "Fermer",
+    "timeAgo": {
+      "justNow": "à l'instant",
+      "minutesAgo_one": "il y a {{count}} minute",
+      "minutesAgo_other": "il y a {{count}} minutes",
+      "hoursAgo_one": "il y a {{count}} heure",
+      "hoursAgo_other": "il y a {{count}} heures",
+      "daysAgo_one": "il y a {{count}} jour",
+      "daysAgo_other": "il y a {{count}} jours"
+    }
+  },
   "invite": {
     "title": "Sur invitation uniquement",
     "subtitle": "C'est une expérience de matchmaking privée. Entrez votre clé d'invitation pour continuer.",
@@ -11,7 +24,6 @@
     "noInvite": "Pas d'invitation ?",
     "noInviteLink": "Demandez à un ami qui est déjà inscrit."
   },
-
   "home": {
     "badge": "Vie privée d'abord · Sur invitation",
     "headline": "Trouvez votre\npersonne.",
@@ -19,13 +31,24 @@
     "cta": "Postuler maintenant",
     "howItWorks": "Comment ça marche",
     "cards": [
-      { "emoji": "🗒️", "title": "Remplissez le formulaire", "desc": "Répondez à un court questionnaire sur vous et ce que vous recherchez." },
-      { "emoji": "🔒", "title": "Nous protégeons votre identité", "desc": "Votre pseudo Instagram est chiffré. Vous recevez un nom de code." },
-      { "emoji": "💌", "title": "Nous faisons le match", "desc": "Si nous voyons une connexion, nous vous contactons directement. Pas d'algorithme." }
+      {
+        "emoji": "🗒️",
+        "title": "Remplissez le formulaire",
+        "desc": "Répondez à un court questionnaire sur vous et ce que vous recherchez."
+      },
+      {
+        "emoji": "🔒",
+        "title": "Nous protégeons votre identité",
+        "desc": "Votre pseudo Instagram est chiffré. Vous recevez un nom de code."
+      },
+      {
+        "emoji": "💌",
+        "title": "Nous faisons le match",
+        "desc": "Si nous voyons une connexion, nous vous contactons directement. Pas d'algorithme."
+      }
     ],
-    "footer": "© 2025 Ons · Conçu avec soin"
+    "footer": "© {{year}} Ons · Conçu avec soin"
   },
-
   "apply": {
     "stepOf": "Étape {{current}} sur {{total}}",
     "back": "Retour",
@@ -34,7 +57,6 @@
     "submitting": "Envoi en cours…",
     "error": "Une erreur s'est produite. Veuillez réessayer."
   },
-
   "steps": {
     "s1": {
       "title": "Qui êtes-vous ?",
@@ -47,8 +69,7 @@
     "s2": {
       "title": "À propos de vous",
       "subtitle": "Aidez-nous à vous comprendre.",
-      "age": "Âge",
-      "agePlaceholder": "25",
+      "birthDate": "Date de naissance",
       "height": "Taille (cm)",
       "heightPlaceholder": "175",
       "heightHint": "Optionnel",
@@ -96,20 +117,27 @@
       "disclaimerRequired": "Vous devez accepter pour continuer."
     }
   },
-
   "success": {
     "title": "C'est parti.",
-    "subtitle": "Nous vous contacterons quand nous aurons trouvé votre match.",
+    "subtitle": "Sauvegardez ce lien — c'est le seul moyen d'accéder à votre profil.",
     "aliasLabel": "Votre alias est",
-    "aliasHint": "Gardez cet alias précieusement — c'est ainsi que nous vous désignerons.",
-    "privacy": "En attendant, votre identité est chiffrée en toute sécurité. Nous ne partagerons jamais vos informations avec des tiers.",
+    "aliasHint": "C'est votre nom de code. Nous l'utiliserons lorsque nous vous contacterons.",
+    "unknownAlias": "Personne mystère",
+    "warning": "C'est le seul moyen d'accéder à votre profil. Une fois que vous quittez cette page, nous ne pourrons plus vous le montrer.",
+    "linkLabel": "Votre lien de profil",
+    "copyLink": "Copier le lien",
+    "copied": "Copié !",
+    "download": "Télécharger .txt",
+    "done": "Terminé →",
+    "laterHint": "Vous pouvez également accéder à votre profil plus tard sur /profile/login avec votre lien magique.",
     "backHome": "Retour à l'accueil"
   },
-
   "admin": {
     "subtitle": "Admin",
     "login": {
       "title": "Accès administrateur",
+      "tagline": "Là où les cœurs compatibles se rencontrent.",
+      "subtitle": "Accédez à votre tableau de bord",
       "username": "Nom d'utilisateur",
       "password": "Mot de passe",
       "submit": "Se connecter",
@@ -121,7 +149,10 @@
       "matching": "Matching",
       "matches": "Couples",
       "auditLogs": "Journal d'audit",
-      "signOut": "Se déconnecter"
+      "signOut": "Se déconnecter",
+      "toggleSidebar": "Afficher/masquer la barre latérale",
+      "roleAdmin": "Administrateur",
+      "roleSuperAdmin": "Super administrateur"
     },
     "dashboard": {
       "title": "Tableau de bord",
@@ -133,33 +164,62 @@
       "quickActions": "Actions rapides",
       "runMatching": "Lancer le matching",
       "viewApplicants": "Voir les candidats",
-      "auditLogs": "Journal d'audit"
+      "auditLogs": "Journal d'audit",
+      "recentMatches": "Couples récents",
+      "recentActivity": "Activité récente",
+      "noMatchesYet": "Aucun couple pour l'instant.",
+      "noActivityYet": "Aucune activité pour l'instant.",
+      "viewAll": "Voir tout →",
+      "scoreLabel": "Score : {{score}} %",
+      "auditActions": {
+        "RESOLVE_IDENTITY": "Identité résolue",
+        "APPLICANT_REVEAL_IDENTITY": "Identifiant Instagram révélé",
+        "VIEW_APPLICANT": "Candidat consulté",
+        "DEACTIVATE_APPLICANT": "Candidat désactivé",
+        "ADMIN_LOGIN": "Connexion admin",
+        "CREATE_QUESTIONNAIRE": "Questionnaire créé",
+        "REGENERATE_MAGIC_LINK": "Lien magique régénéré",
+        "APPLICANT_SELF_DELETE": "Auto-suppression du candidat"
+      }
     },
     "applicants": {
       "title": "Candidats",
       "total": "{{count}} au total",
       "all": "Tous",
-      "active": "Actifs",
+      "applied": "Candidature",
       "matched": "Matchés",
       "inactive": "Inactifs",
-      "withdrawn": "Retirés",
+      "dating": "Rencontres",
       "searchPlaceholder": "Rechercher par alias…",
       "colAlias": "Alias",
       "colStatus": "Statut",
-      "colLocation": "Lieu",
-      "colAge": "Âge",
+      "colVersion": "Version",
+      "colActions": "Actions",
       "colSubmitted": "Soumis le",
-      "view": "Voir →",
+      "viewLink": "Voir →",
       "empty": "Aucun candidat trouvé.",
       "page": "Page {{current}} sur {{total}}",
       "prev": "← Préc.",
-      "next": "Suiv. →"
+      "next": "Suiv. →",
+      "deletedToast": "{{alias}} supprimé",
+      "scheduledDeletion": "Suppression programmée",
+      "colDeletesOn": "Suppression le",
+      "deleteDescription": "Désactive ce candidat immédiatement et programme sa suppression définitive dans 180 jours.",
+      "viewApplicant": "Voir le candidat",
+      "viewApplicantAria": "Voir {{alias}}",
+      "deleteApplicant": "Supprimer le candidat",
+      "deleteApplicantAria": "Supprimer {{alias}}",
+      "deleteConfirmTitle": "Supprimer {{alias}} ?",
+      "deleteError": "Échec de la suppression"
     },
     "detail": {
       "back": "Candidats",
       "submitted": "Soumis le {{date}}",
       "withdraw": "Retirer",
-      "withdrawConfirm": "Retirer ce candidat ? Son statut sera défini sur 'retiré'.",
+      "withdrawConfirm": "Retirer ce candidat ? Son statut sera défini sur 'inactif'.",
+      "version": "Version",
+      "status": "Statut",
+      "superAdminRequired": "La révélation d'identité nécessite un accès super admin",
       "identity": "Identité",
       "reveal": "Révéler le pseudo Instagram",
       "auditNote": "Chaque révélation est enregistrée dans l'audit.",
@@ -168,7 +228,14 @@
       "viewAllMatches": "Voir tout →",
       "page": "Page {{current}} sur {{total}}",
       "prev": "← Préc.",
-      "next": "Suiv. →"
+      "next": "Suiv. →",
+      "withdrawn": "Candidat retiré",
+      "magicLink": "Lien magique",
+      "regenerateMagicLink": "Régénérer le lien magique",
+      "regenerateMagicLinkConfirm": "Cela invalide le lien magique actuel du candidat et réinitialise son mot de passe — il devra en définir un nouveau. Générer un nouveau lien à partager directement avec lui ?",
+      "newMagicLinkHint": "Nouveau lien magique — partagez-le directement avec le candidat. Il ne sera plus affiché.",
+      "copy": "Copier",
+      "copied": "Copié ✓"
     },
     "matching": {
       "title": "Matching",
@@ -181,8 +248,17 @@
       "cosineHint": "Similarité cosinus sur vecteurs numériques",
       "embedding": "Embedding",
       "embeddingHint": "Similarité sémantique via embeddings textuels",
+      "lastRunSummary": "Dernière exécution : {{time}} · {{count}} paires proposées",
+      "neverRun": "Jamais exécuté",
+      "confirmTitle": "Lancer le matching avec {{algorithm}} ?",
+      "confirmBody": "Cela créera de nouvelles propositions de couples.",
+      "cancel": "Annuler",
+      "confirmRun": "Oui, lancer le matching",
       "run": "Lancer le matching",
       "runError": "Le matching a échoué. Veuillez réessayer.",
+      "phaseLoading": "Chargement des candidat·e·s…",
+      "phaseScoring": "Évaluation de chaque paire…",
+      "phaseSaving": "Enregistrement des propositions…",
       "runComplete": "Matching terminé",
       "statApplicants": "Candidats analysés",
       "statCouples": "Couples proposés",
@@ -197,9 +273,12 @@
       "total": "{{count}} couples",
       "all": "Tous",
       "proposed": "Proposé",
-      "contacted": "Contacté",
-      "matched": "Matché",
+      "in_progress": "En cours",
+      "dating": "Rencontres",
+      "success": "Réussi",
       "failed": "Échoué",
+      "declined": "Refusé",
+      "expired": "Expiré",
       "colCouple": "Couple",
       "colScore": "Score",
       "colAlgorithm": "Algorithme",
@@ -208,9 +287,12 @@
       "searchPlaceholder": "Rechercher par alias…",
       "empty": "Aucun couple trouvé. Lancez le matching pour générer des propositions.",
       "markProposed": "Re-proposer",
-      "markContacted": "Contacté",
-      "markMatched": "Matché",
+      "markInProgress": "En cours",
+      "markDating": "Rencontres",
+      "markSuccess": "Réussi",
       "markFailed": "Échoué",
+      "markDeclined": "Refusé",
+      "markExpired": "Expiré",
       "editNotes": "Notes",
       "cancelNotes": "Annuler",
       "notesPlaceholder": "Ajouter des notes sur ce couple…",
@@ -219,10 +301,15 @@
       "deleteConfirm": "Supprimer définitivement cette proposition ?",
       "page": "Page {{current}} sur {{total}}",
       "prev": "← Préc.",
-      "next": "Suiv. →"
+      "next": "Suiv. →",
+      "statusUpdated": "Statut mis à jour",
+      "notesSaved": "Notes enregistrées",
+      "deleted": "Match supprimé",
+      "updateError": "Échec de la mise à jour"
     },
     "audit": {
       "title": "Journal d'audit",
+      "subtitle": "Toutes les actions administratives et des candidats",
       "events": "{{count}} événements",
       "colAction": "Action",
       "colTarget": "Cible",
@@ -232,7 +319,192 @@
       "empty": "Aucun événement pour l'instant.",
       "page": "Page {{current}} sur {{total}}",
       "prev": "← Préc.",
-      "next": "Suiv. →"
+      "next": "Suiv. →",
+      "by": "par {{id}}",
+      "targetAlias": "Alias : {{alias}}"
+    }
+  },
+  "portal": {
+    "login": {
+      "yourProfile": "Ton profil",
+      "magicLinkHint": "Utilise ton lien magique pour accéder à ton profil. Consulte le message de confirmation reçu après l'envoi de ta candidature.",
+      "backToHome": "Retour à l'accueil",
+      "verifying": "Vérification de ton lien…",
+      "linkInvalid": "Lien invalide",
+      "invalidOrExpired": "Lien invalide ou expiré.",
+      "welcome": "Bienvenue sur Ons",
+      "firstTimeSetup": "Tu configures ton profil pour la première fois.",
+      "choosePassword": "Choisis un mot de passe",
+      "passwordTooShort": "Le mot de passe doit contenir au moins 8 caractères.",
+      "setPasswordFailed": "Impossible de définir le mot de passe. Réessaie.",
+      "suggest": "✨ Suggère-m'en un",
+      "generating": "Génération…",
+      "setPassword": "Définir le mot de passe",
+      "settingPassword": "Définition du mot de passe…",
+      "suggestedPasswordHint": "Votre mot de passe suggéré — copiez-le dans un endroit sûr avant de continuer :",
+      "copy": "Copier",
+      "copied": "Copié ✓",
+      "welcomeBack": "Bon retour",
+      "enterPasswordHint": "Entre ton mot de passe pour accéder à ton profil.",
+      "password": "Mot de passe",
+      "signIn": "Se connecter",
+      "signingIn": "Connexion…",
+      "invalidCredentials": "Mot de passe incorrect. Réessaie."
+    },
+    "dashboard": {
+      "loading": "Chargement…",
+      "loadError": "Échec du chargement du profil",
+      "openSettings": "Ouvrir les réglages",
+      "hello": "Bonjour, {{alias}}",
+      "findingMatches": "Nous recherchons tes meilleurs matchs. Tu seras notifié·e dès qu'ils seront prêts.",
+      "threshold": "Seuil : {{percent}}%",
+      "submitted": "Envoyé le {{date}}",
+      "minScore": "Score min. :",
+      "dormantTitle": "Ton compte est en sommeil",
+      "dormantBody": "Merci de faire partie d'Ons.",
+      "nextPhaseTitle": "Aucun match pour le moment",
+      "nextPhaseBody": "De nouveaux matchs arriveront à la prochaine phase de matching — revenez demain.",
+      "noneAtThresholdTitle": "Aucun match à ce score",
+      "noneAtThresholdBody": "Baissez le curseur pour voir plus de matchs.",
+      "deletion": {
+        "title": "Temps avant suppression",
+        "body": "Ton compte et tes données seront définitivement supprimés lorsque ce compteur atteindra zéro.",
+        "days": "Jours",
+        "hours": "Heures",
+        "minutes": "Min",
+        "seconds": "Sec",
+        "cancelButton": "Garder mon compte",
+        "cancelTitle": "Garder mon compte",
+        "cancelConfirm": "Cela annule la suppression programmée et restaure ton compte dans le bassin de matching.",
+        "cancelYes": "Oui, garder mon compte",
+        "cancelFailed": "Échec de l'annulation de la suppression.",
+        "deleteNowButton": "Supprimer mon compte maintenant",
+        "deleteNowTitle": "Supprimer le compte maintenant",
+        "deleteNowConfirm": "Cela supprime immédiatement et définitivement ton compte et toutes les données associées. Cette action est irréversible.",
+        "deleteNowYes": "Oui, supprimer maintenant",
+        "deleteNowFailed": "Échec de la suppression du compte."
+      }
+    },
+    "matches": {
+      "empty": "Aucun match à afficher.",
+      "reachOut": "Je veux faire le premier pas",
+      "wantsToMeet": "{{alias}} veut te rencontrer",
+      "requested": "demandé {{time}}",
+      "accept": "Accepter",
+      "decline": "Refuser",
+      "waiting": "En attente",
+      "dating": "Tu sors avec {{alias}}",
+      "matchScore": "Match : {{percent}}%",
+      "howDidItGo": "Comment ça s'est passé ?",
+      "workedOut": "Ça a marché ✓",
+      "didntWork": "Pas cette fois",
+      "iceBreakers": "Brise-glace",
+      "dateIdeas": "Idées de rendez-vous",
+      "aboutPartner": "À propos de {{alias}}",
+      "scoreBreakdown": "Détail du score",
+      "genericError": "Une erreur est survenue. Réessaie.",
+      "status": {
+        "success": "Réussi",
+        "failed": "Échoué",
+        "declined": "Refusé",
+        "expired": "Expiré"
+      },
+      "confirmContactTitle": "C'est un match !",
+      "confirmContactBody": "{{alias}}, c'est @{{handle}} sur Instagram. Prêt·e à faire le premier pas ? Si vous passez maintenant, ce match sera définitivement fermé et vous attendrez la prochaine phase de matching.",
+      "confirmContactYes": "Oui, on se lance",
+      "confirmContactNo": "Non, je passe",
+      "withdrawNotice": "Match fermé. De nouveaux matchs arriveront à la prochaine phase de matching — revenez demain.",
+      "whyThisMatch": "Pourquoi ce match ?",
+      "breakdown": {
+        "relationship_type": {
+          "label": "Objectifs relationnels",
+          "description": "À quel point vos objectifs relationnels (long terme, court terme, etc.) correspondent."
+        },
+        "deal_breakers": {
+          "label": "Incompatibilités majeures",
+          "description": "Si les éléments rédhibitoires de l'un correspondent au mode de vie de l'autre."
+        },
+        "religion_compatibility": {
+          "label": "Religion",
+          "description": "À quel point vos convictions religieuses et votre ouverture sont compatibles."
+        },
+        "affection_importance": {
+          "label": "Affection physique",
+          "description": "À quel point vos attentes en matière d'affection physique se ressemblent."
+        },
+        "long_distance": {
+          "label": "Longue distance",
+          "description": "Si vous êtes tous les deux ouverts à une relation à distance."
+        },
+        "lifestyle": {
+          "label": "Mode de vie",
+          "description": "À quel point vos modes de vie au quotidien se ressemblent."
+        },
+        "numeric_compatibility": {
+          "label": "Préférences principales",
+          "description": "À quel point vos préférences relationnelles s'alignent structurellement."
+        },
+        "lifestyle_similarity": {
+          "label": "Mode de vie",
+          "description": "À quel point vos modes de vie se ressemblent d'après ce que vous avez écrit."
+        },
+        "character_cross_match": {
+          "label": "Compatibilité de personnalité",
+          "description": "À quel point vos personnalités correspondent à ce que chacun recherche."
+        },
+        "character_a_wants_b": {
+          "label": "Leur style vs ce que vous recherchez",
+          "description": "À quel point leur personnalité correspond à ce que vous recherchez."
+        },
+        "character_b_wants_a": {
+          "label": "Votre style vs ce qu'ils recherchent",
+          "description": "À quel point votre personnalité correspond à ce qu'ils recherchent."
+        },
+        "deal_breaker_penalty": {
+          "label": "Incompatibilités majeures",
+          "description": "Si les éléments rédhibitoires de l'un correspondent au mode de vie de l'autre."
+        }
+      }
+    },
+    "settings": {
+      "title": "Réglages",
+      "close": "Fermer les réglages",
+      "signOut": "Se déconnecter",
+      "changePassword": "Changer le mot de passe",
+      "currentPassword": "Mot de passe actuel",
+      "newPassword": "Nouveau mot de passe",
+      "confirmPassword": "Confirmer le nouveau mot de passe",
+      "currentRequired": "Le mot de passe actuel est requis.",
+      "newTooShort": "Le nouveau mot de passe doit contenir au moins 8 caractères.",
+      "noMatch": "Les mots de passe ne correspondent pas.",
+      "updateFailed": "Impossible de mettre à jour le mot de passe.",
+      "updated": "Mot de passe mis à jour ✓",
+      "saving": "Enregistrement…",
+      "save": "Enregistrer le nouveau mot de passe",
+      "sessionTitle": "Session",
+      "sessionNote": "Se déconnecter sur cet appareil. Ton lien magique et ton mot de passe restent valables.",
+      "deactivateTitle": "Désactiver le compte",
+      "deactivateNote": "Une fois désactivé, ton compte sera programmé pour suppression dans 180 jours.",
+      "deactivateButton": "Désactiver mon compte",
+      "deactivateConfirm": "Es-tu sûr·e ? Cette action est irréversible. Ton compte sera programmé pour suppression dans 180 jours.",
+      "deactivateYes": "Oui, désactiver",
+      "cancel": "Annuler",
+      "deactivateFailed": "Impossible de désactiver le compte.",
+      "alreadyDeactivated": "Ton compte est déjà désactivé. Tu peux annuler ou accélérer la suppression programmée depuis ton tableau de bord."
+    },
+    "profile": {
+      "tabMatches": "Matchs",
+      "tabProfile": "Mon profil",
+      "intro": "Mettez à jour vos réponses à tout moment — elles seront utilisées lors de la prochaine recherche de matchs.",
+      "instagramLocked": "Pour changer votre pseudo Instagram, veuillez contacter les admins.",
+      "save": "Enregistrer les modifications",
+      "saved": "Votre profil a été mis à jour.",
+      "saveError": "Impossible d'enregistrer vos modifications. Veuillez réessayer.",
+      "loadError": "Impossible de charger votre profil.",
+      "unsaved": "Vous avez des modifications non enregistrées",
+      "adminLockedNote": "Ces informations ne peuvent être modifiées que par un admin — contactez-nous si quelque chose doit être corrigé.",
+      "savedButton": "Enregistré",
+      "yearsOld": "{{age}} ans"
     }
   }
 }

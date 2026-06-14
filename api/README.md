@@ -90,10 +90,11 @@ bun run --cwd .. seed:applicants -- --count 50 --clear
 
 > `POST /submit` requires the `X-Submission-Key` header obtained from `GET /questionnaire`. This proves the client fetched the questionnaire legitimately rather than guessing version strings.
 
-### Admin (Bearer token required)
+### Admin (session cookie or Bearer token)
 
 ```bash
-# Login to get a JWT
+# Login — sets an HttpOnly admin_token cookie and also returns a JWT
+# for use as a Bearer token (API clients, tests)
 curl -X POST http://localhost:3001/api/v1/admin/login \
   -H "Content-Type: application/json" \
   -d '{"username":"admin","password":"..."}'
@@ -101,23 +102,53 @@ curl -X POST http://localhost:3001/api/v1/admin/login \
 
 | Method | Path | Description |
 |---|---|---|
-| `POST` | `/api/v1/admin/login` | Get admin JWT |
-| `GET` | `/api/v1/admin/applicants` | List applicants (paginated) |
+| `POST` | `/api/v1/admin/login` | Authenticate, set session cookie, return JWT |
+| `POST` | `/api/v1/admin/logout` | Clear the session cookie |
+| `GET` | `/api/v1/admin/me` | Current admin session info |
+| `GET` | `/api/v1/admin/applicants` | List applicants (paginated, filterable) |
 | `GET` | `/api/v1/admin/applicants/:id` | Get applicant profile |
-| `GET` | `/api/v1/admin/applicants/:id/identity` | Decrypt & return Instagram handle ⚠ audit logged |
+| `GET` | `/api/v1/admin/applicants/:id/identity` | Decrypt & return Instagram handle ⚠ audit logged, `super_admin` only |
 | `DELETE` | `/api/v1/admin/applicants/:id` | Deactivate applicant |
+| `POST` | `/api/v1/admin/applicants/:id/regenerate-magic-link` | Issue a new portal magic link, `super_admin` only |
 | `GET` | `/api/v1/admin/audit-logs` | View audit trail |
 | `POST` | `/api/v1/admin/questionnaires` | Create new questionnaire version |
+| `GET` | `/api/v1/admin/matches` | List matches (paginated, filterable) |
+| `PATCH` | `/api/v1/admin/matches/:id` | Update match status / notes |
+| `DELETE` | `/api/v1/admin/matches/:id` | Remove a match |
 
 ### Matching (Bearer token required)
 
 | Method | Path | Description |
 |---|---|---|
 | `GET` | `/api/v1/matching/candidates/:id` | Top N candidates for one applicant |
+| `GET` | `/api/v1/matching/last-run` | Summary of the most recent matching pass |
 | `POST` | `/api/v1/matching/run` | Full pairwise pass over all active applicants |
 
-Both endpoints accept an `algorithm` parameter: `baseline`, `cosine`, or `embedding-cosine`.  
+Both `candidates` and `run` accept an `algorithm` parameter: `baseline`, `cosine`, or `embedding-cosine`.  
 See [`src/matching/README.md`](./src/matching/README.md) for algorithm details.
+
+### Applicant portal (session cookie)
+
+Applicants log in with a magic link (issued by an admin) and, on first login, set a password. The session is an HttpOnly cookie (`ons_applicant_session`); a Bearer header also works for API clients and tests.
+
+| Method | Path | Description |
+|---|---|---|
+| `POST` | `/api/v1/profile/login` | Log in with magic token (+ password after first login) |
+| `POST` | `/api/v1/profile/set-password` | Set password on first login |
+| `GET` | `/api/v1/profile/suggest-password` | Generate a readable password suggestion |
+| `POST` | `/api/v1/profile/logout` | Clear the session cookie |
+| `GET` | `/api/v1/profile/me` | Current applicant profile + status |
+| `GET` | `/api/v1/profile/answers` | Get my questionnaire answers |
+| `PUT` | `/api/v1/profile/answers` | Edit my questionnaire answers |
+| `GET` | `/api/v1/profile/matches` | List my matches with score breakdown |
+| `POST` | `/api/v1/profile/matches/:id/contact` | Request to exchange Instagram handles with a match ⚠ audit logged on acceptance |
+| `POST` | `/api/v1/profile/matches/:id/respond` | Accept or decline a contact request |
+| `POST` | `/api/v1/profile/matches/:id/withdraw` | Withdraw a contact request |
+| `POST` | `/api/v1/profile/matches/:id/outcome` | Report a match outcome (`success` / `failed`) |
+| `POST` | `/api/v1/profile/change-password` | Change my password |
+| `POST` | `/api/v1/profile/deactivate` | Deactivate my account |
+| `POST` | `/api/v1/profile/cancel-deletion` | Cancel a pending account deletion |
+| `POST` | `/api/v1/profile/delete-now` | Delete my account immediately |
 
 ---
 
@@ -136,7 +167,8 @@ api/
 │   ├── privacy/         ← Encryption, alias generator, submission keys
 │   ├── routes/          ← Hono route definitions
 │   ├── seeds/           ← Dev data seeders
-│   ├── services/        ← Business logic (form, admin, questionnaire, embedding)
+│   ├── services/        ← Business logic (form, admin, profile, matching, questionnaire, embedding)
+│   ├── utils/           ← Shared helpers (e.g. age-from-birth-date)
 │   ├── validators/      ← Zod schemas for request validation
 │   └── server.ts        ← App entry point, middleware wiring, bootstrap
 └── docs/
@@ -149,6 +181,8 @@ api/
 
 - **No PII in applicant profiles** — Instagram handles are AES-256-GCM encrypted in a separate `identities` collection.
 - **Submission keys** — HMAC-SHA256(version, `FORM_SECRET`) prevents questionnaire version enumeration.
-- **Audit logs** — every admin identity access records the admin ID, IP, user-agent, and timestamp.
-- **Rate limiting** — in-memory sliding-window limiter on all public and admin routes.
+- **Audit logs** — every identity decryption (admin lookup *or* mutual match reveal) is written to `audit_logs` with actor, IP, user-agent, and timestamp before plaintext is returned.
+- **Mutual identity reveal** — an applicant calling `/profile/matches/:id/contact` immediately decrypts and is shown the partner's Instagram handle; the partner sees the initiator's handle as soon as they view that match (`GET /profile/matches`), before accepting or declining.
+- **Rate limiting** — in-memory sliding-window limiter on all public, admin, and applicant-portal routes.
 - **Orientation filter** — incompatible pairs are excluded *before* scoring, never just ranked low.
+- **Account deletion** — applicants can deactivate immediately or schedule a deletion with a cancellable grace period.

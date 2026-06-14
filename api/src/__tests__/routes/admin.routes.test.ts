@@ -1,4 +1,5 @@
 import { describe, it, expect, mock, beforeEach } from "bun:test";
+import { AppError } from "../../errors.js";
 
 // ── Mock all DB-touching modules before any imports ───────────────────────────
 
@@ -30,6 +31,7 @@ const mockListApplicants     = mock(async () => ({ data: [], total: 0, page: 1, 
 const mockGetApplicantById   = mock(async () => null as any);
 const mockGetApplicantIdent  = mock(async () => null as any);
 const mockDeactivate         = mock(async () => true);
+const mockRegenerateMagicLink = mock(async () => null as any);
 const mockListAuditLogs      = mock(async () => ({ data: [], total: 0, page: 1, limit: 50, totalPages: 0 }));
 const mockCreateQuestionnaire = mock(async () => ({ id: "abc123", version: "2.0.0", deactivatedCount: 1 }));
 
@@ -39,6 +41,7 @@ mock.module("../../services/admin.service.js", () => ({
   getApplicantById:     mockGetApplicantById,
   getApplicantIdentity: mockGetApplicantIdent,
   deactivateApplicant:  mockDeactivate,
+  regenerateMagicLink:  mockRegenerateMagicLink,
   listAuditLogs:        mockListAuditLogs,
   createQuestionnaire:  mockCreateQuestionnaire,
 }));
@@ -94,6 +97,7 @@ beforeEach(() => {
   mockGetApplicantById.mockReset();
   mockGetApplicantIdent.mockReset();
   mockDeactivate.mockReset();
+  mockRegenerateMagicLink.mockReset();
   mockListAuditLogs.mockReset();
   mockCreateQuestionnaire.mockReset();
 
@@ -198,6 +202,20 @@ describe("GET /admin/applicants", () => {
     const [, , status, search] = mockListApplicants.mock.calls[0] as any[];
     expect(status).toBe("applied");
     expect(search).toBe("ocean");
+  });
+
+  it("passes scheduledDeletion=true when the 'scheduled' tab is requested", async () => {
+    const token = await adminToken();
+    await get("/admin/applicants?scheduledDeletion=true", token);
+    const [, , , , scheduledDeletion] = mockListApplicants.mock.calls[0] as any[];
+    expect(scheduledDeletion).toBe(true);
+  });
+
+  it("defaults scheduledDeletion to false when not provided", async () => {
+    const token = await adminToken();
+    await get("/admin/applicants", token);
+    const [, , , , scheduledDeletion] = mockListApplicants.mock.calls[0] as any[];
+    expect(scheduledDeletion).toBe(false);
   });
 });
 
@@ -363,13 +381,13 @@ describe("POST /admin/questionnaires", () => {
     expect(res.status).toBe(422);
   });
 
-  it("returns 400 when service throws (e.g. version already exists)", async () => {
+  it("returns 409 when service throws (e.g. version already exists)", async () => {
     mockCreateQuestionnaire.mockRejectedValue(
-      new Error("Questionnaire version 2.0.0 already exists.")
+      new AppError("Questionnaire version 2.0.0 already exists.", 409)
     );
     const token = await adminToken();
     const res = await post("/admin/questionnaires", minimalQuestionnaire, token);
-    expect(res.status).toBe(400);
+    expect(res.status).toBe(409);
     const body = await res.json() as any;
     expect(body.error).toMatch(/already exists/i);
   });
@@ -407,5 +425,46 @@ describe("GET /admin/applicants/:id/identity — role-based access", () => {
     expect(res.status).toBe(200);
     const body = await res.json() as any;
     expect(body.data.instagramHandle).toBe("@real_handle");
+  });
+});
+
+// ── POST /admin/applicants/:id/regenerate-magic-link ──────────────────────────
+
+describe("POST /admin/applicants/:id/regenerate-magic-link", () => {
+  async function superAdminToken() {
+    return signAdminToken("507f1f77bcf86cd799439011", "test_admin", "super_admin");
+  }
+
+  it("returns 200 with the new raw token (super_admin)", async () => {
+    mockRegenerateMagicLink.mockResolvedValue({
+      alias: "Blue Falcon",
+      magicToken: "a".repeat(64),
+    });
+    const token = await superAdminToken();
+    const res = await post("/admin/applicants/64b1234567890abcdef01234/regenerate-magic-link", {}, token);
+    expect(res.status).toBe(200);
+    const body = await res.json() as any;
+    expect(body.success).toBe(true);
+    expect(body.data.alias).toBe("Blue Falcon");
+    expect(body.data.magicToken).toBe("a".repeat(64));
+  });
+
+  it("returns 404 when the applicant does not exist", async () => {
+    mockRegenerateMagicLink.mockResolvedValue(null);
+    const token = await superAdminToken();
+    const res = await post("/admin/applicants/64b1234567890abcdef09999/regenerate-magic-link", {}, token);
+    expect(res.status).toBe(404);
+  });
+
+  it("returns 403 when authenticated as regular admin", async () => {
+    const token = await adminToken(); // role: "admin"
+    const res = await post("/admin/applicants/64b1234567890abcdef01234/regenerate-magic-link", {}, token);
+    expect(res.status).toBe(403);
+    expect(mockRegenerateMagicLink).not.toHaveBeenCalled();
+  });
+
+  it("returns 401 without a token", async () => {
+    const res = await post("/admin/applicants/64b1234567890abcdef01234/regenerate-magic-link", {});
+    expect(res.status).toBe(401);
   });
 });

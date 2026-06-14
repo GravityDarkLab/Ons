@@ -36,7 +36,7 @@ bun test --watch --preload ./src/__tests__/setup.ts ./src/__tests__
 bun run seed              # Interactive: questionnaire / applicants / both
 ```
 
-API is at `http://localhost:3001`, Swagger UI at `http://localhost:3001/api/v1/docs`, frontend at `http://localhost:5174`.
+API is at `http://localhost:3001`, Swagger UI at `http://localhost:3001/api/v1/docs`, frontend at `http://localhost:5173`.
 
 ## Environment setup
 
@@ -113,3 +113,11 @@ bun run vitest run src/__tests__/unit/ApplicantDetail.vitest.tsx
 ```
 
 Frontend test files use `.vitest.tsx` / `.vitest.ts` extensions; API test files use `.test.ts`.
+
+**Smoke tests** (`tests/smoke/`) run against a live server + DB and require env vars — without them every test self-skips with a warning:
+```bash
+SMOKE_ADMIN_USER=... SMOKE_ADMIN_PASS=... \
+SMOKE_MONGO_URI='mongodb://.../ons?authSource=ons' \
+bun test ./tests/smoke/portal.smoke.ts ./tests/smoke/match-flow.smoke.ts
+```
+Credentials are in `api/.env.dev`; `SMOKE_MONGO_URI` matches `MONGODB_URI` there.

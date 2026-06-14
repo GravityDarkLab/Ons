@@ -38,16 +38,30 @@ function validateEncryptionKey(key: string): string {
   return key;
 }
 
+function validatePositiveInt(name: string, value: string): number {
+  const parsed = parseInt(value, 10);
+  if (!Number.isInteger(parsed) || parsed <= 0) {
+    throw new Error(`${name} must be a positive integer, got "${value}"`);
+  }
+  return parsed;
+}
+
+export function parseAllowedOrigins(value: string): string[] {
+  return value
+    .split(/[;,]/)
+    .map((origin) => origin.trim().replace(/\/+$/, ""))
+    .filter(Boolean);
+}
+
 export const env = {
   mongodbUri: required("MONGODB_URI"),
   mongodbDbName: optional("MONGODB_DB_NAME", "ons"),
   encryptionKey: validateEncryptionKey(required("ENCRYPTION_KEY")),
   jwtSecret: required("JWT_SECRET"),
   jwtExpiry: optional("JWT_EXPIRY", "8h"),
-  allowedOrigins: optional("ALLOWED_ORIGINS", "http://localhost:3000")
-    .split(",")
-    .map((o) => o.trim())
-    .filter(Boolean),
+  allowedOrigins: parseAllowedOrigins(
+    optional("ALLOWED_ORIGINS", "http://localhost:3000")
+  ),
   // HMAC secret used to sign per-version submission keys — prevents version enumeration.
   // Generate with: openssl rand -hex 32
   formSecret: required("FORM_SECRET"),
@@ -59,7 +73,14 @@ export const env = {
   embeddingModel: required("EMBEDDING_MODEL"),
   embeddingBaseUrl: optional("EMBEDDING_BASE_URL", ""),  // required for local — validated below
   openaiApiKey: optional("OPENAI_API_KEY", ""),          // required for openai — validated below
-  
+  openaiChatModel: optional("OPENAI_CHAT_MODEL", "gpt-4o-mini"),
+
+  // Scheduled matching job — disabled unless a positive interval is set
+  matchingJobIntervalHours: parseFloat(optional("MATCHING_JOB_INTERVAL_HOURS", "0")),
+
+  // Grace period (days) before an inactive applicant's personal data is permanently purged
+  deletionGraceDays: validatePositiveInt("DELETION_GRACE_DAYS", optional("DELETION_GRACE_DAYS", "180")),
+
   // Server config
   port: parseInt(optional("PORT", "3001"), 10),
   nodeEnv: optional("NODE_ENV", "development"),

@@ -9,7 +9,7 @@ export function buildCorsMiddleware() {
       return null;
     },
     allowMethods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
-    allowHeaders: ["Content-Type", "Authorization"],
+    allowHeaders: ["Content-Type", "Authorization", "X-Submission-Key"],
     exposeHeaders: ["X-Request-Id"],
     maxAge: 600,
     credentials: true,

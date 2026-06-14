@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { ageFromBirthDate, BIRTH_DATE_PATTERN } from "../utils/age.js";
 
 /**
  * Base Zod schema for form submission.
@@ -16,20 +17,27 @@ export const formSubmissionSchema = z.object({
       instagram_handle: z
         .string()
         .min(1, "instagram_handle is required")
+        .max(31) // Instagram usernames are ≤30 chars, plus optional leading @
         .regex(/^@?[\w.]+$/, "Invalid Instagram handle format"),
 
       // Personal info
-      location: z.string().min(1),
-      age: z.number().int().min(18, "Must be at least 18 years old"),
+      location: z.string().min(1).max(200),
+      birth_date: z
+        .string()
+        .regex(BIRTH_DATE_PATTERN, "birth_date must be YYYY-MM-DD")
+        .refine((d) => {
+          const age = ageFromBirthDate(d);
+          return age !== null && age >= 18 && age <= 120;
+        }, "Must be a valid date of someone at least 18 years old"),
       height_cm: z.number().int().min(100).max(250).optional(),
-      work: z.string().min(1),
-      gender_identity: z.string().min(1),
-      sexual_orientation: z.string().min(1),
-      religion: z.string().min(1),
+      work: z.string().min(1).max(200),
+      gender_identity: z.string().min(1).max(100),
+      sexual_orientation: z.string().min(1).max(100),
+      religion: z.string().min(1).max(100),
 
       // Personality / vibe
-      vibe_words: z.string().min(1),
-      lifestyle: z.string().min(1),
+      vibe_words: z.string().min(1).max(500),
+      lifestyle: z.string().min(1).max(1000),
 
       // Relationship preferences
       relationship_type: z.enum([
@@ -40,9 +48,9 @@ export const formSubmissionSchema = z.object({
         "Not Sure",
       ]),
       open_to_long_distance: z.boolean(),
-      preferred_physical_traits: z.string().min(1),
-      preferred_character_traits: z.string().min(1),
-      deal_breakers: z.string().min(1),
+      preferred_physical_traits: z.string().min(1).max(1000),
+      preferred_character_traits: z.string().min(1).max(1000),
+      deal_breakers: z.string().min(1).max(1000),
       okay_with_opposite_gender_friends: z.boolean(),
       religion_deal_breaker: z.boolean(),
 
@@ -54,7 +62,7 @@ export const formSubmissionSchema = z.object({
         .max(10, "Must be at most 10"),
 
       // Open-ended
-      dream_first_date: z.string().min(1),
+      dream_first_date: z.string().min(1).max(2000),
 
       // Legal
       disclaimer_agreed: z.literal(true, {

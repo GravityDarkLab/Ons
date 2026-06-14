@@ -25,6 +25,13 @@ A privacy-first couple matching platform. Applicants fill out a form, an admin r
 
 ## Quick start
 
+### 0. Use supported runtimes
+
+- Bun ≥ 1.2
+- Node.js 22 LTS or 24 LTS for frontend tooling
+
+Node 26 currently triggers a Tailwind CSS deprecation warning from `@tailwindcss/node`.
+
 ### 1. Install dependencies
 
 ```bash
@@ -91,7 +98,7 @@ bun run dev
 |------------|-----------------------------------|
 | API        | http://localhost:3001             |
 | Swagger UI | http://localhost:3001/api/v1/docs |
-| Frontend   | http://localhost:5174             |
+| Frontend   | http://localhost:5173             |
 
 ---
 
@@ -121,6 +128,7 @@ ons/
 │       └── 01-init-app-user.sh     ← Creates app DB user on first boot
 ├── scripts/
 │   └── seed.ts                     ← Interactive seed runner (questionnaire / applicants / both)
+├── tests/smoke/                    ← Smoke tests against a live server + DB
 ├── docker-compose.yml              ← Production stack (API + frontend)
 └── docker-compose-mongo-dev.yml    ← MongoDB + Mongo Express only (local dev)
 ```
@@ -133,6 +141,8 @@ ons/
 2. **PII is isolated at submission** — the Instagram handle is AES-256-GCM encrypted and stored in a separate `identities` collection, never in the applicant profile.
 3. **Admin runs matching** — `POST /api/v1/matching/run` scores all active applicants pairwise and returns ranked candidates per person.
 4. **Admin resolves identities** — every access to an encrypted identity is audit-logged.
+5. **Applicant uses their portal** — a magic link from the admin grants access to `/profile`, where the applicant reviews their matches and can edit their questionnaire answers.
+6. **Matched applicants connect** — either side can request to exchange Instagram handles; once both accept, identities are decrypted (audit-logged) and shared with both parties.
 
 ---
 
@@ -143,13 +153,13 @@ browser ──► frontend (React + Vite)
                 │
                 ▼
             API (Hono / Bun)
-           ┌────┬──────┬───────┐
-           │form│ admin│ match │
-           └──┬─┴──────┴───┬───┘
-              │             │
-          MongoDB       Matching engine
-        ┌────┴──────┐   (baseline / cosine /
-        │ applicants│    embedding-cosine)
+           ┌────┬───────┬─────────┬───────┐
+           │form│ admin │ profile │ match │
+           └──┬─┴───────┴────┬────┴───┬───┘
+              │               │        │
+          MongoDB         Matching engine
+        ┌────┴──────┐    (baseline / cosine /
+        │ applicants│     embedding-cosine)
         │ identities│
         │ embeddings│
         │ audit_logs│
@@ -164,12 +174,12 @@ See [`api/src/matching/README.md`](./api/src/matching/README.md) for the full al
 
 | Data | Collection | Who can access |
 |---|---|---|
-| Questionnaire answers | `applicants` | Admin — no PII visible |
-| Instagram handle | `identities` (AES-256-GCM encrypted) | Admin only — every read is audit-logged |
+| Questionnaire answers | `applicants` | Admin, and the applicant themselves via `/profile` |
+| Instagram handle | `identities` (AES-256-GCM encrypted) | Admin (audit-logged), or a matched applicant after mutual reveal (audit-logged) |
 | Text embeddings | `embeddings` | Matching engine |
 | Admin actions | `audit_logs` | Admin |
 
-The Instagram handle never touches the `applicants` collection. It is encrypted with a fresh random IV on every write and stored separately. Decryption requires the `ENCRYPTION_KEY` secret and is always written to `audit_logs` before the plaintext is returned.
+The Instagram handle never touches the `applicants` collection. It is encrypted with a fresh random IV on every write and stored separately. Decryption requires the `ENCRYPTION_KEY` secret and is always written to `audit_logs` before the plaintext is returned — whether the reader is an admin or a matched applicant who completed a mutual identity reveal.
 
 ---
 
@@ -322,4 +332,5 @@ Inject secrets via ECS task-definition environment variables or AWS Secrets Mana
 | `bun run seed` | Interactive seed runner — choose questionnaire, applicants, or both; prompts for environment |
 | `bun run build` | Build all workspaces |
 | `bun run typecheck` | Type-check all workspaces |
-| `bun run test` | Run API test suite (199 tests, no DB required) |
+| `bun run test` | Run API + frontend test suites in parallel (API: 383 tests, no DB required) |
+| `bun run test:smoke` | Run smoke tests against a live server + DB (requires env vars — see `tests/smoke/`) |

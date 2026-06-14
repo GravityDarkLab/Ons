@@ -1,6 +1,6 @@
 import { describe, expect, it } from "bun:test";
 import { ObjectId } from "mongodb";
-import { assertMatchTransition } from "../../../services/match.service";
+import { assertMatchTransition } from "../../../services/match-state.service";
 import type { MatchDoc } from "../../../models/match.model";
 
 function makeMatch(overrides: Partial<MatchDoc> = {}): MatchDoc {
@@ -67,6 +67,35 @@ describe("assertMatchTransition – respond", () => {
   it("throws when actor is not a participant", () => {
     const match = makeMatch({ status: "in_progress", initiatorId: new ObjectId() });
     expect(() => assertMatchTransition(match, "respond", new ObjectId())).toThrow();
+  });
+});
+
+describe("assertMatchTransition – withdraw", () => {
+  it("allows the initiator to withdraw an in_progress contact", () => {
+    const match = makeMatch({ status: "in_progress" });
+    match.initiatorId = match.applicantAId;
+    expect(() => assertMatchTransition(match, "withdraw", match.applicantAId)).not.toThrow();
+  });
+
+  it("throws when the target tries to withdraw", () => {
+    const match = makeMatch({ status: "in_progress" });
+    match.initiatorId = match.applicantAId;
+    expect(() => assertMatchTransition(match, "withdraw", match.applicantBId)).toThrow(
+      /Only the initiator/
+    );
+  });
+
+  it("throws when match is not in_progress", () => {
+    const match = makeMatch({ status: "proposed" });
+    expect(() => assertMatchTransition(match, "withdraw", match.applicantAId)).toThrow(
+      /nothing to withdraw/
+    );
+  });
+
+  it("throws when actor is not a participant", () => {
+    const match = makeMatch({ status: "in_progress" });
+    match.initiatorId = match.applicantAId;
+    expect(() => assertMatchTransition(match, "withdraw", new ObjectId())).toThrow();
   });
 });
 

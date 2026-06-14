@@ -1,5 +1,115 @@
 @import "tailwindcss";
-@config "../tailwind.config.js";
+
+@theme {
+  --font-sans: 'Inter', system-ui, sans-serif;
+  --radius-xl: 0.75rem;
+  --radius-2xl: 1rem;
+  --radius-3xl: 1.5rem;
+  --container-form: 520px;
+  --animate-shake: shake 0.5s ease-in-out;
+}
+
+@keyframes shake {
+  0%, 100% { transform: translateX(0); }
+  20%      { transform: translateX(-6px); }
+  40%      { transform: translateX(6px); }
+  60%      { transform: translateX(-4px); }
+  80%      { transform: translateX(4px); }
+}
+
+/* ─── Design tokens ──────────────────────────────────────────────────────────
+   Single source of truth. Raw values live in --t-* custom properties; the
+   @theme block below maps them to Tailwind utility names. Dark mode swaps the
+   --t-* values under .dark — no dark: variants needed in markup. */
+
+:root {
+  color-scheme: light;
+
+  --t-bg:             #FAF9F7;
+  --t-surface:        #FFFFFF;
+  --t-surface-subtle: #F3F2F0;
+  --t-border:         #E5E0DA;
+
+  --t-ink:        #1A1815;
+  --t-ink-muted:  #8B8178;
+  --t-ink-faint:  #B0AFAD;
+
+  --t-accent:       #C9A96E;
+  --t-accent-light: #F5ECD7;
+  /* readable foreground on accent-light tints */
+  --t-accent-ink:   #8A6D3B;
+
+  --t-success:       #3D9970;
+  --t-success-light: #D4EFE3;
+  --t-error:         #D94F3D;
+  --t-error-light:   #FCECEA;
+  --t-warning:       #B07D2E;
+  --t-warning-light: #F7EDD8;
+  --t-info:          #4E6E8E;
+  --t-info-light:    #E7EEF4;
+
+  --t-overlay: rgb(0 0 0 / 0.25);
+  --t-shadow-card:   0 1px 2px rgb(26 24 21 / 0.04), 0 1px 3px rgb(26 24 21 / 0.06);
+  --t-shadow-raised: 0 4px 12px rgb(26 24 21 / 0.08), 0 12px 32px rgb(26 24 21 / 0.06);
+}
+
+.dark {
+  color-scheme: dark;
+
+  --t-bg:             #171411;
+  --t-surface:        #201C18;
+  --t-surface-subtle: #29241F;
+  --t-border:         #38322B;
+
+  --t-ink:        #F0EBE4;
+  --t-ink-muted:  #A89E92;
+  --t-ink-faint:  #6E665C;
+
+  --t-accent:       #D6B57E;
+  --t-accent-light: rgb(214 181 126 / 0.14);
+  --t-accent-ink:   #E2C896;
+
+  --t-success:       #5CB88E;
+  --t-success-light: rgb(92 184 142 / 0.14);
+  --t-error:         #E66A57;
+  --t-error-light:   rgb(230 106 87 / 0.14);
+  --t-warning:       #D6A04E;
+  --t-warning-light: rgb(214 160 78 / 0.14);
+  --t-info:          #7FA3C4;
+  --t-info-light:    rgb(127 163 196 / 0.14);
+
+  --t-overlay: rgb(0 0 0 / 0.55);
+  --t-shadow-card:   0 1px 2px rgb(0 0 0 / 0.3), 0 1px 3px rgb(0 0 0 / 0.25);
+  --t-shadow-raised: 0 4px 12px rgb(0 0 0 / 0.4), 0 12px 32px rgb(0 0 0 / 0.35);
+}
+
+@theme inline {
+  --color-bg:            var(--t-bg);
+  --color-surface:       var(--t-surface);
+  --color-surface-subtle: var(--t-surface-subtle);
+  --color-border:        var(--t-border);
+  --color-primary:       var(--t-ink);
+  --color-muted:         var(--t-ink-muted);
+  --color-faint:         var(--t-ink-faint);
+  --color-accent:        var(--t-accent);
+  --color-accent-light:  var(--t-accent-light);
+  --color-accent-ink:    var(--t-accent-ink);
+  --color-success:       var(--t-success);
+  --color-success-light: var(--t-success-light);
+  --color-error:         var(--t-error);
+  --color-error-light:   var(--t-error-light);
+  --color-warning:       var(--t-warning);
+  --color-warning-light: var(--t-warning-light);
+  --color-info:          var(--t-info);
+  --color-info-light:    var(--t-info-light);
+  --color-destructive:   var(--t-error);
+  --color-overlay:       var(--t-overlay);
+
+  --shadow-card:   var(--t-shadow-card);
+  --shadow-raised: var(--t-shadow-raised);
+}
+
+@custom-variant dark (&:where(.dark, .dark *));
 
 @layer base {
   html {
@@ -9,12 +119,96 @@
   }
 
   body {
-    background-color: #FAF9F7;
-    color: #111111;
+    background-color: var(--t-bg);
+    color: var(--t-ink);
   }
 
   * {
     box-sizing: border-box;
+  }
+}
+
+/* ─── Public pages (Home, Apply) ─────────────────────────────────────────────
+   Display serif for the hero, staggered entrance, and the gold gradient CTA.
+   The bloodstream backdrop lives in LifeBackground.tsx. */
+
+@keyframes home-rise {
+  from { opacity: 0; transform: translateY(16px); }
+  to   { opacity: 1; transform: none; }
+}
+
+@layer components {
+  .font-display {
+    font-family: 'Fraunces', Georgia, 'Times New Roman', serif;
+  }
+
+  .home-rise {
+    opacity: 0;
+    animation: home-rise 0.7s cubic-bezier(0.2, 0.7, 0.3, 1) forwards;
+  }
+
+  .cta-gold {
+    background: linear-gradient(
+      135deg,
+      color-mix(in srgb, var(--t-accent) 72%, white) 0%,
+      var(--t-accent) 45%,
+      color-mix(in srgb, var(--t-accent) 62%, var(--t-accent-ink)) 100%
+    );
+    box-shadow:
+      0 8px 24px color-mix(in srgb, var(--t-accent) 38%, transparent),
+      inset 0 1px 0 rgb(255 255 255 / 0.25);
+    transition: transform 0.2s, box-shadow 0.2s, filter 0.2s;
+  }
+  .cta-gold:hover {
+    transform: translateY(-2px);
+    filter: brightness(1.04);
+    box-shadow:
+      0 12px 32px color-mix(in srgb, var(--t-accent) 48%, transparent),
+      inset 0 1px 0 rgb(255 255 255 / 0.25);
+  }
+  .cta-gold:active {
+    transform: translateY(0) scale(0.98);
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .home-rise { animation: none; opacity: 1; }
+    .cta-gold, .cta-gold:hover, .cta-gold:active { transform: none; }
+  }
+}
+
+/* ─── Matching page (admin) ──────────────────────────────────────────────────
+   Entrance animations for the run-result card; the bloodstream pulse band
+   lives in admin/components/MatchingPulse.tsx. */
+
+@keyframes match-pop {
+  0%   { opacity: 0; transform: scale(0.4); }
+  60%  { opacity: 1; transform: scale(1.15); }
+  100% { opacity: 1; transform: scale(1); }
+}
+
+@keyframes match-rise {
+  from { opacity: 0; transform: translateY(10px); }
+  to   { opacity: 1; transform: none; }
+}
+
+@keyframes match-fade {
+  from { opacity: 0; transform: translateY(4px); }
+  to   { opacity: 1; transform: none; }
+}
+
+@keyframes dropdown-fade {
+  from { opacity: 0; transform: translateY(-4px); }
+  to   { opacity: 1; transform: none; }
+}
+
+@layer components {
+  .match-pop  { animation: match-pop 0.55s cubic-bezier(0.34, 1.56, 0.64, 1) both; }
+  .match-rise { animation: match-rise 0.6s cubic-bezier(0.2, 0.7, 0.3, 1) both; }
+  .match-fade { animation: match-fade 0.45s ease-out both; }
+  .dropdown-fade { animation: dropdown-fade 0.15s ease-out both; }
+
+  @media (prefers-reduced-motion: reduce) {
+    .match-pop, .match-rise, .match-fade, .dropdown-fade { animation: none; opacity: 1; }
   }
 }
 
@@ -26,4 +220,20 @@
   .scrollbar-hide::-webkit-scrollbar {
     display: none;
   }
+
+  /* Legacy token utility classes — kept by name, re-pointed to variables */
+  .bg-surface-raised { background-color: var(--t-surface); }
+  .text-ink { color: var(--t-ink); }
+  .text-ink-muted { color: var(--t-ink-muted); }
+  .text-ink-faint { color: var(--t-ink-faint); }
+  .bg-accent-val { background-color: var(--t-accent); }
+  .text-destructive { color: var(--t-error); }
+  .text-success-green { color: var(--t-success); }
+  .bg-success-green { background-color: var(--t-success); }
+
+  /* Transition utilities */
+  .transition-page { transition: opacity 100ms ease-out, transform 100ms ease-out; }
+  .transition-card { transition: box-shadow 150ms, transform 150ms; }
+  .hover-card:hover { box-shadow: var(--t-shadow-raised); transform: translateY(-1px); }
+  .press:active { transform: scale(0.98); }
 }

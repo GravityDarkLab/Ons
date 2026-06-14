@@ -3,11 +3,12 @@ import { ObjectId } from "mongodb";
 export type AuditAction =
   | "RESOLVE_IDENTITY"
   | "APPLICANT_REVEAL_IDENTITY"
-  | "LIST_APPLICANTS"
   | "VIEW_APPLICANT"
   | "DEACTIVATE_APPLICANT"
   | "ADMIN_LOGIN"
-  | "CREATE_QUESTIONNAIRE";
+  | "CREATE_QUESTIONNAIRE"
+  | "REGENERATE_MAGIC_LINK"
+  | "APPLICANT_SELF_DELETE";
 
 export interface AuditLogDoc {
   _id: ObjectId;

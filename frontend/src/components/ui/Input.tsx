@@ -17,6 +17,9 @@ export default function Input({
   ...rest
 }: InputProps) {
   const inputId = id ?? label?.toLowerCase().replace(/\s+/g, '-')
+  const describedBy = inputId
+    ? error ? `${inputId}-error` : hint ? `${inputId}-hint` : undefined
+    : undefined
 
   return (
     <div className="flex flex-col gap-1.5">
@@ -35,6 +38,8 @@ export default function Input({
         )}
         <input
           id={inputId}
+          aria-invalid={error ? true : undefined}
+          aria-describedby={describedBy}
           className={[
             'w-full rounded-xl border bg-surface px-4 py-3 text-[15px] text-primary',
             'placeholder:text-muted',
@@ -49,8 +54,16 @@ export default function Input({
           {...rest}
         />
       </div>
-      {hint && !error && <p className="text-xs text-muted leading-relaxed">{hint}</p>}
-      {error && <p className="text-xs text-error font-medium">{error}</p>}
+      {hint && !error && (
+        <p id={inputId ? `${inputId}-hint` : undefined} className="text-xs text-muted leading-relaxed">
+          {hint}
+        </p>
+      )}
+      {error && (
+        <p id={inputId ? `${inputId}-error` : undefined} role="alert" className="text-xs text-error font-medium">
+          {error}
+        </p>
+      )}
     </div>
   )
 }

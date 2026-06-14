@@ -5,12 +5,14 @@ import { vi } from 'vitest'
 
 vi.mock('../../admin/api/client', () => ({
   runMatching: vi.fn(),
+  fetchMatchingLastRun: vi.fn(),
 }))
 
 import * as client from '../../admin/api/client'
 import { Matching } from '../../admin/pages/Matching'
 
 const mockRunMatching = vi.mocked(client.runMatching)
+const mockFetchLastRun = vi.mocked(client.fetchMatchingLastRun)
 
 const RUN_RESULT = {
   algorithm: 'baseline',
@@ -30,27 +32,34 @@ function renderMatching() {
 
 beforeEach(() => {
   mockRunMatching.mockReset()
+  mockFetchLastRun.mockReset()
+  mockFetchLastRun.mockResolvedValue(null)
 })
 
-// Helpers: radios are ordered [embedding, baseline, cosine] in the DOM
-function getRadios() { return screen.getAllByRole('radio') }
+function getAlgorithmRadio(name: RegExp) {
+  return screen.getByRole('radio', { name }) as HTMLInputElement
+}
+
+/** Click "Run Matching" then confirm via the inline confirm dialog */
+async function clickRunAndConfirm() {
+  await userEvent.click(screen.getByRole('button', { name: /admin\.matching\.run/i }))
+  await userEvent.click(screen.getByRole('button', { name: /admin\.matching\.confirmRun|yes, run matching/i }))
+}
 
 describe('Matching page — algorithm selector', () => {
   it('renders all three algorithm options', () => {
     renderMatching()
-    expect(getRadios()).toHaveLength(3)
+    expect(screen.getAllByRole('radio')).toHaveLength(3)
   })
 
   it('selects Embedding by default', () => {
     renderMatching()
-    const [embedding] = getRadios()
-    expect(embedding).toBeChecked()
+    expect(getAlgorithmRadio(/admin\.matching\.embedding/i)).toBeChecked()
   })
 
   it('shows multilingual warning when non-embedding algorithm is selected', async () => {
     renderMatching()
-    const [, baseline] = getRadios()
-    await userEvent.click(baseline)
+    await userEvent.click(getAlgorithmRadio(/admin\.matching\.baseline/i))
     // Trans renders the i18nKey as text when the component is a stub
     expect(screen.getByText(/admin\.matching\.multilingualWarning/i)).toBeInTheDocument()
   })
@@ -65,26 +74,40 @@ describe('Matching page — run button', () => {
   it('calls runMatching with the selected algorithm', async () => {
     mockRunMatching.mockResolvedValue(RUN_RESULT)
     renderMatching()
-    const [, baseline] = screen.getAllByRole('radio')
-    await userEvent.click(baseline)
-    await userEvent.click(screen.getByRole('button', { name: /admin\.matching\.run/i }))
+    await userEvent.click(getAlgorithmRadio(/admin\.matching\.baseline/i))
+    await clickRunAndConfirm()
     expect(mockRunMatching).toHaveBeenCalledWith('baseline')
   })
 
   it('defaults to embedding-cosine when no algorithm is changed', async () => {
     mockRunMatching.mockResolvedValue(RUN_RESULT)
     renderMatching()
-    await userEvent.click(screen.getByRole('button', { name: /admin\.matching\.run/i }))
+    await clickRunAndConfirm()
     expect(mockRunMatching).toHaveBeenCalledWith('embedding-cosine')
   })
 
   it('shows error message when run fails', async () => {
     mockRunMatching.mockRejectedValue(new Error('Embedding server unreachable'))
     renderMatching()
-    await userEvent.click(screen.getByRole('button', { name: /admin\.matching\.run/i }))
+    await clickRunAndConfirm()
     await waitFor(() =>
       expect(screen.getByText('Embedding server unreachable')).toBeInTheDocument(),
     )
+  })
+
+  it('shows confirm dialog when Run Matching is clicked', async () => {
+    renderMatching()
+    await userEvent.click(screen.getByRole('button', { name: /admin\.matching\.run/i }))
+    expect(screen.getByRole('button', { name: /admin\.matching\.confirmRun|yes, run matching/i })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /admin\.matching\.cancel|cancel/i })).toBeInTheDocument()
+  })
+
+  it('dismisses confirm dialog on cancel', async () => {
+    renderMatching()
+    await userEvent.click(screen.getByRole('button', { name: /admin\.matching\.run/i }))
+    await userEvent.click(screen.getByRole('button', { name: /admin\.matching\.cancel|cancel/i }))
+    expect(screen.queryByRole('button', { name: /admin\.matching\.confirmRun|yes, run matching/i })).not.toBeInTheDocument()
+    expect(mockRunMatching).not.toHaveBeenCalled()
   })
 })
 
@@ -97,7 +120,7 @@ describe('Matching page — result summary card', () => {
   it('shows the success card after a successful run', async () => {
     mockRunMatching.mockResolvedValue(RUN_RESULT)
     renderMatching()
-    await userEvent.click(screen.getByRole('button', { name: /admin\.matching\.run/i }))
+    await clickRunAndConfirm()
     await waitFor(() =>
       expect(screen.getByText(/admin\.matching\.runComplete/i)).toBeInTheDocument(),
     )
@@ -106,7 +129,7 @@ describe('Matching page — result summary card', () => {
   it('shows applicants scored stat', async () => {
     mockRunMatching.mockResolvedValue(RUN_RESULT)
     renderMatching()
-    await userEvent.click(screen.getByRole('button', { name: /admin\.matching\.run/i }))
+    await clickRunAndConfirm()
     await waitFor(() => screen.getByText(/admin\.matching\.runComplete/i))
     expect(screen.getByText('130')).toBeInTheDocument()
   })
@@ -114,7 +137,7 @@ describe('Matching page — result summary card', () => {
   it('shows couple proposals saved stat', async () => {
     mockRunMatching.mockResolvedValue(RUN_RESULT)
     renderMatching()
-    await userEvent.click(screen.getByRole('button', { name: /admin\.matching\.run/i }))
+    await clickRunAndConfirm()
     await waitFor(() => screen.getByText(/admin\.matching\.runComplete/i))
     expect(screen.getByText('480')).toBeInTheDocument()
   })
@@ -122,7 +145,7 @@ describe('Matching page — result summary card', () => {
   it('shows duration stat', async () => {
     mockRunMatching.mockResolvedValue(RUN_RESULT)
     renderMatching()
-    await userEvent.click(screen.getByRole('button', { name: /admin\.matching\.run/i }))
+    await clickRunAndConfirm()
     await waitFor(() => screen.getByText(/admin\.matching\.runComplete/i))
     expect(screen.getByText('93ms')).toBeInTheDocument()
   })
@@ -130,7 +153,7 @@ describe('Matching page — result summary card', () => {
   it('shows the View Matches link', async () => {
     mockRunMatching.mockResolvedValue(RUN_RESULT)
     renderMatching()
-    await userEvent.click(screen.getByRole('button', { name: /admin\.matching\.run/i }))
+    await clickRunAndConfirm()
     await waitFor(() => screen.getByText(/admin\.matching\.runComplete/i))
     const link = screen.getByRole('link', { name: /admin\.matching\.viewMatches/i })
     expect(link).toHaveAttribute('href', '/admin/matches')
@@ -139,12 +162,45 @@ describe('Matching page — result summary card', () => {
   it('clears previous result when algorithm changes', async () => {
     mockRunMatching.mockResolvedValue(RUN_RESULT)
     renderMatching()
-    await userEvent.click(screen.getByRole('button', { name: /admin\.matching\.run/i }))
+    await clickRunAndConfirm()
     await waitFor(() => screen.getByText(/admin\.matching\.runComplete/i))
 
     // Switch algorithm — result card should disappear
-    const [, baseline] = screen.getAllByRole('radio')
-    await userEvent.click(baseline)
+    await userEvent.click(getAlgorithmRadio(/admin\.matching\.baseline/i))
     expect(screen.queryByText(/admin\.matching\.runComplete/i)).not.toBeInTheDocument()
+  })
+})
+
+// tested: persisted last-run summary — fetched from the server on mount
+// instead of living only in component state
+describe('Matching page — last run info', () => {
+  it('shows neverRun when the server has no recorded run', async () => {
+    renderMatching()
+    await waitFor(() => expect(mockFetchLastRun).toHaveBeenCalled())
+    expect(screen.getByText(/admin\.matching\.neverRun/i)).toBeInTheDocument()
+  })
+
+  it('shows the stored last-run summary on mount', async () => {
+    mockFetchLastRun.mockResolvedValue({
+      at: new Date(Date.now() - 60 * 60 * 1000).toISOString(),
+      algorithm: 'embedding-cosine',
+      totalApplicants: 12,
+      couplesProposed: 4,
+      durationMs: 850,
+      triggeredBy: 'scheduler',
+    })
+    renderMatching()
+    expect(await screen.findByText(/admin\.matching\.lastRunSummary/i)).toBeInTheDocument()
+    expect(screen.queryByText(/admin\.matching\.neverRun/i)).not.toBeInTheDocument()
+  })
+
+  it('updates the last-run summary after a manual run', async () => {
+    mockRunMatching.mockResolvedValue(RUN_RESULT)
+    renderMatching()
+    await waitFor(() => expect(mockFetchLastRun).toHaveBeenCalled())
+    expect(screen.getByText(/admin\.matching\.neverRun/i)).toBeInTheDocument()
+
+    await clickRunAndConfirm()
+    expect(await screen.findByText(/admin\.matching\.lastRunSummary/i)).toBeInTheDocument()
   })
 })
