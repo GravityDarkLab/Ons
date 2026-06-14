@@ -63,9 +63,10 @@ const S = {
   tokenA: "", jwtA: "", aliasA: "", idA: null as ObjectId | null,
   tokenB: "", jwtB: "", aliasB: "", idB: null as ObjectId | null,
   tokenC: "", jwtC: "", aliasC: "", idC: null as ObjectId | null,
+  tokenD: "", jwtD: "", aliasD: "", idD: null as ObjectId | null,
   // injected matches
   matchAB: "",
-  matchAC: "",
+  matchDC: "",
   matchBC: "",
 };
 
@@ -84,11 +85,12 @@ beforeAll(async () => {
   const q = await get("/form/questionnaire");
   S.submissionKey = q.body?.data?.submissionKey ?? "";
 
-  // Create A (male), B (female), C (female)
+  // Create A (male), B (female), C (female), D (male)
   const configs: Array<[keyof typeof S, keyof typeof S, keyof typeof S, ReturnType<typeof maleAnswers>]> = [
     ["tokenA", "jwtA", "aliasA", maleAnswers("mf_a", run)],
     ["tokenB", "jwtB", "aliasB", femaleAnswers("mf_b", run)],
     ["tokenC", "jwtC", "aliasC", femaleAnswers("mf_c", run)],
+    ["tokenD", "jwtD", "aliasD", maleAnswers("mf_d", run)],
   ];
 
   for (const [tokenKey, jwtKey, aliasKey, payload] of configs) {
@@ -110,8 +112,9 @@ beforeAll(async () => {
   S.idA = (await db.collection("applicants").findOne({ magicToken: hash256(S.tokenA) }))?._id ?? null;
   S.idB = (await db.collection("applicants").findOne({ magicToken: hash256(S.tokenB) }))?._id ?? null;
   S.idC = (await db.collection("applicants").findOne({ magicToken: hash256(S.tokenC) }))?._id ?? null;
+  S.idD = (await db.collection("applicants").findOne({ magicToken: hash256(S.tokenD) }))?._id ?? null;
 
-  if (!S.idA || !S.idB || !S.idC) {
+  if (!S.idA || !S.idB || !S.idC || !S.idD) {
     console.error("[match-flow] Failed to find created applicants in DB — aborting setup.");
     await mc.close();
     mc = null;
@@ -133,17 +136,20 @@ beforeAll(async () => {
   });
   S.matchAB = mAB.insertedId.toHexString();
 
-  // Pair A-C → accept → success flow
-  const [cAC_a, cAC_b] = canonical(S.idA, S.idC);
-  const acAliasA = cAC_a.equals(S.idA) ? S.aliasA : S.aliasC;
-  const acAliasC = cAC_a.equals(S.idA) ? S.aliasC : S.aliasA;
-  const mAC = await db.collection("matches").insertOne({
+  // Pair D-C → accept → success flow. Uses D rather than A: contacting B in
+  // the A-B flow above triggers "exclusive contact" (expireConflictingMatches),
+  // which would expire any other proposed/in_progress match of A's — including
+  // a would-be A-C match — before this flow gets to run.
+  const [cDC_a, cDC_b] = canonical(S.idD, S.idC);
+  const dcAliasD = cDC_a.equals(S.idD) ? S.aliasD : S.aliasC;
+  const dcAliasC = cDC_a.equals(S.idD) ? S.aliasC : S.aliasD;
+  const mDC = await db.collection("matches").insertOne({
     _id: new ObjectId(),
-    applicantAId: cAC_a, applicantBId: cAC_b,
-    applicantAAlias: acAliasA, applicantBAlias: acAliasC,
+    applicantAId: cDC_a, applicantBId: cDC_b,
+    applicantAAlias: dcAliasD, applicantBAlias: dcAliasC,
     score: 0.90, algorithm, status: "proposed", createdAt: now, updatedAt: now,
   });
-  S.matchAC = mAC.insertedId.toHexString();
+  S.matchDC = mDC.insertedId.toHexString();
 
   await mc.close();
   mc = null;
@@ -223,26 +229,26 @@ describe("Match state machine — A-B decline flow", () => {
 });
 
 // ─────────────────────────────────────────────────────────────────────────────
-// A-C accept → success flow
+// D-C accept → success flow
 // ─────────────────────────────────────────────────────────────────────────────
 
-describe("Match state machine — A-C accept → success flow", () => {
-  T("A contacts C → 200", async () => {
-    const r = await post(`/profile/matches/${S.matchAC}/contact`, {}, { bearer: S.jwtA });
+describe("Match state machine — D-C accept → success flow", () => {
+  T("D contacts C → 200", async () => {
+    const r = await post(`/profile/matches/${S.matchDC}/contact`, {}, { bearer: S.jwtD });
     expect(r.status).toBe(200);
   });
 
   T("C accepts → 200", async () => {
     const r = await post(
-      `/profile/matches/${S.matchAC}/respond`,
+      `/profile/matches/${S.matchDC}/respond`,
       { accept: true },
       { bearer: S.jwtC },
     );
     expect(r.status).toBe(200);
   });
 
-  T("A status → dating after accept", async () => {
-    const r = await get("/profile/me", { bearer: S.jwtA });
+  T("D status → dating after accept", async () => {
+    const r = await get("/profile/me", { bearer: S.jwtD });
     expect(r.body.data?.status).toBe("dating");
   });
 
@@ -251,17 +257,17 @@ describe("Match state machine — A-C accept → success flow", () => {
     expect(r.body.data?.status).toBe("dating");
   });
 
-  T("A reports success → 200", async () => {
+  T("D reports success → 200", async () => {
     const r = await post(
-      `/profile/matches/${S.matchAC}/outcome`,
+      `/profile/matches/${S.matchDC}/outcome`,
       { outcome: "success" },
-      { bearer: S.jwtA },
+      { bearer: S.jwtD },
     );
     expect(r.status).toBe(200);
   });
 
-  T("A status → inactive after success", async () => {
-    const r = await get("/profile/me", { bearer: S.jwtA });
+  T("D status → inactive after success", async () => {
+    const r = await get("/profile/me", { bearer: S.jwtD });
     expect(r.body.data?.status).toBe("inactive");
   });
 });
@@ -340,8 +346,8 @@ describe("Match state machine — B-C failed outcome flow", () => {
 
 describe("Match access control", () => {
   T("non-participant contacting match → 403", async () => {
-    // B is not in the A-C match (which is now success status anyway)
-    const r = await post(`/profile/matches/${S.matchAC}/contact`, {}, { bearer: S.jwtB });
+    // B is not in the D-C match (which is now success status anyway)
+    const r = await post(`/profile/matches/${S.matchDC}/contact`, {}, { bearer: S.jwtB });
     expect([403, 409]).toContain(r.status); // 409 if terminal state reached first
   });
 });
