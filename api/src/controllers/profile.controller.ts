@@ -137,11 +137,9 @@ export async function matches(c: ValidatedContext<{ query: MatchQueryInput }>): 
 export async function contact(c: Context): Promise<Response> {
   const applicantId = c.get("applicantId") as string;
   const matchId     = c.req.param("id") as string;
-  const ipAddress   = c.req.header("X-Forwarded-For") ?? c.req.header("X-Real-IP") ?? "unknown";
-  const userAgent   = c.req.header("User-Agent") ?? "unknown";
 
   try {
-    const result = await requestContact(applicantId, matchId, { ipAddress, userAgent });
+    const result = await requestContact(applicantId, matchId);
     return c.json({ success: true, data: result });
   } catch (err: unknown) {
     return errorResponse(c, err);
