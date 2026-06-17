@@ -1,0 +1,279 @@
+import { ObjectId } from "mongodb";
+import { env } from "../config/env.js";
+import { AppError } from "../errors.js";
+import { getDb } from "../db/connection.js";
+import { getMatchesCollection, getApplicantsCollection } from "../db/collections.js";
+import type { MatchDoc, MatchStatus } from "../models/match.model.js";
+import type { ApplicantDoc, ApplicantStatus } from "../models/applicant.model.js";
+import { ageFromBirthDate } from "../utils/age.js";
+
+/**
+ * Shared match-state "kernel" used by both the admin match CRUD
+ * (`match.service.ts`) and the applicant-facing contact/outcome flows
+ * (`profile.service.ts`): the applicant-facing view projection, the
+ * state-machine guard, and the status-transition side effects that keep
+ * applicant status and conflicting matches in sync with a match's status.
+ */
+
+// ── Applicant-facing view (privacy-preserving, perspective-aware) ─────────────
+
+export type MatchPerspective = "initiator" | "target" | "none";
+
+export interface ApplicantMatchView {
+  matchId: string;
+  partnerAlias: string;
+  score: number;
+  breakdown?: Record<string, number>;
+  status: MatchStatus;
+  perspective: MatchPerspective;
+  contactRequestedAt?: Date; // when the initiator clicked "contact" — shown to target
+  iceBreakers?: string[];
+  dateIdeas?: string[];
+  partnerProfile?: Record<string, unknown>; // partner's public questionnaire answers
+  partnerInstagram?: string; // only for in_progress/dating — see toMatchView
+}
+
+// Keys never shown to a partner: consent checkboxes carry no information,
+// instagram_handle is defense in depth — identity answers are stored encrypted
+// in a separate collection and should never appear in `answers` at all — and
+// birth_date is a precise identity fact, so partners only see the derived age
+const PARTNER_PROFILE_EXCLUDED_KEYS = new Set([
+  "disclaimer_agreed",
+  "instagram_handle",
+  "birth_date",
+]);
+
+/**
+ * Pure function — no DB calls. Projects a MatchDoc into the applicant-facing view
+ * from the perspective of `actorId`. `partnerAnswers` holds only the public
+ * answers (identity fields are stored encrypted in a separate collection and
+ * never reach the applicants collection). `partnerInstagram` is included in
+ * the view only once contact has been requested (status in_progress/dating —
+ * see below).
+ */
+export function toMatchView(
+  doc: MatchDoc,
+  actorId: ObjectId,
+  partnerAnswers?: Record<string, unknown>,
+  partnerInstagram?: string
+): ApplicantMatchView {
+  const isA       = doc.applicantAId.equals(actorId);
+  const partnerAlias = isA ? doc.applicantBAlias : doc.applicantAAlias;
+
+  let perspective: MatchPerspective = "none";
+  if (doc.status === "in_progress" && doc.initiatorId) {
+    perspective = doc.initiatorId.equals(actorId) ? "initiator" : "target";
+  }
+
+  const view: ApplicantMatchView = {
+    matchId: doc._id.toHexString(),
+    partnerAlias,
+    score: doc.score,
+    status: doc.status,
+    perspective,
+  };
+
+  if (doc.breakdown) view.breakdown = doc.breakdown;
+
+  if (partnerAnswers) {
+    const profile = Object.fromEntries(
+      Object.entries(partnerAnswers).filter(([key]) => !PARTNER_PROFILE_EXCLUDED_KEYS.has(key))
+    );
+    // Partners see an age, not the exact birth date (legacy records carry a
+    // stored `age` answer instead, which passes through unchanged)
+    const age = ageFromBirthDate(partnerAnswers["birth_date"]);
+    if (age !== null && !("age" in profile)) profile["age"] = age;
+    if (Object.keys(profile).length > 0) view.partnerProfile = profile;
+  }
+
+  // Identity is only revealed once contact is committed: the initiator consented
+  // by initiating, and the target's handle was already revealed to the initiator
+  // at contact time. Never attached while the match is merely proposed.
+  if (partnerInstagram && (doc.status === "in_progress" || doc.status === "dating")) {
+    view.partnerInstagram = partnerInstagram;
+  }
+
+  if (doc.status === "in_progress") {
+    if (doc.contactRequestedAt) view.contactRequestedAt = doc.contactRequestedAt;
+    if (perspective === "initiator") {
+      if (doc.iceBreakers) view.iceBreakers = doc.iceBreakers;
+      if (doc.dateIdeas)   view.dateIdeas   = doc.dateIdeas;
+    }
+  }
+
+  return view;
+}
+
+// ── State-machine guard ────────────────────────────────────────────────────────
+
+type MatchAction = "contact" | "respond" | "withdraw" | "outcome";
+
+/**
+ * Asserts that `actorId` may perform `action` on `match`.
+ * Throws a descriptive Error on any violation — callers map to 403/409.
+ */
+export function assertMatchTransition(
+  match: MatchDoc,
+  action: MatchAction,
+  actorId: ObjectId
+): void {
+  const isParticipant =
+    match.applicantAId.equals(actorId) || match.applicantBId.equals(actorId);
+
+  if (action === "contact") {
+    if (!isParticipant) {
+      throw new AppError("Not a participant in this match", 403);
+    }
+    if (match.status !== "proposed") {
+      // Target should use the respond endpoint, not contact
+      if (match.status === "in_progress" && !match.initiatorId?.equals(actorId)) {
+        throw new AppError("Use the respond endpoint to accept or decline", 403);
+      }
+      // Any other state (duplicate, terminal): conflict
+      throw new AppError(`Match status is "${match.status}" — contact not allowed`, 409);
+    }
+    return;
+  }
+
+  if (action === "respond") {
+    if (!isParticipant) {
+      throw new AppError("Not a participant in this match", 403);
+    }
+    if (match.status !== "in_progress") {
+      throw new AppError(`Match status is "${match.status}" — nothing to respond to`, 409);
+    }
+    if (match.initiatorId?.equals(actorId)) {
+      throw new AppError("Initiator cannot respond to their own contact request", 403);
+    }
+    return;
+  }
+
+  if (action === "withdraw") {
+    if (!isParticipant) {
+      throw new AppError("Not a participant in this match", 403);
+    }
+    if (match.status !== "in_progress") {
+      throw new AppError(`Match status is "${match.status}" — nothing to withdraw`, 409);
+    }
+    if (!match.initiatorId?.equals(actorId)) {
+      throw new AppError("Only the initiator can withdraw their contact request", 403);
+    }
+    return;
+  }
+
+  if (action === "outcome") {
+    if (!isParticipant) {
+      throw new AppError("Not a participant in this match", 403);
+    }
+    if (match.status !== "dating" && match.status !== "in_progress") {
+      throw new AppError(`Match status is "${match.status}" — outcome cannot be reported`, 409);
+    }
+    return;
+  }
+}
+
+// ── Shared helpers ─────────────────────────────────────────────────────────────
+
+/**
+ * Expires all proposed/in_progress matches for the given applicant IDs.
+ * Called when someone contacts a match (their other matches expire), accepts
+ * contact, or deactivates. `excludeMatchId` keeps the match being acted on
+ * out of its own sweep.
+ */
+export async function expireConflictingMatches(
+  applicantIds: ObjectId[],
+  excludeMatchId?: ObjectId
+): Promise<void> {
+  const db  = await getDb();
+  const col = getMatchesCollection(db);
+  const now = new Date();
+
+  const filter: Record<string, unknown> = {
+    $or: [
+      { applicantAId: { $in: applicantIds } },
+      { applicantBId: { $in: applicantIds } },
+    ],
+    status: { $in: ["proposed", "in_progress"] },
+  };
+  if (excludeMatchId) filter._id = { $ne: excludeMatchId };
+
+  await col.updateMany(filter, { $set: { status: "expired", updatedAt: now } });
+}
+
+/** Portal slider floor — matches below this score are never shown to applicants. */
+export const PORTAL_MIN_SCORE = 0.6;
+
+/** Grace period before personal data of inactive accounts is purged. Configurable via DELETION_GRACE_DAYS. */
+export const DELETION_GRACE_MS = env.deletionGraceDays * 24 * 60 * 60 * 1000;
+
+/**
+ * Promotes "applied" applicants to "matched" when they have at least one
+ * proposed match visible in the portal (score ≥ PORTAL_MIN_SCORE).
+ * Called after every matching pass (admin-triggered and scheduled).
+ */
+export async function promoteAppliedToMatched(): Promise<number> {
+  const db       = await getDb();
+  const matchCol = getMatchesCollection(db);
+  const appCol   = getApplicantsCollection(db);
+
+  const proposed = await matchCol
+    .find(
+      { status: "proposed", score: { $gte: PORTAL_MIN_SCORE } },
+      { projection: { applicantAId: 1, applicantBId: 1 } },
+    )
+    .toArray();
+  if (proposed.length === 0) return 0;
+
+  const ids = new Map<string, ObjectId>();
+  for (const m of proposed) {
+    ids.set(m.applicantAId.toHexString(), m.applicantAId);
+    ids.set(m.applicantBId.toHexString(), m.applicantBId);
+  }
+
+  const res = await appCol.updateMany(
+    { _id: { $in: [...ids.values()] }, status: "applied" },
+    { $set: { status: "matched", updatedAt: new Date() } },
+  );
+  return res.modifiedCount;
+}
+
+/**
+ * Transitions multiple applicants to a new status in a single updateMany.
+ */
+export async function transitionApplicantStatus(
+  ids: ObjectId[],
+  newStatus: ApplicantStatus,
+  extra?: Partial<Pick<ApplicantDoc, "deletionScheduledAt">>
+): Promise<void> {
+  const db  = await getDb();
+  const col = getApplicantsCollection(db);
+  const now = new Date();
+
+  await col.updateMany(
+    { _id: { $in: ids } },
+    { $set: { status: newStatus, updatedAt: now, ...extra } }
+  );
+}
+
+/**
+ * Applies the applicant-status side effects of a match transitioning to
+ * "dating", "success", or "failed" — shared by the admin override
+ * (`updateMatch`) and the applicant-facing flows (`respondToContact`,
+ * `reportOutcome`) so the two can't drift apart.
+ */
+export async function applyMatchStatusSideEffects(
+  status: MatchStatus,
+  applicantIds: ObjectId[],
+  excludeMatchId?: ObjectId,
+): Promise<void> {
+  if (status === "dating") {
+    await transitionApplicantStatus(applicantIds, "dating");
+    await expireConflictingMatches(applicantIds, excludeMatchId);
+  } else if (status === "success") {
+    const deletionScheduledAt = new Date(Date.now() + DELETION_GRACE_MS);
+    await transitionApplicantStatus(applicantIds, "inactive", { deletionScheduledAt });
+    await expireConflictingMatches(applicantIds, excludeMatchId);
+  } else if (status === "failed") {
+    await transitionApplicantStatus(applicantIds, "applied");
+  }
+}

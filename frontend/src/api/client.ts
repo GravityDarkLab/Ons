@@ -21,7 +21,7 @@ export async function fetchQuestionnaire(): Promise<QuestionnaireData> {
 export async function submitForm(
   payload: FormPayload,
   submissionKey: string,
-): Promise<{ alias: string; applicantId: string }> {
+): Promise<{ alias: string; applicantId: string; magicToken?: string }> {
   const res = await fetch(`${BASE}/api/v1/form/submit`, {
     method: 'POST',
     headers: {
@@ -35,5 +35,5 @@ export async function submitForm(
     throw new Error((err as { error?: string }).error ?? 'Submission failed')
   }
   const data = await res.json()
-  return data as { alias: string; applicantId: string }
+  return data as { alias: string; applicantId: string; magicToken?: string }
 }

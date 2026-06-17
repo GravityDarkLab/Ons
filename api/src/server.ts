@@ -77,7 +77,7 @@ async function bootstrap() {
     await ensureIndexes(db);
     console.log(`[SERVER] Starting on port ${env.port}...`);
     // Scheduled matching job (optional)
-    const intervalHours = parseFloat(process.env.MATCHING_JOB_INTERVAL_HOURS ?? "");
+    const intervalHours = env.matchingJobIntervalHours;
     if (!isNaN(intervalHours) && intervalHours > 0) {
       const ms = intervalHours * 3_600_000;
       setInterval(runScheduledMatchingJob, ms);

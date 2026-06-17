@@ -1,4 +1,6 @@
-export type ApplicantStatus = 'active' | 'inactive' | 'matched' | 'withdrawn'
+export type { ApplicantStatus, MatchStatus } from '../types/status'
+
+import type { ApplicantStatus, MatchStatus } from '../types/status'
 
 export interface Applicant {
   id: string
@@ -6,6 +8,7 @@ export interface Applicant {
   questionnaireVersion: string
   answers: Record<string, unknown>
   status: ApplicantStatus
+  deletionScheduledAt?: string
   createdAt: string
   updatedAt: string
 }
@@ -45,7 +48,14 @@ export interface MatchingRun {
   results: Record<string, MatchCandidate[]>
 }
 
-export type MatchStatus = 'proposed' | 'contacted' | 'matched' | 'failed'
+export interface MatchingLastRun {
+  at: string
+  algorithm: string
+  totalApplicants: number
+  couplesProposed: number
+  durationMs: number
+  triggeredBy: 'admin' | 'scheduler'
+}
 
 export interface Match {
   id: string

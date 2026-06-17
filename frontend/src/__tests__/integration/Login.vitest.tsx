@@ -24,7 +24,7 @@ const mockUseAuth = vi.mocked(AuthContext.useAuth)
 
 function renderLogin() {
   const login = vi.fn()
-  mockUseAuth.mockReturnValue({ isAuthenticated: false, isLoading: false, login, logout: vi.fn() })
+  mockUseAuth.mockReturnValue({ isAuthenticated: false, isLoading: false, role: null, login, logout: vi.fn() })
   render(
     <MemoryRouter>
       <Login />

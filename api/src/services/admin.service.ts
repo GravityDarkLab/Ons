@@ -1,4 +1,5 @@
 import { ObjectId } from "mongodb";
+import { AppError } from "../errors.js";
 import { getDb } from "../db/connection.js";
 import {
   getApplicantsCollection,
@@ -9,8 +10,12 @@ import {
 import type { ApplicantDoc, ApplicantStatus } from "../models/applicant.model.js";
 import type { AuditLogDoc } from "../models/auditLog.model.js";
 import type { CreateQuestionnaireInput } from "../validators/admin.validator.js";
-import { resolveIdentityById } from "../privacy/identity.service.js";
+import { revealIdentityById } from "../privacy/identity.service.js";
+import type { AuditContext } from "../middleware/audit.middleware.js";
 import { signAdminToken } from "../middleware/auth.middleware.js";
+import { DELETION_GRACE_MS } from "./match-state.service.js";
+import { generateMagicToken, hashMagicToken } from "../privacy/magic-token.js";
+import { escapeRegex } from "../utils/regex.js";
 
 export interface PaginatedResult<T> {
   data: T[];
@@ -46,18 +51,41 @@ export async function adminLogin(
  */
 export type ApplicantView = Omit<ApplicantDoc, "_id" | "magicToken" | "passwordHash"> & { id: string };
 
+/**
+ * Builds the applicants-collection filter for `listApplicants`.
+ *
+ * - `scheduledDeletion: true` → only applicants pending deletion (status ignored).
+ * - explicit `status` → applicants with that status, scheduled or not.
+ * - neither → the "All" tab, which excludes applicants pending deletion.
+ */
+export function buildApplicantFilter(
+  status?: ApplicantStatus,
+  search?: string,
+  scheduledDeletion?: boolean,
+): Record<string, unknown> {
+  const filter: Record<string, unknown> = {};
+  if (scheduledDeletion) {
+    filter.deletionScheduledAt = { $exists: true };
+  } else if (status) {
+    filter.status = status;
+  } else {
+    filter.deletionScheduledAt = { $exists: false };
+  }
+  if (search) filter.alias = { $regex: escapeRegex(search), $options: "i" };
+  return filter;
+}
+
 export async function listApplicants(
   page: number,
   limit: number,
   status?: ApplicantStatus,
   search?: string,
+  scheduledDeletion?: boolean,
 ): Promise<PaginatedResult<ApplicantView>> {
   const db = await getDb();
   const col = getApplicantsCollection(db);
 
-  const filter: Record<string, unknown> = {};
-  if (status) filter.status = status;
-  if (search)  filter.alias = { $regex: search.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"), $options: "i" };
+  const filter = buildApplicantFilter(status, search, scheduledDeletion);
   const skip = (page - 1) * limit;
 
   const [docs, total] = await Promise.all([
@@ -104,10 +132,12 @@ export async function getApplicantById(
 
 /**
  * Resolves and returns the decrypted Instagram handle for an applicant.
- * This is an admin-only action; callers MUST write an audit log.
+ * Admin-only action. revealIdentityById writes the audit log internally —
+ * callers must not write a duplicate one.
  */
 export async function getApplicantIdentity(
-  id: string
+  id: string,
+  auditCtx: AuditContext
 ): Promise<{ alias: string; instagramHandle: string } | null> {
   const db = await getDb();
   const col = getApplicantsCollection(db);
@@ -122,14 +152,19 @@ export async function getApplicantIdentity(
   const applicant = await col.findOne({ _id: objectId });
   if (!applicant) return null;
 
-  const instagramHandle = await resolveIdentityById(objectId);
+  const instagramHandle = await revealIdentityById(objectId, {
+    actor: auditCtx,
+    action: "RESOLVE_IDENTITY",
+    targetAlias: applicant.alias,
+  });
   if (!instagramHandle) return null;
 
   return { alias: applicant.alias, instagramHandle };
 }
 
 /**
- * Sets an applicant's status to "withdrawn" (soft delete).
+ * Soft-deletes an applicant: sets status to "inactive" and schedules
+ * permanent deletion after DELETION_GRACE_MS, same as self-deactivation.
  */
 export async function deactivateApplicant(id: string): Promise<boolean> {
   const db = await getDb();
@@ -142,12 +177,55 @@ export async function deactivateApplicant(id: string): Promise<boolean> {
     return false;
   }
 
+  const now = new Date();
   const result = await col.updateOne(
     { _id: objectId },
-    { $set: { status: "inactive", updatedAt: new Date() } }
+    {
+      $set: {
+        status: "inactive",
+        updatedAt: now,
+        deletionScheduledAt: new Date(now.getTime() + DELETION_GRACE_MS),
+      },
+    }
   );
 
   return result.matchedCount > 0;
+}
+
+/**
+ * Issues a fresh magic link for an applicant who lost theirs, invalidating the
+ * old one. Only the SHA-256 hash is persisted — the raw token is returned once
+ * for the admin to relay. The applicant's password is also cleared, so the new
+ * link takes them through first-login set-password again.
+ */
+export async function regenerateMagicLink(
+  id: string
+): Promise<{ alias: string; magicToken: string } | null> {
+  const db = await getDb();
+  const col = getApplicantsCollection(db);
+
+  let objectId: ObjectId;
+  try {
+    objectId = new ObjectId(id);
+  } catch {
+    return null;
+  }
+
+  const magicToken = generateMagicToken();
+  const result = await col.findOneAndUpdate(
+    { _id: objectId },
+    {
+      $set: {
+        magicToken: hashMagicToken(magicToken),
+        passwordHash: null,
+        updatedAt: new Date(),
+      },
+    },
+    { returnDocument: "after" }
+  );
+
+  if (!result) return null;
+  return { alias: result.alias, magicToken };
 }
 
 /**
@@ -162,7 +240,7 @@ export async function createQuestionnaire(
 
   const existing = await col.findOne({ version: input.version });
   if (existing) {
-    throw new Error(`Questionnaire version ${input.version} already exists.`);
+    throw new AppError(`Questionnaire version ${input.version} already exists.`, 409);
   }
 
   const now = new Date();

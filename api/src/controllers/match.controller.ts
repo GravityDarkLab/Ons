@@ -1,6 +1,8 @@
 import { Context } from "hono";
 import { listMatches, updateMatch, deleteMatch } from "../services/match.service.js";
 import type { MatchStatus } from "../models/match.model.js";
+import type { PatchMatchInput } from "../validators/match.validator.js";
+import type { ValidatedContext } from "../utils/validated-context.js";
 
 /**
  * GET /api/v1/admin/matches
@@ -27,9 +29,9 @@ export async function getMatches(c: Context): Promise<Response> {
  * PATCH /api/v1/admin/matches/:id
  * Body: { status?, notes? }
  */
-export async function patchMatch(c: Context): Promise<Response> {
+export async function patchMatch(c: ValidatedContext<{ json: PatchMatchInput }>): Promise<Response> {
   const id   = c.req.param("id") ?? "";
-  const body = c.req.valid("json" as never) as { status?: MatchStatus; notes?: string };
+  const body = c.req.valid("json");
 
   try {
     const match = await updateMatch(id, body);

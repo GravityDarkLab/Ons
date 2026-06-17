@@ -6,7 +6,10 @@ import { getAuditLogsCollection } from "../db/collections.js";
 import type { AuditAction } from "../models/auditLog.model.js";
 
 export interface AuditContext {
-  adminId: string;
+  // The actor performing the action — an admin's id for admin-initiated
+  // actions, or the applicant's own id for self-service actions. Stored as
+  // `adminId` in `AuditLogDoc` regardless of which.
+  actorId: string;
   ipAddress: string;
   userAgent: string;
 }
@@ -30,7 +33,7 @@ export async function writeAuditLog(
 
     await auditLogs.insertOne({
       _id: new ObjectId(),
-      adminId: ctx.adminId,
+      adminId: ctx.actorId,
       action,
       targetAlias: opts?.targetAlias,
       targetApplicantId: opts?.targetApplicantId,
@@ -51,7 +54,7 @@ export async function writeAuditLog(
  * then falls back to the raw socket address exposed by Bun via getConnInfo.
  */
 export function extractAuditContext(
-  adminId: string,
+  actorId: string,
   c: Context
 ): AuditContext {
   const req = c.req.raw;
@@ -64,5 +67,5 @@ export function extractAuditContext(
 
   const userAgent = req.headers.get("user-agent") ?? "unknown";
 
-  return { adminId, ipAddress, userAgent };
+  return { actorId, ipAddress, userAgent };
 }

@@ -17,22 +17,32 @@ const mockLoginWithMagicToken = mock(async () => null as any);
 const mockSetPassword         = mock(async () => null as any);
 const mockChangePassword      = mock(async () => {});
 const mockGetMyProfile        = mock(async () => null as any);
+const mockGetMyAnswers        = mock(async () => null as any);
+const mockUpdateMyAnswers     = mock(async () => {});
 const mockGetMyMatches        = mock(async () => [] as any[]);
 const mockRequestContact      = mock(async () => ({ targetInstagram: "@partner", iceBreakers: [] as string[], dateIdeas: [] as string[] }));
 const mockRespondToContact    = mock(async () => {});
+const mockWithdrawContact     = mock(async () => {});
 const mockReportOutcome       = mock(async () => {});
 const mockDeactivateMyAccount = mock(async () => {});
+const mockCancelAccountDeletion = mock(async () => {});
+const mockDeleteMyAccountNow  = mock(async () => {});
 
 mock.module("../../services/profile.service.js", () => ({
   loginWithMagicToken: mockLoginWithMagicToken,
   setPassword:         mockSetPassword,
   changePassword:      mockChangePassword,
   getMyProfile:        mockGetMyProfile,
+  getMyAnswers:        mockGetMyAnswers,
+  updateMyAnswers:     mockUpdateMyAnswers,
   getMyMatches:        mockGetMyMatches,
   requestContact:      mockRequestContact,
   respondToContact:    mockRespondToContact,
+  withdrawContact:     mockWithdrawContact,
   reportOutcome:       mockReportOutcome,
   deactivateMyAccount: mockDeactivateMyAccount,
+  cancelAccountDeletion: mockCancelAccountDeletion,
+  deleteMyAccountNow:    mockDeleteMyAccountNow,
 }));
 
 mock.module("../../middleware/audit.middleware.js", () => ({
@@ -45,6 +55,7 @@ import { profileRoutes } from "../../routes/profile.routes.js";
 import { signApplicantToken } from "../../middleware/applicant.auth.middleware.js";
 import { signAdminToken } from "../../middleware/auth.middleware.js";
 import { ObjectId } from "mongodb";
+import { AppError } from "../../errors.js";
 
 const app = new Hono();
 app.route("/profile", profileRoutes);
@@ -68,16 +79,27 @@ function get(path: string, token?: string) {
   return app.request(path, { headers });
 }
 
+function put(path: string, body: unknown, token?: string) {
+  const headers: Record<string, string> = { "Content-Type": "application/json" };
+  if (token) headers["Authorization"] = `Bearer ${token}`;
+  return app.request(path, { method: "PUT", headers, body: JSON.stringify(body) });
+}
+
 beforeEach(() => {
   mockLoginWithMagicToken.mockReset();
   mockSetPassword.mockReset();
   mockChangePassword.mockReset();
   mockGetMyProfile.mockReset();
+  mockGetMyAnswers.mockReset();
+  mockUpdateMyAnswers.mockReset();
   mockGetMyMatches.mockReset();
   mockRequestContact.mockReset();
   mockRespondToContact.mockReset();
+  mockWithdrawContact.mockReset();
   mockReportOutcome.mockReset();
   mockDeactivateMyAccount.mockReset();
+  mockCancelAccountDeletion.mockReset();
+  mockDeleteMyAccountNow.mockReset();
 
   // Restore defaults
   mockLoginWithMagicToken.mockResolvedValue(null);
@@ -89,7 +111,7 @@ beforeEach(() => {
 // ── POST /profile/login ───────────────────────────────────────────────────────
 
 describe("POST /profile/login", () => {
-  it("returns 200 + JWT on valid credentials", async () => {
+  it("returns 200 + session cookie on valid credentials", async () => {
     mockLoginWithMagicToken.mockResolvedValue({
       status: "ok",
       applicant: { _id: new ObjectId(VALID_APPLICANT_ID), alias: "Blue Falcon" },
@@ -98,8 +120,9 @@ describe("POST /profile/login", () => {
     expect(res.status).toBe(200);
     const body = await res.json() as any;
     expect(body.success).toBe(true);
-    expect(typeof body.token).toBe("string");
+    expect(body.token).toBeUndefined(); // token is in HttpOnly cookie, not response body
     expect(body.firstLogin).toBeUndefined();
+    expect(res.headers.get("set-cookie")).toMatch(/ons_applicant_session=/);
   });
 
   it("returns 200 + firstLogin:true when passwordHash is null", async () => {
@@ -118,16 +141,43 @@ describe("POST /profile/login", () => {
     expect(res.status).toBe(401);
   });
 
+  it("returns 200 + passwordRequired:true when password is omitted but already set", async () => {
+    mockLoginWithMagicToken.mockResolvedValue({ status: "password_required" });
+    const res = await post("/profile/login", { magicToken: VALID_MAGIC_TOKEN });
+    expect(res.status).toBe(200);
+    const body = await res.json() as any;
+    expect(body.success).toBe(true);
+    expect(body.passwordRequired).toBe(true);
+    expect(body.firstLogin).toBeUndefined();
+    expect(body.token).toBeUndefined();
+  });
+
   it("returns 422 when magicToken is the wrong length", async () => {
     const res = await post("/profile/login", { magicToken: "short", password: "some-pass" });
     expect(res.status).toBe(422);
+  });
+
+  it("refreshes the session when revisiting the magic link while already signed in", async () => {
+    mockLoginWithMagicToken.mockResolvedValue({
+      status: "ok",
+      applicant: { _id: new ObjectId(VALID_APPLICANT_ID), alias: "Blue Falcon" },
+    });
+    const token = await applicantToken();
+    const res = await post("/profile/login", { magicToken: VALID_MAGIC_TOKEN }, token);
+    expect(res.status).toBe(200);
+    const body = await res.json() as any;
+    expect(body.success).toBe(true);
+    expect(body.firstLogin).toBeUndefined();
+    expect(body.passwordRequired).toBeUndefined();
+    expect(res.headers.get("set-cookie")).toMatch(/ons_applicant_session=/);
+    expect(mockLoginWithMagicToken).toHaveBeenCalledWith(VALID_MAGIC_TOKEN, undefined, VALID_APPLICANT_ID);
   });
 });
 
 // ── POST /profile/set-password ────────────────────────────────────────────────
 
 describe("POST /profile/set-password", () => {
-  it("returns 200 + JWT when first-login password is accepted", async () => {
+  it("returns 200 + session cookie when first-login password is accepted", async () => {
     mockSetPassword.mockResolvedValue({
       _id: new ObjectId(VALID_APPLICANT_ID),
       alias: "Blue Falcon",
@@ -139,7 +189,8 @@ describe("POST /profile/set-password", () => {
     expect(res.status).toBe(200);
     const body = await res.json() as any;
     expect(body.success).toBe(true);
-    expect(typeof body.token).toBe("string");
+    expect(body.token).toBeUndefined(); // token is in HttpOnly cookie, not response body
+    expect(res.headers.get("set-cookie")).toMatch(/ons_applicant_session=/);
   });
 
   it("returns 401 when magicToken is not found", async () => {
@@ -153,7 +204,7 @@ describe("POST /profile/set-password", () => {
 
   it("returns 409 when password is already set", async () => {
     mockSetPassword.mockRejectedValue(
-      Object.assign(new Error("Password already set."), { statusCode: 409 })
+      new AppError("Password already set.", 409)
     );
     const res = await post("/profile/set-password", {
       magicToken: VALID_MAGIC_TOKEN,
@@ -206,7 +257,7 @@ describe("POST /profile/change-password", () => {
 
   it("returns 401 when current password is wrong", async () => {
     mockChangePassword.mockRejectedValue(
-      Object.assign(new Error("Current password is incorrect"), { statusCode: 401 })
+      new AppError("Current password is incorrect", 401)
     );
     const token = await applicantToken();
     const res = await post("/profile/change-password", {
@@ -257,6 +308,140 @@ describe("GET /profile/me", () => {
   });
 });
 
+// ── GET /profile/answers ──────────────────────────────────────────────────────
+
+const VALID_ANSWERS_UPDATE = {
+  location: "Paris, France",
+  work: "Student",
+  sexual_orientation: "Straight",
+  religion: "Islam",
+  vibe_words: "calm, curious",
+  lifestyle: "Early riser, gym, reading",
+  relationship_type: "Long Term",
+  open_to_long_distance: true,
+  preferred_physical_traits: "Tall",
+  preferred_character_traits: "Kind",
+  deal_breakers: "Smoking",
+  okay_with_opposite_gender_friends: true,
+  religion_deal_breaker: false,
+  physical_affection_importance: 7,
+  dream_first_date: "A walk by the sea",
+};
+
+describe("GET /profile/answers", () => {
+  it("returns 401 without a token", async () => {
+    const res = await get("/profile/answers");
+    expect(res.status).toBe(401);
+  });
+
+  it("returns the applicant's answers", async () => {
+    mockGetMyAnswers.mockResolvedValue({ location: "Paris, France", birth_date: "1999-03-12" });
+    const token = await applicantToken();
+    const res = await get("/profile/answers", token);
+    expect(res.status).toBe(200);
+    const body = await res.json() as any;
+    expect(body.success).toBe(true);
+    expect(body.data.answers).toEqual({ location: "Paris, France", birth_date: "1999-03-12" });
+  });
+
+  it("returns 404 when the applicant no longer exists", async () => {
+    mockGetMyAnswers.mockResolvedValue(null);
+    const token = await applicantToken();
+    const res = await get("/profile/answers", token);
+    expect(res.status).toBe(404);
+  });
+});
+
+// ── PUT /profile/answers ──────────────────────────────────────────────────────
+
+describe("PUT /profile/answers", () => {
+  it("returns 401 without a token", async () => {
+    const res = await put("/profile/answers", { answers: VALID_ANSWERS_UPDATE });
+    expect(res.status).toBe(401);
+  });
+
+  it("updates answers with a valid payload", async () => {
+    mockUpdateMyAnswers.mockResolvedValue(undefined);
+    const token = await applicantToken();
+    const res = await put("/profile/answers", { answers: VALID_ANSWERS_UPDATE }, token);
+    expect(res.status).toBe(200);
+    expect(mockUpdateMyAnswers).toHaveBeenCalledWith(VALID_APPLICANT_ID, VALID_ANSWERS_UPDATE);
+  });
+
+  it("rejects instagram_handle with 422 and never reaches the service", async () => {
+    const token = await applicantToken();
+    const res = await put(
+      "/profile/answers",
+      { answers: { ...VALID_ANSWERS_UPDATE, instagram_handle: "sneaky_handle" } },
+      token,
+    );
+    expect(res.status).toBe(422);
+    expect(mockUpdateMyAnswers).not.toHaveBeenCalled();
+  });
+
+  it("rejects disclaimer_agreed with 422", async () => {
+    const token = await applicantToken();
+    const res = await put(
+      "/profile/answers",
+      { answers: { ...VALID_ANSWERS_UPDATE, disclaimer_agreed: false } },
+      token,
+    );
+    expect(res.status).toBe(422);
+    expect(mockUpdateMyAnswers).not.toHaveBeenCalled();
+  });
+
+  it("rejects unknown keys with 422", async () => {
+    const token = await applicantToken();
+    const res = await put(
+      "/profile/answers",
+      { answers: { ...VALID_ANSWERS_UPDATE, evil_extra: "x" } },
+      token,
+    );
+    expect(res.status).toBe(422);
+    expect(mockUpdateMyAnswers).not.toHaveBeenCalled();
+  });
+
+  it("rejects the locked birth_date with 422", async () => {
+    const token = await applicantToken();
+    const res = await put(
+      "/profile/answers",
+      { answers: { ...VALID_ANSWERS_UPDATE, birth_date: "1999-03-12" } },
+      token,
+    );
+    expect(res.status).toBe(422);
+    expect(mockUpdateMyAnswers).not.toHaveBeenCalled();
+  });
+
+  it("rejects the locked gender_identity with 422", async () => {
+    const token = await applicantToken();
+    const res = await put(
+      "/profile/answers",
+      { answers: { ...VALID_ANSWERS_UPDATE, gender_identity: "Other" } },
+      token,
+    );
+    expect(res.status).toBe(422);
+    expect(mockUpdateMyAnswers).not.toHaveBeenCalled();
+  });
+
+  it("rejects invalid field values with 422 (affection out of range)", async () => {
+    const token = await applicantToken();
+    const res = await put(
+      "/profile/answers",
+      { answers: { ...VALID_ANSWERS_UPDATE, physical_affection_importance: 20 } },
+      token,
+    );
+    expect(res.status).toBe(422);
+    expect(mockUpdateMyAnswers).not.toHaveBeenCalled();
+  });
+
+  it("accepts a payload without the optional height_cm", async () => {
+    mockUpdateMyAnswers.mockResolvedValue(undefined);
+    const token = await applicantToken();
+    const res = await put("/profile/answers", { answers: VALID_ANSWERS_UPDATE }, token);
+    expect(res.status).toBe(200);
+  });
+});
+
 // ── GET /profile/matches ──────────────────────────────────────────────────────
 
 describe("GET /profile/matches", () => {
@@ -284,6 +469,15 @@ describe("GET /profile/matches", () => {
     const [, threshold, limit] = mockGetMyMatches.mock.calls[0] as any[];
     expect(threshold).toBe(0.7);
     expect(limit).toBe(5);
+  });
+
+  it("accepts limit up to 50 and clamps beyond", async () => {
+    const token = await applicantToken();
+    await get("/profile/matches?limit=50", token);
+    expect((mockGetMyMatches.mock.calls[0] as any[])[2]).toBe(50);
+
+    await get("/profile/matches?limit=120", token);
+    expect((mockGetMyMatches.mock.calls[1] as any[])[2]).toBe(50);
   });
 });
 
@@ -338,6 +532,42 @@ describe("POST /profile/matches/:id/respond", () => {
   });
 });
 
+// ── POST /profile/matches/:id/withdraw ───────────────────────────────────────
+
+describe("POST /profile/matches/:id/withdraw", () => {
+  it("returns 401 without token", async () => {
+    const res = await post("/profile/matches/abc123/withdraw", {});
+    expect(res.status).toBe(401);
+  });
+
+  it("returns 200 and calls the service with applicant + match ids", async () => {
+    const token = await applicantToken();
+    const res = await post("/profile/matches/abc123/withdraw", {}, token);
+    expect(res.status).toBe(200);
+    const [applicantId, matchId] = mockWithdrawContact.mock.calls[0] as any[];
+    expect(applicantId).toBe(VALID_APPLICANT_ID);
+    expect(matchId).toBe("abc123");
+  });
+
+  it("maps a 403 service error (target cannot withdraw)", async () => {
+    mockWithdrawContact.mockRejectedValue(
+      new AppError("Only the initiator can withdraw their contact request", 403)
+    );
+    const token = await applicantToken();
+    const res = await post("/profile/matches/abc123/withdraw", {}, token);
+    expect(res.status).toBe(403);
+  });
+
+  it("maps a 409 service error (not in_progress)", async () => {
+    mockWithdrawContact.mockRejectedValue(
+      new AppError('Match status is "declined" — nothing to withdraw', 409)
+    );
+    const token = await applicantToken();
+    const res = await post("/profile/matches/abc123/withdraw", {}, token);
+    expect(res.status).toBe(409);
+  });
+});
+
 // ── POST /profile/matches/:id/outcome ────────────────────────────────────────
 
 describe("POST /profile/matches/:id/outcome", () => {
@@ -377,5 +607,79 @@ describe("POST /profile/deactivate", () => {
     const token = await applicantToken();
     const res = await post("/profile/deactivate", {}, token);
     expect(res.status).toBe(200);
+  });
+});
+
+// ── POST /profile/cancel-deletion ───────────────────────────────────────────────
+
+describe("POST /profile/cancel-deletion", () => {
+  it("returns 401 without token", async () => {
+    const res = await post("/profile/cancel-deletion", {});
+    expect(res.status).toBe(401);
+  });
+
+  it("returns 200 when a deletion is scheduled", async () => {
+    const token = await applicantToken();
+    const res = await post("/profile/cancel-deletion", {}, token);
+    expect(res.status).toBe(200);
+    const body = await res.json() as any;
+    expect(body.success).toBe(true);
+    expect(mockCancelAccountDeletion).toHaveBeenCalledWith(VALID_APPLICANT_ID);
+  });
+
+  it("returns 409 when no deletion is scheduled", async () => {
+    mockCancelAccountDeletion.mockRejectedValue(
+      new AppError("No deletion is scheduled for this account", 409)
+    );
+    const token = await applicantToken();
+    const res = await post("/profile/cancel-deletion", {}, token);
+    expect(res.status).toBe(409);
+    const body = await res.json() as any;
+    expect(body.success).toBe(false);
+  });
+});
+
+// ── POST /profile/delete-now ────────────────────────────────────────────────────
+
+describe("POST /profile/delete-now", () => {
+  it("returns 401 without token", async () => {
+    const res = await post("/profile/delete-now", {});
+    expect(res.status).toBe(401);
+  });
+
+  it("returns 200 and clears the session cookie", async () => {
+    const token = await applicantToken();
+    const res = await post("/profile/delete-now", {}, token);
+    expect(res.status).toBe(200);
+    const body = await res.json() as any;
+    expect(body.success).toBe(true);
+    expect(mockDeleteMyAccountNow).toHaveBeenCalled();
+    expect(res.headers.get("set-cookie")).toMatch(/ons_applicant_session=;/);
+  });
+
+  it("returns 404 when applicant no longer exists", async () => {
+    mockDeleteMyAccountNow.mockRejectedValue(new AppError("Not found", 404));
+    const token = await applicantToken();
+    const res = await post("/profile/delete-now", {}, token);
+    expect(res.status).toBe(404);
+  });
+});
+
+// ── POST /profile/logout ────────────────────────────────────────────────────────
+
+describe("POST /profile/logout", () => {
+  it("returns 200 and clears the session cookie without a session", async () => {
+    const res = await post("/profile/logout", {});
+    expect(res.status).toBe(200);
+    const body = await res.json() as any;
+    expect(body.success).toBe(true);
+    expect(res.headers.get("set-cookie")).toMatch(/ons_applicant_session=;/);
+  });
+
+  it("returns 200 and clears the session cookie with a valid session", async () => {
+    const token = await applicantToken();
+    const res = await post("/profile/logout", {}, token);
+    expect(res.status).toBe(200);
+    expect(res.headers.get("set-cookie")).toMatch(/ons_applicant_session=;/);
   });
 });

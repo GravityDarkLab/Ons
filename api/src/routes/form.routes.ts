@@ -1,7 +1,7 @@
 import { Hono } from "hono";
-import { z } from "zod";
 import { zValidator } from "@hono/zod-validator";
 import { formSubmissionSchema } from "../validators/form.validator.js";
+import { validationHook } from "../validators/validation-hook.js";
 import { submitForm, getQuestionnaire } from "../controllers/form.controller.js";
 import { formSubmitRateLimiter } from "../middleware/rateLimit.middleware.js";
 
@@ -13,18 +13,7 @@ formRoutes.get("/questionnaire", getQuestionnaire);
 formRoutes.post(
   "/submit",
   formSubmitRateLimiter,
-  zValidator("json", formSubmissionSchema, (result, c) => {
-    if (!result.success) {
-      return c.json(
-        {
-          success: false,
-          error: "Validation failed",
-          details: z.flattenError(result.error).fieldErrors,
-        },
-        422
-      );
-    }
-  }),
+  zValidator("json", formSubmissionSchema, validationHook),
   submitForm
 );
 

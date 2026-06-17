@@ -1,8 +1,9 @@
 import { ObjectId } from "mongodb";
+import { AppError } from "../errors.js";
 import type { ApplicantDoc } from "../models/applicant.model.js";
 import type { QuestionnaireDoc } from "../models/questionnaire.model.js";
 import { getDb } from "../db/connection.js";
-import { getApplicantsCollection } from "../db/collections.js";
+import { getApplicantsCollection, getMatchesCollection } from "../db/collections.js";
 import { getActiveQuestionnaire } from "../services/questionnaire.service.js";
 import { baselineAlgorithm } from "./algorithms/baseline.js";
 import { cosineAlgorithm } from "./algorithms/cosine.js";
@@ -50,6 +51,27 @@ const ALGORITHM_REGISTRY: Record<string, Algorithm> = {
 };
 
 /**
+ * Returns the hex IDs of every applicant currently in an `in_progress` match
+ * (an exclusive contact awaiting a response). They're mid-conversation and
+ * must not receive new proposals until that contact resolves.
+ */
+export async function getActiveContactApplicantIds(): Promise<Set<string>> {
+  const db  = await getDb();
+  const col = getMatchesCollection(db);
+
+  const inProgress = await col
+    .find({ status: "in_progress" }, { projection: { applicantAId: 1, applicantBId: 1 } })
+    .toArray();
+
+  const ids = new Set<string>();
+  for (const m of inProgress) {
+    ids.add(m.applicantAId.toHexString());
+    ids.add(m.applicantBId.toHexString());
+  }
+  return ids;
+}
+
+/**
  * Returns the top N candidates scored against the given applicant.
  */
 export async function getCandidates(
@@ -59,28 +81,33 @@ export async function getCandidates(
 ): Promise<RankedCandidate[]> {
   const algorithm = ALGORITHM_REGISTRY[algorithmName];
   if (!algorithm) {
-    throw new Error(`Unknown algorithm: ${algorithmName}`);
+    throw new AppError(`Unknown algorithm: ${algorithmName}`, 400);
   }
 
   const questionnaire = await getActiveQuestionnaire();
   if (!questionnaire) {
-    throw new Error("No active questionnaire found");
+    throw new AppError("No active questionnaire found", 404);
   }
 
   const db = await getDb();
   const col = getApplicantsCollection(db);
 
-  const { ObjectId } = await import("mongodb");
-  let targetId: import("mongodb").ObjectId;
+  let targetId: ObjectId;
   try {
     targetId = new ObjectId(applicantId);
   } catch {
-    throw new Error(`Invalid applicant ID: ${applicantId}`);
+    throw new AppError(`Invalid applicant ID: ${applicantId}`, 400);
   }
 
   const target = await col.findOne({ _id: targetId, status: { $in: ["applied", "matched"] } });
   if (!target) {
-    throw new Error(`Active applicant not found: ${applicantId}`);
+    throw new AppError(`Active applicant not found: ${applicantId}`, 404);
+  }
+
+  // Applicants mid-contact (in_progress) are not eligible for new suggestions
+  const activeContactIds = await getActiveContactApplicantIds();
+  if (activeContactIds.has(targetId.toHexString())) {
+    return [];
   }
 
   // Load all other active applicants
@@ -88,8 +115,10 @@ export async function getCandidates(
     .find({ _id: { $ne: targetId }, status: { $in: ["applied", "matched"] } })
     .toArray();
 
+  const eligibleOthers = others.filter((o) => !activeContactIds.has(o._id.toHexString()));
+
   // Hard filters — remove incompatible candidates before scoring
-  const compatible = filterCandidates(target, others);
+  const compatible = filterCandidates(target, eligibleOthers);
 
   // Allow the algorithm to pre-compute anything it needs (e.g. embeddings)
   if (algorithm.prepare) {
@@ -120,12 +149,12 @@ export async function runFullMatchingPass(
 ): Promise<Record<string, RankedCandidate[]>> {
   const algorithm = ALGORITHM_REGISTRY[algorithmName];
   if (!algorithm) {
-    throw new Error(`Unknown algorithm: ${algorithmName}`);
+    throw new AppError(`Unknown algorithm: ${algorithmName}`, 400);
   }
 
   const questionnaire = await getActiveQuestionnaire();
   if (!questionnaire) {
-    throw new Error("No active questionnaire found");
+    throw new AppError("No active questionnaire found", 404);
   }
 
   const db = await getDb();
@@ -136,16 +165,25 @@ export async function runFullMatchingPass(
     return {};
   }
 
+  // Applicants mid-contact (in_progress) sit out this pass entirely — they're
+  // not offered as candidates and don't receive new proposals themselves.
+  const activeContactIds = await getActiveContactApplicantIds();
+  const eligible = applicants.filter((a) => !activeContactIds.has(a._id.toHexString()));
+
+  if (eligible.length < 2) {
+    return {};
+  }
+
   // Allow the algorithm to pre-compute anything it needs (e.g. embeddings)
   if (algorithm.prepare) {
-    await algorithm.prepare(applicants, questionnaire);
+    await algorithm.prepare(eligible, questionnaire);
   }
 
   const results: Record<string, RankedCandidate[]> = {};
 
-  for (const applicant of applicants) {
+  for (const applicant of eligible) {
     const scored: RankedCandidate[] = [];
-    const compatible = filterCandidates(applicant, applicants.filter((o) => !o._id.equals(applicant._id)));
+    const compatible = filterCandidates(applicant, eligible.filter((o) => !o._id.equals(applicant._id)));
 
     for (const other of compatible) {
       const result = algorithm.score(applicant, other, questionnaire);
@@ -166,75 +204,3 @@ export async function runFullMatchingPass(
 }
 
 export { ALGORITHM_REGISTRY };
-
-// ── Couple proposal generation ─────────────────────────────────────────────────
-
-export interface CoupleProposal {
-  applicantAId: ObjectId;
-  applicantAAlias: string;
-  applicantBId: ObjectId;
-  applicantBAlias: string;
-  /** Symmetric score: average of A→B and B→A when both exist */
-  score: number;
-}
-
-/**
- * Derives unique couple proposals from a full matching pass result.
- *
- * Each pair (A, B) is canonicalised so the smaller hex string is always "A".
- * The symmetric score is the average of A→B and B→A scores (however many
- * exist). Pairs that appear only once still get a valid score.
- *
- * Returns proposals sorted by score descending.
- */
-export function generateCoupleProposals(
-  applicants: ApplicantDoc[],
-  results: Record<string, RankedCandidate[]>,
-): CoupleProposal[] {
-  // Quick lookup by hex ID
-  const applicantMap = new Map<string, ApplicantDoc>();
-  for (const a of applicants) {
-    applicantMap.set(a._id.toHexString(), a);
-  }
-
-  // Build directed score map: "aId→bId" → score
-  const scoreMap = new Map<string, number>();
-  for (const [aId, candidates] of Object.entries(results)) {
-    for (const cand of candidates) {
-      scoreMap.set(`${aId}→${cand.applicantId}`, cand.score);
-    }
-  }
-
-  const seen = new Set<string>();
-  const proposals: CoupleProposal[] = [];
-
-  for (const [aId, candidates] of Object.entries(results)) {
-    for (const cand of candidates) {
-      const bId = cand.applicantId;
-      // Canonical order: lexicographically smaller hex ID first
-      const [firstId, secondId] = aId < bId ? [aId, bId] : [bId, aId];
-      const key = `${firstId}:${secondId}`;
-      if (seen.has(key)) continue;
-      seen.add(key);
-
-      const scoreAB = scoreMap.get(`${firstId}→${secondId}`) ?? 0;
-      const scoreBA = scoreMap.get(`${secondId}→${firstId}`) ?? 0;
-      const count   = (scoreAB > 0 ? 1 : 0) + (scoreBA > 0 ? 1 : 0);
-      const symScore = count > 0 ? (scoreAB + scoreBA) / count : 0;
-
-      const applicantA = applicantMap.get(firstId);
-      const applicantB = applicantMap.get(secondId);
-      if (!applicantA || !applicantB) continue;
-
-      proposals.push({
-        applicantAId:    applicantA._id,
-        applicantAAlias: applicantA.alias,
-        applicantBId:    applicantB._id,
-        applicantBAlias: applicantB.alias,
-        score:           symScore,
-      });
-    }
-  }
-
-  return proposals.sort((a, b) => b.score - a.score);
-}

@@ -7,24 +7,24 @@ import {
   getApplicantById,
   getApplicantIdentity,
   deactivateApplicant,
+  regenerateMagicLink,
   listAuditLogs,
   createQuestionnaire,
 } from "../services/admin.service.js";
 import { writeAuditLog, extractAuditContext } from "../middleware/audit.middleware.js";
 import { COOKIE_NAME, COOKIE_MAX_AGE } from "../middleware/auth.middleware.js";
+import { errorResponse } from "../utils/error-response.js";
 import { env } from "../config/env.js";
 import type { ApplicantStatus } from "../models/applicant.model.js";
 import type { AdminRole } from "../models/admin.model.js";
-import type { CreateQuestionnaireInput } from "../validators/admin.validator.js";
+import type { AdminLoginInput, CreateQuestionnaireInput } from "../validators/admin.validator.js";
+import type { ValidatedContext } from "../utils/validated-context.js";
 
 /**
  * POST /api/v1/admin/login
  */
-export async function login(c: Context): Promise<Response> {
-  const { username, password } = c.req.valid("json" as never) as {
-    username: string;
-    password: string;
-  };
+export async function login(c: ValidatedContext<{ json: AdminLoginInput }>): Promise<Response> {
+  const { username, password } = c.req.valid("json");
 
   const token = await adminLogin(username, password);
 
@@ -79,20 +79,13 @@ export async function getApplicants(c: Context): Promise<Response> {
   const limit  = Math.min(100, Math.max(1, parseInt(query.limit ?? "20", 10)));
   const status = query.status as ApplicantStatus | undefined;
   const search = query.search?.trim() || undefined;
-
-  const adminId = c.get("adminId") as string;
-  const auditCtx = extractAuditContext(adminId, c);
-
-  await writeAuditLog(auditCtx, "LIST_APPLICANTS", {
-    metadata: { page, limit, status },
-  });
+  const scheduledDeletion = query.scheduledDeletion === "true";
 
   try {
-    const result = await listApplicants(page, limit, status, search);
+    const result = await listApplicants(page, limit, status, search, scheduledDeletion);
     return c.json({ success: true, ...result });
   } catch (err) {
-    const message = err instanceof Error ? err.message : "Failed to list applicants";
-    return c.json({ success: false, error: message }, 500);
+    return errorResponse(c, err, "Failed to list applicants");
   }
 }
 
@@ -119,8 +112,7 @@ export async function getApplicant(c: Context): Promise<Response> {
 
     return c.json({ success: true, data: applicant });
   } catch (err) {
-    const message = err instanceof Error ? err.message : "Failed to get applicant";
-    return c.json({ success: false, error: message }, 500);
+    return errorResponse(c, err, "Failed to get applicant");
   }
 }
 
@@ -135,17 +127,12 @@ export async function getApplicantIdentityHandler(c: Context): Promise<Response>
   const auditCtx = extractAuditContext(adminId, c);
 
   try {
-    const identity = await getApplicantIdentity(id);
+    // The service decrypts and audit-logs as RESOLVE_IDENTITY in one place
+    const identity = await getApplicantIdentity(id, auditCtx);
 
     if (!identity) {
       return c.json({ success: false, error: "Identity not found" }, 404);
     }
-
-    // Audit log AFTER successful decryption
-    await writeAuditLog(auditCtx, "RESOLVE_IDENTITY", {
-      targetAlias: identity.alias,
-      targetApplicantId: new ObjectId(id),
-    });
 
     return c.json({
       success: true,
@@ -155,14 +142,13 @@ export async function getApplicantIdentityHandler(c: Context): Promise<Response>
       },
     });
   } catch (err) {
-    const message = err instanceof Error ? err.message : "Failed to resolve identity";
-    return c.json({ success: false, error: message }, 500);
+    return errorResponse(c, err, "Failed to resolve identity");
   }
 }
 
 /**
  * DELETE /api/v1/admin/applicants/:id
- * Soft-deletes by setting status to "withdrawn".
+ * Soft-deletes by setting status to "inactive".
  */
 export async function deleteApplicant(c: Context): Promise<Response> {
   const id = c.req.param("id") ?? "";
@@ -187,10 +173,40 @@ export async function deleteApplicant(c: Context): Promise<Response> {
       targetApplicantId: new ObjectId(id),
     });
 
-    return c.json({ success: true, message: "Applicant withdrawn" });
+    return c.json({ success: true, message: "Applicant deactivated" });
   } catch (err) {
-    const message = err instanceof Error ? err.message : "Failed to deactivate applicant";
-    return c.json({ success: false, error: message }, 500);
+    return errorResponse(c, err, "Failed to deactivate applicant");
+  }
+}
+
+/**
+ * POST /api/v1/admin/applicants/:id/regenerate-magic-link
+ * Issues a fresh magic link, invalidating the old one. Audit logged.
+ */
+export async function regenerateMagicLinkHandler(c: Context): Promise<Response> {
+  const id = c.req.param("id") ?? "";
+  const adminId = c.get("adminId") as string;
+
+  const auditCtx = extractAuditContext(adminId, c);
+
+  try {
+    const result = await regenerateMagicLink(id);
+
+    if (!result) {
+      return c.json({ success: false, error: "Applicant not found" }, 404);
+    }
+
+    await writeAuditLog(auditCtx, "REGENERATE_MAGIC_LINK", {
+      targetAlias: result.alias,
+      targetApplicantId: new ObjectId(id),
+    });
+
+    return c.json({
+      success: true,
+      data: { alias: result.alias, magicToken: result.magicToken },
+    });
+  } catch (err) {
+    return errorResponse(c, err, "Failed to regenerate magic link");
   }
 }
 
@@ -198,8 +214,8 @@ export async function deleteApplicant(c: Context): Promise<Response> {
  * POST /api/v1/admin/questionnaires
  * Creates a new questionnaire and deactivates all existing ones.
  */
-export async function createQuestionnaireHandler(c: Context): Promise<Response> {
-  const body = c.req.valid("json" as never) as CreateQuestionnaireInput;
+export async function createQuestionnaireHandler(c: ValidatedContext<{ json: CreateQuestionnaireInput }>): Promise<Response> {
+  const body = c.req.valid("json");
   const adminId = c.get("adminId") as string;
 
   try {
@@ -224,8 +240,7 @@ export async function createQuestionnaireHandler(c: Context): Promise<Response> 
       201
     );
   } catch (err) {
-    const message = err instanceof Error ? err.message : "Failed to create questionnaire";
-    return c.json({ success: false, error: message }, 400);
+    return errorResponse(c, err, "Failed to create questionnaire", 400);
   }
 }
 
@@ -241,7 +256,6 @@ export async function getAuditLogs(c: Context): Promise<Response> {
     const result = await listAuditLogs(page, limit);
     return c.json({ success: true, ...result });
   } catch (err) {
-    const message = err instanceof Error ? err.message : "Failed to list audit logs";
-    return c.json({ success: false, error: message }, 500);
+    return errorResponse(c, err, "Failed to list audit logs");
   }
 }
