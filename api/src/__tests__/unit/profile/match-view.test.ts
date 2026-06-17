@@ -144,14 +144,14 @@ describe("toMatchView – partner profile", () => {
 });
 
 describe("toMatchView – partner instagram", () => {
-  it("includes partnerInstagram for in_progress matches", () => {
+  it("never includes partnerInstagram for in_progress matches (mutual consent not yet given)", () => {
     const match = makeMatch({ status: "in_progress" });
     match.initiatorId = match.applicantAId;
     const view = toMatchView(match, match.applicantBId, undefined, "horizon.swift");
-    expect(view.partnerInstagram).toBe("horizon.swift");
+    expect(view.partnerInstagram).toBeUndefined();
   });
 
-  it("includes partnerInstagram for dating matches", () => {
+  it("includes partnerInstagram for dating matches (mutual acceptance = both consented)", () => {
     const match = makeMatch({ status: "dating" });
     const view = toMatchView(match, match.applicantAId, undefined, "horizon.swift");
     expect(view.partnerInstagram).toBe("horizon.swift");

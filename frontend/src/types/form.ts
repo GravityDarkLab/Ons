@@ -45,6 +45,9 @@ export const step4Schema = z.object({
     error: 'Please select a relationship type',
   }),
   open_to_long_distance: z.boolean(),
+  max_age_gap: z.number().int().min(0).max(40).nullable().optional(),
+  open_to_older: z.boolean().nullable().optional(),
+  open_to_younger: z.boolean().nullable().optional(),
   preferred_physical_traits: z.string().min(1, 'Please describe preferred physical traits'),
   preferred_character_traits: z.string().min(1, 'Please describe preferred character traits'),
   deal_breakers: z.string().min(1, 'Please list your deal breakers'),
@@ -76,7 +79,7 @@ export type FormValues = z.infer<typeof formSchema>
 // ── Payload sent to backend ───────────────────────────────────────────────────
 
 export interface FormPayload {
-  questionnaireVersion: '1.0.0'
+  questionnaireVersion: '1.1.0'
   answers: {
     instagram_handle: string
     location: string
@@ -90,6 +93,9 @@ export interface FormPayload {
     lifestyle: string
     relationship_type: 'Long Term' | 'Short Term' | 'Open to Both' | 'Casual' | 'Not Sure'
     open_to_long_distance: boolean
+    max_age_gap?: number | null
+    open_to_older?: boolean | null
+    open_to_younger?: boolean | null
     preferred_physical_traits: string
     preferred_character_traits: string
     deal_breakers: string

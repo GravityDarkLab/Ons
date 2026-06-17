@@ -6,7 +6,7 @@
  * Filtering them out entirely is the correct behaviour.
  */
 
-import type { ApplicantDoc } from "../models/applicant.model.js";
+import type { ApplicantDoc } from "../../models/applicant.model.js";
 
 function str(answers: Record<string, unknown>, key: string): string {
   const v = answers[key];
@@ -41,10 +41,6 @@ export function isOrientationCompatible(
   );
 }
 
-/**
- * Returns true if someone with `orientation` and `ownGender` would want
- * a partner of `partnerGender`.
- */
 function _wantsGender(
   orientation: string,
   ownGender: string,
@@ -52,15 +48,13 @@ function _wantsGender(
 ): boolean {
   switch (orientation) {
     case "Straight":
-      // Only opposite binary gender; non-binary/unknown → pass through
       if (ownGender === "Male")   return partnerGender === "Female";
       if (ownGender === "Female") return partnerGender === "Male";
       return true;
 
     case "Gay":
-      // Men seeking men; for non-binary or unknown own-gender → pass through
       if (ownGender === "Male")   return partnerGender === "Male";
-      if (ownGender === "Female") return false; // Female + Gay is unusual data — exclude
+      if (ownGender === "Female") return false;
       return true;
 
     case "Lesbian":
@@ -68,7 +62,6 @@ function _wantsGender(
       if (ownGender === "Male")   return false;
       return true;
 
-    // No gender restriction
     case "Bisexual":
     case "Pansexual":
     case "Asexual":
@@ -82,9 +75,6 @@ function _wantsGender(
   }
 }
 
-/**
- * Applies all hard filters and returns only the candidates compatible with `target`.
- */
 export function filterCandidates(
   target: ApplicantDoc,
   candidates: ApplicantDoc[]

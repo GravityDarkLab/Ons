@@ -5,10 +5,9 @@ import type { QuestionnaireDoc } from "../models/questionnaire.model.js";
 import { getDb } from "../db/connection.js";
 import { getApplicantsCollection, getMatchesCollection } from "../db/collections.js";
 import { getActiveQuestionnaire } from "../services/questionnaire.service.js";
-import { baselineAlgorithm } from "./algorithms/baseline.js";
-import { cosineAlgorithm } from "./algorithms/cosine.js";
-import { embeddingCosineAlgorithm } from "./algorithms/embedding-cosine.js";
-import { filterCandidates } from "./filters.js";
+import { isOrientationCompatible } from "./filters/orientation.filter.js";
+import { isAgeCompatible } from "./filters/age.filter.js";
+import { prepare, score } from "./scorer.js";
 
 export interface MatchScore {
   score: number;
@@ -21,34 +20,6 @@ export interface RankedCandidate {
   score: number;
   breakdown: Record<string, number>;
 }
-
-/**
- * Plugin interface that all matching algorithms must implement.
- *
- * Optional prepare() hook:
- * Called once by the engine before any pairwise scoring begins.
- * Use it for expensive one-time setup — e.g. batch-embedding all applicants
- * so that score() can run synchronously from a warm cache.
- * If prepare() is absent the engine skips it (baseline/cosine don't need it).
- */
-export interface Algorithm {
-  name: string;
-  prepare?: (
-    applicants: ApplicantDoc[],
-    questionnaire: QuestionnaireDoc
-  ) => Promise<void>;
-  score(
-    a: ApplicantDoc,
-    b: ApplicantDoc,
-    questionnaire: QuestionnaireDoc
-  ): MatchScore;
-}
-
-const ALGORITHM_REGISTRY: Record<string, Algorithm> = {
-  "baseline": baselineAlgorithm,
-  "cosine": cosineAlgorithm,
-  "embedding-cosine": embeddingCosineAlgorithm,
-};
 
 /**
  * Returns the hex IDs of every applicant currently in an `in_progress` match
@@ -71,19 +42,19 @@ export async function getActiveContactApplicantIds(): Promise<Set<string>> {
   return ids;
 }
 
+function applyFilters(target: ApplicantDoc, candidates: ApplicantDoc[]): ApplicantDoc[] {
+  return candidates.filter(
+    (c) => isOrientationCompatible(target, c) && isAgeCompatible(target, c)
+  );
+}
+
 /**
  * Returns the top N candidates scored against the given applicant.
  */
 export async function getCandidates(
   applicantId: string,
   topN = 10,
-  algorithmName = "embedding-cosine"
 ): Promise<RankedCandidate[]> {
-  const algorithm = ALGORITHM_REGISTRY[algorithmName];
-  if (!algorithm) {
-    throw new AppError(`Unknown algorithm: ${algorithmName}`, 400);
-  }
-
   const questionnaire = await getActiveQuestionnaire();
   if (!questionnaire) {
     throw new AppError("No active questionnaire found", 404);
@@ -104,54 +75,38 @@ export async function getCandidates(
     throw new AppError(`Active applicant not found: ${applicantId}`, 404);
   }
 
-  // Applicants mid-contact (in_progress) are not eligible for new suggestions
   const activeContactIds = await getActiveContactApplicantIds();
   if (activeContactIds.has(targetId.toHexString())) {
     return [];
   }
 
-  // Load all other active applicants
   const others = await col
     .find({ _id: { $ne: targetId }, status: { $in: ["applied", "matched"] } })
     .toArray();
 
-  const eligibleOthers = others.filter((o) => !activeContactIds.has(o._id.toHexString()));
+  const eligible = others.filter((o) => !activeContactIds.has(o._id.toHexString()));
+  const compatible = applyFilters(target, eligible);
 
-  // Hard filters — remove incompatible candidates before scoring
-  const compatible = filterCandidates(target, eligibleOthers);
+  await prepare([target, ...compatible], questionnaire);
 
-  // Allow the algorithm to pre-compute anything it needs (e.g. embeddings)
-  if (algorithm.prepare) {
-    await algorithm.prepare([target, ...compatible], questionnaire);
-  }
-
-  // Score pairwise
   const scored: RankedCandidate[] = compatible.map((other) => {
-    const result = algorithm.score(target, other, questionnaire);
+    const result = score(target, other, questionnaire);
     return {
-      alias: other.alias,
+      alias:       other.alias,
       applicantId: other._id.toHexString(),
-      score: result.score,
-      breakdown: result.breakdown,
+      score:       result.score,
+      breakdown:   result.breakdown,
     };
   });
 
-  // Sort descending by score, return top N
   return scored.sort((a, b) => b.score - a.score).slice(0, topN);
 }
 
 /**
  * Runs a full pairwise matching pass over all active applicants.
- * Returns a map of applicantId -> ranked candidates.
+ * Returns a map of applicantId → ranked candidates.
  */
-export async function runFullMatchingPass(
-  algorithmName = "embedding-cosine"
-): Promise<Record<string, RankedCandidate[]>> {
-  const algorithm = ALGORITHM_REGISTRY[algorithmName];
-  if (!algorithm) {
-    throw new AppError(`Unknown algorithm: ${algorithmName}`, 400);
-  }
-
+export async function runFullMatchingPass(): Promise<Record<string, RankedCandidate[]>> {
   const questionnaire = await getActiveQuestionnaire();
   if (!questionnaire) {
     throw new AppError("No active questionnaire found", 404);
@@ -165,8 +120,6 @@ export async function runFullMatchingPass(
     return {};
   }
 
-  // Applicants mid-contact (in_progress) sit out this pass entirely — they're
-  // not offered as candidates and don't receive new proposals themselves.
   const activeContactIds = await getActiveContactApplicantIds();
   const eligible = applicants.filter((a) => !activeContactIds.has(a._id.toHexString()));
 
@@ -174,26 +127,23 @@ export async function runFullMatchingPass(
     return {};
   }
 
-  // Allow the algorithm to pre-compute anything it needs (e.g. embeddings)
-  if (algorithm.prepare) {
-    await algorithm.prepare(eligible, questionnaire);
-  }
+  await prepare(eligible, questionnaire);
 
   const results: Record<string, RankedCandidate[]> = {};
 
   for (const applicant of eligible) {
-    const scored: RankedCandidate[] = [];
-    const compatible = filterCandidates(applicant, eligible.filter((o) => !o._id.equals(applicant._id)));
+    const others = eligible.filter((o) => !o._id.equals(applicant._id));
+    const compatible = applyFilters(applicant, others);
 
-    for (const other of compatible) {
-      const result = algorithm.score(applicant, other, questionnaire);
-      scored.push({
-        alias: other.alias,
+    const scored: RankedCandidate[] = compatible.map((other) => {
+      const result = score(applicant, other, questionnaire);
+      return {
+        alias:       other.alias,
         applicantId: other._id.toHexString(),
-        score: result.score,
-        breakdown: result.breakdown,
-      });
-    }
+        score:       result.score,
+        breakdown:   result.breakdown,
+      };
+    });
 
     results[applicant._id.toHexString()] = scored
       .sort((a, b) => b.score - a.score)
@@ -203,4 +153,5 @@ export async function runFullMatchingPass(
   return results;
 }
 
-export { ALGORITHM_REGISTRY };
+// Re-export types needed by other modules
+export type { ApplicantDoc, QuestionnaireDoc };

@@ -86,10 +86,9 @@ export function toMatchView(
     if (Object.keys(profile).length > 0) view.partnerProfile = profile;
   }
 
-  // Identity is only revealed once contact is committed: the initiator consented
-  // by initiating, and the target's handle was already revealed to the initiator
-  // at contact time. Never attached while the match is merely proposed.
-  if (partnerInstagram && (doc.status === "in_progress" || doc.status === "dating")) {
+  // Identity is only revealed after mutual acceptance (dating status).
+  // Never attached while the match is proposed or in_progress.
+  if (partnerInstagram && doc.status === "dating") {
     view.partnerInstagram = partnerInstagram;
   }
 
@@ -253,6 +252,47 @@ export async function transitionApplicantStatus(
     { _id: { $in: ids } },
     { $set: { status: newStatus, updatedAt: now, ...extra } }
   );
+}
+
+/**
+ * Recalculates the status of applicants whose active match was deleted
+ * (e.g. because their partner deleted their account). For each affected
+ * applicant, determines the correct status from their remaining matches:
+ *   - active dating match present → stay "dating"
+ *   - proposed/in_progress matches only → revert to "matched"
+ *   - no remaining matches → revert to "applied" (re-enters pool)
+ */
+export async function recalcOrphanedStatuses(
+  affectedIds: ObjectId[]
+): Promise<void> {
+  if (affectedIds.length === 0) return;
+
+  const db       = await getDb();
+  const matchCol = getMatchesCollection(db);
+  const appCol   = getApplicantsCollection(db);
+
+  for (const id of affectedIds) {
+    const matches = await matchCol
+      .find({
+        $or: [{ applicantAId: id }, { applicantBId: id }],
+        status: { $in: ["dating", "proposed", "in_progress"] },
+      })
+      .toArray();
+
+    const hasDating   = matches.some((m) => m.status === "dating");
+    const hasProposed = matches.some((m) => m.status === "proposed" || m.status === "in_progress");
+
+    const newStatus: ApplicantStatus = hasDating
+      ? "dating"
+      : hasProposed
+        ? "matched"
+        : "applied";
+
+    await appCol.updateOne(
+      { _id: id },
+      { $set: { status: newStatus, updatedAt: new Date() } }
+    );
+  }
 }
 
 /**

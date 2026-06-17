@@ -1,5 +1,5 @@
 import { describe, it, expect } from "bun:test";
-import { isOrientationCompatible, filterCandidates } from "../../../matching/filters.js";
+import { isOrientationCompatible, filterCandidates } from "../../../matching/filters/orientation.filter.js";
 import type { ApplicantDoc } from "../../../models/applicant.model.js";
 import { ObjectId } from "mongodb";
 

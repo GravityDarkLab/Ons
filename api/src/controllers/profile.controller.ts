@@ -152,9 +152,11 @@ export async function respond(c: ValidatedContext<{ json: RespondInput }>): Prom
   const applicantId = c.get("applicantId") as string;
   const matchId     = c.req.param("id") as string;
   const { accept }  = c.req.valid("json");
+  const ipAddress   = c.req.header("X-Forwarded-For") ?? c.req.header("X-Real-IP") ?? "unknown";
+  const userAgent   = c.req.header("User-Agent") ?? "unknown";
 
   try {
-    await respondToContact(applicantId, matchId, accept);
+    await respondToContact(applicantId, matchId, accept, { ipAddress, userAgent });
     return c.json({ success: true });
   } catch (err: unknown) {
     return errorResponse(c, err);

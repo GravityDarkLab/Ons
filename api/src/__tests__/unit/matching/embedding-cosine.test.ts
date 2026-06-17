@@ -8,7 +8,7 @@ mock.module("../../../services/embedding.service.js", () => ({
   getOrComputeEmbeddings: mock(async () => new Map()),
 }));
 
-import { embeddingCosineAlgorithm } from "../../../matching/algorithms/embedding-cosine.js";
+import { prepare, score } from "../../../matching/scorer.js";
 import { getOrComputeEmbeddings } from "../../../services/embedding.service.js";
 import { makeApplicant, makeQuestionnaire, FULL_ANSWERS } from "./_fixtures.js";
 import { ObjectId } from "mongodb";
@@ -37,6 +37,7 @@ async function prepareWithVecs(
           applicantId: a._id,
           provider: "test",
           model: "test-model",
+          textVersion: 2,
           createdAt: new Date(),
           ...vecFn(id),
         },
@@ -45,19 +46,19 @@ async function prepareWithVecs(
   );
 
   (getOrComputeEmbeddings as ReturnType<typeof mock>).mockImplementation(async () => embMap);
-  await embeddingCosineAlgorithm.prepare!(applicants, q);
+  await prepare(applicants, q);
 }
 
-describe("embedding-cosine — score() without prepare()", () => {
+describe("scorer — score() without prepare()", () => {
   it("throws when embeddings are not in cache", () => {
     const a = makeApplicant(FULL_ANSWERS);
     const b = makeApplicant(FULL_ANSWERS);
     // Don't call prepare() — cache should be empty after module load
-    expect(() => embeddingCosineAlgorithm.score(a, b, q)).toThrow(/prepare/i);
+    expect(() => score(a, b, q)).toThrow(/prepare/i);
   });
 });
 
-describe("embedding-cosine — prepare() + score() pipeline", () => {
+describe("scorer — prepare() + score() pipeline", () => {
   it("does not throw after prepare() is called", async () => {
     const a = makeApplicant(FULL_ANSWERS);
     const b = makeApplicant(FULL_ANSWERS);
@@ -68,7 +69,7 @@ describe("embedding-cosine — prepare() + score() pipeline", () => {
       dealBreakers: [0.0, 0.0, 1.0],
     }));
 
-    expect(() => embeddingCosineAlgorithm.score(a, b, q)).not.toThrow();
+    expect(() => score(a, b, q)).not.toThrow();
   });
 
   it("identical embedding vectors → score = 1.0", async () => {
@@ -78,8 +79,8 @@ describe("embedding-cosine — prepare() + score() pipeline", () => {
     const sameVec = { profile: [1.0, 0.0], preference: [1.0, 0.0], dealBreakers: [0.0, 1.0] };
     await prepareWithVecs([a, b], () => sameVec);
 
-    const { score } = embeddingCosineAlgorithm.score(a, b, q);
-    expect(score).toBe(1.0);
+    const { score: s } = score(a, b, q);
+    expect(s).toBe(1.0);
   });
 
   it("orthogonal profile vectors → lifestyle_similarity = 0", async () => {
@@ -93,7 +94,7 @@ describe("embedding-cosine — prepare() + score() pipeline", () => {
       dealBreakers: [0.0, 1.0],
     }));
 
-    const { breakdown } = embeddingCosineAlgorithm.score(a, b, q);
+    const { breakdown } = score(a, b, q);
     expect(breakdown.lifestyle_similarity).toBe(0);
   });
 
@@ -109,7 +110,7 @@ describe("embedding-cosine — prepare() + score() pipeline", () => {
       dealBreakers: id === ids[0] ? [1.0, 0.0] : [0.0, 1.0], // A's breaks = B's profile
     }));
 
-    const { breakdown } = embeddingCosineAlgorithm.score(a, b, q);
+    const { breakdown } = score(a, b, q);
     expect(breakdown.deal_breaker_penalty).toBeLessThan(1.0);
   });
 
@@ -126,9 +127,9 @@ describe("embedding-cosine — prepare() + score() pipeline", () => {
       };
     });
 
-    const { score } = embeddingCosineAlgorithm.score(a, b, q);
-    expect(score).toBeGreaterThanOrEqual(0);
-    expect(score).toBeLessThanOrEqual(1);
+    const { score: s } = score(a, b, q);
+    expect(s).toBeGreaterThanOrEqual(0);
+    expect(s).toBeLessThanOrEqual(1);
   });
 
   it("score is rounded to 2 decimal places", async () => {
@@ -140,11 +141,11 @@ describe("embedding-cosine — prepare() + score() pipeline", () => {
       dealBreakers: [0.0, 1.0],
     }));
 
-    const { score } = embeddingCosineAlgorithm.score(a, b, q);
-    expect(score).toBe(Math.round(score * 100) / 100);
+    const { score: s } = score(a, b, q);
+    expect(s).toBe(Math.round(s * 100) / 100);
   });
 
-  it("breakdown contains the expected 6 keys", async () => {
+  it("breakdown contains the expected keys including age_modifier", async () => {
     const a = makeApplicant(FULL_ANSWERS);
     const b = makeApplicant(FULL_ANSWERS);
     await prepareWithVecs([a, b], () => ({
@@ -153,7 +154,7 @@ describe("embedding-cosine — prepare() + score() pipeline", () => {
       dealBreakers: [0.0, 1.0],
     }));
 
-    const { breakdown } = embeddingCosineAlgorithm.score(a, b, q);
+    const { breakdown } = score(a, b, q);
     expect(Object.keys(breakdown)).toEqual(
       expect.arrayContaining([
         "numeric_compatibility",
@@ -162,12 +163,13 @@ describe("embedding-cosine — prepare() + score() pipeline", () => {
         "character_a_wants_b",
         "character_b_wants_a",
         "deal_breaker_penalty",
+        "age_modifier",
       ])
     );
   });
 });
 
-describe("embedding-cosine — prepare() internals", () => {
+describe("scorer — prepare() internals", () => {
   it("calls getOrComputeEmbeddings with the given applicants", async () => {
     const a = makeApplicant(FULL_ANSWERS);
     const b = makeApplicant(FULL_ANSWERS);
@@ -191,9 +193,9 @@ describe("embedding-cosine — prepare() internals", () => {
 
     // Return an empty map → no embeddings stored
     (getOrComputeEmbeddings as ReturnType<typeof mock>).mockResolvedValueOnce(new Map());
-    await embeddingCosineAlgorithm.prepare!([a, b], q);
+    await prepare([a, b], q);
 
     // Both applicants missing from cache → score() should throw
-    expect(() => embeddingCosineAlgorithm.score(a, b, q)).toThrow();
+    expect(() => score(a, b, q)).toThrow();
   });
 });

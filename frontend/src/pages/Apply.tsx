@@ -27,7 +27,7 @@ export default function Apply() {
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [submitError, setSubmitError] = useState<string | null>(null)
   const [submissionKey, setSubmissionKey] = useState<string | null>(null)
-  const [questionnaireVersion, setQuestionnaireVersion] = useState('1.0.0')
+  const [questionnaireVersion, setQuestionnaireVersion] = useState('1.1.0')
 
   // Fetch the active questionnaire on mount to obtain the HMAC submission key.
   // Without it the API will reject the submission.
@@ -82,7 +82,7 @@ export default function Apply() {
     try {
       const values = getValues()
       const result = await submitForm({
-        questionnaireVersion: questionnaireVersion as '1.0.0',
+        questionnaireVersion: questionnaireVersion as '1.1.0',
         answers: {
           instagram_handle: values.instagram_handle,
           location: values.location,
@@ -96,6 +96,9 @@ export default function Apply() {
           lifestyle: values.lifestyle,
           relationship_type: values.relationship_type,
           open_to_long_distance: values.open_to_long_distance,
+          max_age_gap: values.max_age_gap ?? null,
+          open_to_older: values.open_to_older ?? null,
+          open_to_younger: values.open_to_younger ?? null,
           preferred_physical_traits: values.preferred_physical_traits,
           preferred_character_traits: values.preferred_character_traits,
           deal_breakers: values.deal_breakers,
