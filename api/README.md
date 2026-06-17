@@ -124,8 +124,8 @@ curl -X POST http://localhost:3001/api/v1/admin/login \
 | `GET` | `/api/v1/matching/last-run` | Summary of the most recent matching pass |
 | `POST` | `/api/v1/matching/run` | Full pairwise pass over all active applicants |
 
-Both `candidates` and `run` accept an `algorithm` parameter: `baseline`, `cosine`, or `embedding-cosine`.  
-See [`src/matching/README.md`](./src/matching/README.md) for algorithm details.
+Both endpoints use the `embedding-cosine` algorithm (semantic text embeddings + age filter). No `algorithm` parameter is accepted.  
+See [`src/matching/README.md`](./src/matching/README.md) for pipeline details.
 
 ### Applicant portal (session cookie)
 
@@ -141,7 +141,7 @@ Applicants log in with a magic link (issued by an admin) and, on first login, se
 | `GET` | `/api/v1/profile/answers` | Get my questionnaire answers |
 | `PUT` | `/api/v1/profile/answers` | Edit my questionnaire answers |
 | `GET` | `/api/v1/profile/matches` | List my matches with score breakdown |
-| `POST` | `/api/v1/profile/matches/:id/contact` | Request to exchange Instagram handles with a match ⚠ audit logged on acceptance |
+| `POST` | `/api/v1/profile/matches/:id/contact` | Initiate contact with a match — returns ice-breakers and date ideas; no identity revealed yet |
 | `POST` | `/api/v1/profile/matches/:id/respond` | Accept or decline a contact request |
 | `POST` | `/api/v1/profile/matches/:id/withdraw` | Withdraw a contact request |
 | `POST` | `/api/v1/profile/matches/:id/outcome` | Report a match outcome (`success` / `failed`) |
@@ -182,7 +182,7 @@ api/
 - **No PII in applicant profiles** — Instagram handles are AES-256-GCM encrypted in a separate `identities` collection.
 - **Submission keys** — HMAC-SHA256(version, `FORM_SECRET`) prevents questionnaire version enumeration.
 - **Audit logs** — every identity decryption (admin lookup *or* mutual match reveal) is written to `audit_logs` with actor, IP, user-agent, and timestamp before plaintext is returned.
-- **Mutual identity reveal** — an applicant calling `/profile/matches/:id/contact` immediately decrypts and is shown the partner's Instagram handle; the partner sees the initiator's handle as soon as they view that match (`GET /profile/matches`), before accepting or declining.
+- **Mutual identity reveal** — Instagram handles are only decrypted when the target explicitly accepts a contact request (`POST /profile/matches/:id/respond` with `accept: true`). At that point both parties' handles are decrypted simultaneously, each reveal is audit-logged independently, and both parties see the handle on their next `GET /profile/matches` call. A declined or withdrawn request leaves identities sealed.
 - **Rate limiting** — in-memory sliding-window limiter on all public, admin, and applicant-portal routes.
 - **Orientation filter** — incompatible pairs are excluded *before* scoring, never just ranked low.
 - **Account deletion** — applicants can deactivate immediately or schedule a deletion with a cancellable grace period.

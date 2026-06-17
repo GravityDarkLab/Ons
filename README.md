@@ -115,7 +115,7 @@ ons/
 │   │   ├── controllers/            ← Request handlers
 │   │   ├── routes/                 ← Hono route definitions
 │   │   ├── middleware/             ← Auth, rate limiting, audit logging
-│   │   └── __tests__/             ← Full test suite (199 tests)
+│   │   └── __tests__/             ← Full test suite (359 tests)
 │   ├── docs/openapi.yaml           ← Full OpenAPI 3.1 spec
 │   ├── Dockerfile
 │   └── README.md                   ← API setup & reference
@@ -142,7 +142,7 @@ ons/
 3. **Admin runs matching** — `POST /api/v1/matching/run` scores all active applicants pairwise and returns ranked candidates per person.
 4. **Admin resolves identities** — every access to an encrypted identity is audit-logged.
 5. **Applicant uses their portal** — a magic link from the admin grants access to `/profile`, where the applicant reviews their matches and can edit their questionnaire answers.
-6. **Matched applicants connect** — either side can request to exchange Instagram handles; once both accept, identities are decrypted (audit-logged) and shared with both parties.
+6. **Matched applicants connect** — either side can initiate contact; the target receives ice-breaker prompts and date ideas to decide. Only when the target **accepts** are both Instagrams decrypted simultaneously, audit-logged, and revealed to both parties. A declined or withdrawn request leaves identities sealed.
 
 ---
 
@@ -159,14 +159,14 @@ browser ──► frontend (React + Vite)
               │               │        │
           MongoDB         Matching engine
         ┌────┴──────┐    (baseline / cosine /
-        │ applicants│     embedding-cosine)
-        │ identities│
+        │ applicants│     (embedding-cosine
+        │ identities│      + age filter)
         │ embeddings│
         │ audit_logs│
         └───────────┘
 ```
 
-See [`api/src/matching/README.md`](./api/src/matching/README.md) for the full algorithm breakdown — weights, math, embedding batching, and how to add a new algorithm.
+See [`api/src/matching/README.md`](./api/src/matching/README.md) for the full pipeline breakdown — weights, age filter math, embedding batching, and how to extend the system.
 
 ---
 
@@ -175,7 +175,7 @@ See [`api/src/matching/README.md`](./api/src/matching/README.md) for the full al
 | Data | Collection | Who can access |
 |---|---|---|
 | Questionnaire answers | `applicants` | Admin, and the applicant themselves via `/profile` |
-| Instagram handle | `identities` (AES-256-GCM encrypted) | Admin (audit-logged), or a matched applicant after mutual reveal (audit-logged) |
+| Instagram handle | `identities` (AES-256-GCM encrypted) | Admin (audit-logged), or both matched applicants simultaneously after mutual acceptance of a contact request (both audit-logged in one transaction) |
 | Text embeddings | `embeddings` | Matching engine |
 | Admin actions | `audit_logs` | Admin |
 
@@ -332,5 +332,5 @@ Inject secrets via ECS task-definition environment variables or AWS Secrets Mana
 | `bun run seed` | Interactive seed runner — choose questionnaire, applicants, or both; prompts for environment |
 | `bun run build` | Build all workspaces |
 | `bun run typecheck` | Type-check all workspaces |
-| `bun run test` | Run API + frontend test suites in parallel (API: 383 tests, no DB required) |
+| `bun run test` | Run API + frontend test suites in parallel (API: 359 tests, no DB required) |
 | `bun run test:smoke` | Run smoke tests against a live server + DB (requires env vars — see `tests/smoke/`) |

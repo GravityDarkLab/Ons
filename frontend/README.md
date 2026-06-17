@@ -88,7 +88,7 @@ The `/apply` page is a wizard that walks the user through the questionnaire:
 | 1 | `Step1Identity.tsx` | Instagram handle, location |
 | 2 | `Step2AboutYou.tsx` | Birth date, height, work, gender identity, sexual orientation, religion |
 | 3 | `Step3Vibe.tsx` | Vibe words, lifestyle description |
-| 4 | `Step4Preferences.tsx` | Relationship type, long-distance openness, preferred traits, deal breakers |
+| 4 | `Step4Preferences.tsx` | Relationship type, long-distance openness, age gap preference (max gap + open to older/younger, shown conditionally), preferred traits, deal breakers |
 | 5 | `Step5Final.tsx` | Physical affection importance, dream first date, disclaimer agreement |
 
 The questionnaire schema is fetched dynamically from `GET /api/v1/form/questionnaire` so the form always reflects the latest active version. The `X-Submission-Key` returned by that endpoint is sent as a header with `POST /api/v1/form/submit` to prevent version enumeration.
