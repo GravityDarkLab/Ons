@@ -6,6 +6,7 @@ import type { AuditLogDoc } from "../models/auditLog.model.js";
 import type { EmbeddingDoc } from "../models/embedding.model.js";
 import type { AdminDoc } from "../models/admin.model.js";
 import type { MatchDoc } from "../models/match.model.js";
+import type { AppConfigDoc } from "../models/appConfig.model.js";
 
 export const COLLECTION_NAMES = {
   questionnaires: "questionnaires",
@@ -15,6 +16,7 @@ export const COLLECTION_NAMES = {
   embeddings:     "embeddings",
   admins:         "admins",
   matches:        "matches",
+  appConfig:      "app_config",
 } as const;
 
 export function getQuestionnairesCollection(
@@ -45,6 +47,10 @@ export function getAdminsCollection(db: Db): Collection<AdminDoc> {
 
 export function getMatchesCollection(db: Db): Collection<MatchDoc> {
   return db.collection<MatchDoc>(COLLECTION_NAMES.matches);
+}
+
+export function getAppConfigCollection(db: Db): Collection<AppConfigDoc> {
+  return db.collection<AppConfigDoc>(COLLECTION_NAMES.appConfig);
 }
 
 /**

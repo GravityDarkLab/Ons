@@ -1,134 +1,237 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useTranslation, Trans } from 'react-i18next'
-import { runMatching } from '../api/client'
-import Button from '../../components/ui/Button'
-import type { MatchingRun } from '../types'
+import { runMatching, fetchMatchingLastRun } from '../api/client'
+import Spinner from '../../components/ui/Spinner'
+import ConfirmDialog from '../../components/ui/ConfirmDialog'
+import MatchingPulse, { type PulseState } from '../components/MatchingPulse'
+import { useTimeAgo } from '../../lib/timeAgo'
+import type { MatchingRun, MatchingLastRun } from '../types'
+
+const RUN_PHASES = ['phaseLoading', 'phaseScoring', 'phaseSaving'] as const
+const PHASE_INTERVAL_MS = 1700
+
+// ── Component ──────────────────────────────────────────────────────────────
 
 export function Matching() {
   const { t } = useTranslation()
+  const timeAgo = useTimeAgo()
   const [algorithm, setAlgorithm] = useState('embedding-cosine')
   const [loading, setLoading]     = useState(false)
   const [result, setResult]       = useState<MatchingRun | null>(null)
   const [error, setError]         = useState('')
+  const [confirming, setConfirming] = useState(false)
+  const [lastRun, setLastRun]     = useState<MatchingLastRun | null>(null)
+  const [phase, setPhase]         = useState(0)
+
+  useEffect(() => {
+    fetchMatchingLastRun().then(setLastRun).catch(() => {})
+  }, [])
+
+  // Cycle the "working" status line while a run is in flight
+  useEffect(() => {
+    if (!loading) return
+    setPhase(0)
+    const id = setInterval(() => setPhase(p => (p + 1) % RUN_PHASES.length), PHASE_INTERVAL_MS)
+    return () => clearInterval(id)
+  }, [loading])
 
   const ALGORITHMS = [
-    {
-      value: 'embedding-cosine',
-      label: t('admin.matching.embedding'),
-      hint: t('admin.matching.embeddingHint'),
-      recommended: true,
-    },
-    {
-      value: 'baseline',
-      label: t('admin.matching.baseline'),
-      hint: t('admin.matching.baselineHint'),
-      recommended: false,
-    },
-    {
-      value: 'cosine',
-      label: t('admin.matching.cosine'),
-      hint: t('admin.matching.cosineHint'),
-      recommended: false,
-    },
+    { value: 'embedding-cosine', label: t('admin.matching.embedding'), hint: t('admin.matching.embeddingHint'), recommended: true },
+    { value: 'cosine', label: t('admin.matching.cosine'), hint: t('admin.matching.cosineHint') },
+    { value: 'baseline', label: t('admin.matching.baseline'), hint: t('admin.matching.baselineHint') },
   ]
 
-  async function handleRun() {
-    setError(''); setLoading(true); setResult(null)
-    try { setResult(await runMatching(algorithm)) }
-    catch (err) { setError(err instanceof Error ? err.message : t('admin.matching.runError')) }
-    finally { setLoading(false) }
-  }
+  const selectedAlgorithm = ALGORITHMS.find(a => a.value === algorithm)
 
   const isNonEmbedding = algorithm !== 'embedding-cosine'
 
+  const pulseState: PulseState = loading ? 'running' : result ? 'done' : 'idle'
+
+  function handleAlgorithmChange(value: string) {
+    setAlgorithm(value)
+    setResult(null)
+    setConfirming(false)
+    setError('')
+  }
+
+  async function handleConfirm() {
+    if (loading) return
+    setConfirming(false)
+    setError('')
+    setLoading(true)
+    setResult(null)
+    try {
+      const res = await runMatching(algorithm)
+      setResult(res)
+      setLastRun({
+        at: new Date().toISOString(),
+        algorithm: res.algorithm,
+        totalApplicants: res.totalApplicants,
+        durationMs: res.durationMs,
+        couplesProposed: res.couplesProposed,
+        triggeredBy: 'admin',
+      })
+    } catch (err) {
+      setError(err instanceof Error ? err.message : t('admin.matching.runError'))
+    } finally {
+      setLoading(false)
+    }
+  }
+
   return (
-    <div className="space-y-8">
+    <div className="max-w-2xl space-y-6">
+      {/* Page header */}
       <div>
-        <h1 className="text-xl font-semibold text-primary">{t('admin.matching.title')}</h1>
+        <h1 className="text-2xl font-semibold tracking-tight text-primary">{t('admin.matching.title')}</h1>
         <p className="text-sm text-muted mt-0.5">{t('admin.matching.subtitle')}</p>
       </div>
 
-      {/* Algorithm selector */}
-      <div className="bg-surface border border-border rounded-2xl p-5 space-y-4">
-        <p className="text-sm font-medium text-primary">{t('admin.matching.algorithm')}</p>
-        <div className="space-y-2">
-          {ALGORITHMS.map(a => (
-            <label
-              key={a.value}
-              className={`flex items-start gap-3 p-3 rounded-xl border cursor-pointer transition-colors ${
-                algorithm === a.value
-                  ? 'border-accent bg-accent-light'
-                  : 'border-border hover:bg-bg'
-              }`}
-            >
-              <input
-                type="radio"
-                name="algorithm"
-                value={a.value}
-                checked={algorithm === a.value}
-                onChange={() => { setAlgorithm(a.value); setResult(null) }}
-                className="mt-0.5"
-              />
-              <div className="flex-1 min-w-0">
-                <div className="flex items-center gap-2">
-                  <p className="text-sm font-medium text-primary">{a.label}</p>
-                  {a.recommended && (
-                    <span className="inline-flex px-1.5 py-0.5 rounded-md bg-success-light text-success text-xs font-medium">
-                      {t('admin.matching.recommended')}
-                    </span>
-                  )}
-                </div>
-                <p className="text-xs text-muted mt-0.5">{a.hint}</p>
-              </div>
-            </label>
-          ))}
+      {/* Run Matching card */}
+      <div className="bg-surface border border-border rounded-2xl shadow-card overflow-hidden">
+
+        {/* Pulse band — two streams meeting at a beating heart */}
+        <div className="relative h-44 bg-gradient-to-b from-surface-subtle/60 to-surface">
+          <MatchingPulse state={pulseState} className="absolute inset-0" />
+
+          {/* working status line, cycling while the run is in flight */}
+          {loading && (
+            <div className="absolute inset-x-0 bottom-3 text-center">
+              <p key={phase} className="match-fade inline-flex items-center gap-2 text-xs font-medium text-accent-ink">
+                <span className="relative flex h-1.5 w-1.5">
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-accent opacity-75" />
+                  <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-accent" />
+                </span>
+                {t(`admin.matching.${RUN_PHASES[phase]}`)}
+              </p>
+            </div>
+          )}
         </div>
 
-        {isNonEmbedding && (
-          <div className="flex items-start gap-3 rounded-xl bg-error-light border border-error/20 px-4 py-3">
-            <svg className="w-4 h-4 text-error shrink-0 mt-0.5" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-              <path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/>
-              <line x1="12" y1="9" x2="12" y2="13"/>
-              <line x1="12" y1="17" x2="12.01" y2="17"/>
-            </svg>
-            <p className="text-xs text-error leading-relaxed">
-              <Trans i18nKey="admin.matching.multilingualWarning" components={{ bold: <strong /> }} />
-            </p>
+        <div className="p-8 pt-6 space-y-6">
+          {/* Algorithm picker — radio cards instead of a native select */}
+          <div className="space-y-3">
+            <span id="matching-algorithm-label" className="text-xs font-medium uppercase tracking-wider text-muted block">
+              {t('admin.matching.algorithm')}
+            </span>
+            <div role="radiogroup" aria-labelledby="matching-algorithm-label" className="grid gap-2.5 sm:grid-cols-3">
+              {ALGORITHMS.map(a => {
+                const selected = algorithm === a.value
+                return (
+                  <label
+                    key={a.value}
+                    className={`relative flex flex-col gap-1.5 rounded-xl border p-4 transition-all duration-200
+                      ${selected
+                        ? 'border-accent bg-accent-light/50 shadow-card'
+                        : 'border-border hover:border-accent/50 hover:bg-bg'}
+                      ${loading ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}
+                      has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-accent/40`}
+                  >
+                    <input
+                      type="radio"
+                      name="matching-algorithm"
+                      value={a.value}
+                      checked={selected}
+                      disabled={loading}
+                      onChange={() => handleAlgorithmChange(a.value)}
+                      className="sr-only"
+                    />
+                    {/* selection dot */}
+                    <span
+                      aria-hidden="true"
+                      className={`absolute top-3.5 end-3.5 h-3.5 w-3.5 rounded-full border-2 transition-all duration-200
+                        ${selected ? 'border-accent bg-accent' : 'border-border bg-transparent'}`}
+                    />
+                    <span className="text-sm font-semibold text-primary pe-6">{a.label}</span>
+                    {a.recommended && (
+                      <span className="self-start text-[10px] font-medium uppercase tracking-wide text-accent-ink bg-accent-light rounded-full px-2 py-0.5">
+                        {t('admin.matching.recommended')}
+                      </span>
+                    )}
+                    <span className="text-xs text-muted leading-relaxed">{a.hint}</span>
+                  </label>
+                )
+              })}
+            </div>
           </div>
-        )}
 
-        {error && <p className="text-sm text-error">{error}</p>}
+          {/* Multilingual warning */}
+          {isNonEmbedding && (
+            <div className="match-fade flex items-start gap-3 rounded-xl bg-error-light border border-error/20 px-4 py-3">
+              <svg className="w-4 h-4 text-error shrink-0 mt-0.5" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                <path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/>
+                <line x1="12" y1="9" x2="12" y2="13"/>
+                <line x1="12" y1="17" x2="12.01" y2="17"/>
+              </svg>
+              <p className="text-xs text-error leading-relaxed">
+                <Trans i18nKey="admin.matching.multilingualWarning" components={{ bold: <strong /> }} />
+              </p>
+            </div>
+          )}
 
-        <Button onClick={handleRun} loading={loading}>{t('admin.matching.run')}</Button>
+          {/* Error message */}
+          {error && <p className="match-fade text-sm text-error" role="alert">{error}</p>}
+
+          {/* Footer row: last-run info + gold CTA */}
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 border-t border-border pt-6">
+            <p className="inline-flex items-center gap-2 text-xs text-muted">
+              <svg className="h-3.5 w-3.5 text-faint shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                <circle cx="12" cy="12" r="10" />
+                <polyline points="12 6 12 12 16 14" />
+              </svg>
+              {lastRun
+                ? t('admin.matching.lastRunSummary', { time: timeAgo(new Date(lastRun.at).getTime()), count: lastRun.couplesProposed })
+                : t('admin.matching.neverRun')}
+            </p>
+
+            <button
+              onClick={() => setConfirming(true)}
+              disabled={loading}
+              className="cta-gold inline-flex items-center justify-center gap-2 rounded-full text-white px-6 py-3 text-[15px] font-semibold focus:outline-none focus-visible:ring-2 focus-visible:ring-accent/50 focus-visible:ring-offset-2 disabled:opacity-60 disabled:cursor-not-allowed"
+            >
+              {loading && <Spinner />}
+              {t('admin.matching.run')}
+            </button>
+          </div>
+
+          <ConfirmDialog
+            open={confirming}
+            title={t('admin.matching.confirmTitle', { algorithm: selectedAlgorithm?.label ?? algorithm })}
+            description={t('admin.matching.confirmBody')}
+            confirmLabel={t('admin.matching.confirmRun')}
+            cancelLabel={t('admin.matching.cancel')}
+            loading={loading}
+            onConfirm={handleConfirm}
+            onClose={() => setConfirming(false)}
+          />
+        </div>
       </div>
 
-      {/* Run summary */}
+      {/* Result summary card */}
       {result && (
-        <div className="bg-surface border border-border rounded-2xl p-5 space-y-4">
-          <div className="flex items-center gap-2">
-            {/* green checkmark */}
-            <span className="flex h-6 w-6 items-center justify-center rounded-full bg-success-light">
-              <svg className="h-3.5 w-3.5 text-success" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+        <div className="match-rise bg-success-light border border-success/30 rounded-2xl p-6 space-y-4">
+          <div className="flex items-center gap-3">
+            <span className="match-pop flex h-8 w-8 items-center justify-center rounded-full bg-success shadow-card">
+              <svg className="h-4 w-4 text-white" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
                 <polyline points="20 6 9 17 4 12" />
               </svg>
             </span>
-            <p className="text-sm font-medium text-primary">{t('admin.matching.runComplete')}</p>
+            <div>
+              <p className="text-sm font-semibold text-primary">{t('admin.matching.runComplete')}</p>
+              <p className="text-xs text-muted">{t('admin.matching.algorithmUsed', { algorithm: result.algorithm })}</p>
+            </div>
           </div>
 
           <div className="grid grid-cols-3 gap-3">
-            <StatCard label={t('admin.matching.statApplicants')} value={result.totalApplicants} />
-            <StatCard label={t('admin.matching.statCouples')}    value={result.couplesProposed} accent />
-            <StatCard label={t('admin.matching.statDuration')}   value={`${result.durationMs}ms`} />
+            <StatCard label={t('admin.matching.statApplicants')} value={result.totalApplicants} delay={0.1} />
+            <StatCard label={t('admin.matching.statCouples')}    value={result.couplesProposed} accent delay={0.22} />
+            <StatCard label={t('admin.matching.statDuration')}   value={`${result.durationMs}ms`} delay={0.34} />
           </div>
-
-          <p className="text-xs text-muted">
-            {t('admin.matching.algorithmUsed', { algorithm: result.algorithm })}
-          </p>
 
           <Link
             to="/admin/matches"
-            className="inline-flex items-center gap-1.5 text-sm font-medium text-accent hover:underline"
+            className="match-rise inline-flex items-center gap-1.5 text-sm font-medium text-accent-ink hover:underline"
+            style={{ animationDelay: '0.45s' }}
           >
             {t('admin.matching.viewMatches')}
             <svg className="h-3.5 w-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
@@ -141,10 +244,10 @@ export function Matching() {
   )
 }
 
-function StatCard({ label, value, accent }: { label: string; value: string | number; accent?: boolean }) {
+function StatCard({ label, value, accent, delay }: { label: string; value: string | number; accent?: boolean; delay: number }) {
   return (
-    <div className="bg-bg border border-border rounded-xl px-4 py-3">
-      <p className={`text-xl font-semibold ${accent ? 'text-accent' : 'text-primary'}`}>{value}</p>
+    <div className="match-rise bg-surface border border-border rounded-xl px-4 py-3 shadow-card" style={{ animationDelay: `${delay}s` }}>
+      <p className={`text-xl font-semibold ${accent ? 'text-accent-ink' : 'text-primary'}`}>{value}</p>
       <p className="text-xs text-muted mt-0.5">{label}</p>
     </div>
   )

@@ -1,4 +1,5 @@
 import { ObjectId } from "mongodb";
+import { AppError } from "../errors.js";
 import { getDb } from "../db/connection.js";
 import { getApplicantsCollection } from "../db/collections.js";
 import type { FormSubmissionInput } from "../validators/form.validator.js";
@@ -19,12 +20,12 @@ export interface FormSubmissionResult {
   magicToken: string;
 }
 
-export class DuplicateInstagramError extends Error {
-  readonly statusCode = 409;
+export class DuplicateInstagramError extends AppError {
   constructor() {
     super(
       "An account already exists for this handle. " +
-      "Check your saved access link and password. If you need help, contact support."
+      "Check your saved access link and password. If you need help, contact support.",
+      409,
     );
   }
 }
@@ -37,20 +38,19 @@ export async function processFormSubmission(
   const questionnaire = await getQuestionnaireByVersion(input.questionnaireVersion);
 
   if (!questionnaire) {
-    throw new Error("Questionnaire not found");
+    throw new AppError("Questionnaire not found", 404);
   }
 
   if (!questionnaire.isActive) {
-    throw new Error(
-      `Questionnaire version ${input.questionnaireVersion} is no longer active. Please use the latest version.`
+    throw new AppError(
+      `Questionnaire version ${input.questionnaireVersion} is no longer active. Please use the latest version.`,
+      409,
     );
   }
 
   // Verify the submission key
   if (!verifySubmissionKey(input.questionnaireVersion, submissionKey)) {
-    const err = new Error("Invalid or missing submission key.") as Error & { statusCode: number };
-    err.statusCode = 401;
-    throw err;
+    throw new AppError("Invalid or missing submission key.", 401);
   }
 
   // 2. Cross-check answer keys
@@ -59,12 +59,12 @@ export async function processFormSubmission(
 
   const unknownKeys = Object.keys(input.answers).filter((key) => !questionMap.has(key));
   if (unknownKeys.length > 0) {
-    throw new Error(`Unknown answer keys: ${unknownKeys.join(", ")}`);
+    throw new AppError(`Unknown answer keys: ${unknownKeys.join(", ")}`, 400);
   }
 
   for (const [id, question] of questionMap) {
     if (question.required && !(id in input.answers)) {
-      throw new Error(`Required field missing: ${id}`);
+      throw new AppError(`Required field missing: ${id}`, 400);
     }
   }
 

@@ -8,6 +8,7 @@ import { formSchema } from '../types/form'
 import { fetchQuestionnaire, submitForm } from '../api/client'
 import ProgressBar from '../components/ui/ProgressBar'
 import Button from '../components/ui/Button'
+import LifeBackground from '../components/LifeBackground'
 
 import Step1Identity, { FIELDS as STEP1_FIELDS } from '../steps/Step1Identity'
 import Step2AboutYou, { FIELDS as STEP2_FIELDS } from '../steps/Step2AboutYou'
@@ -43,6 +44,19 @@ export default function Apply() {
     resolver: zodResolver(formSchema),
     mode: 'onBlur',
     defaultValues: {
+      instagram_handle: '',
+      location: '',
+      birth_date: '',
+      work: '',
+      gender_identity: '',
+      sexual_orientation: '',
+      religion: '',
+      vibe_words: '',
+      lifestyle: '',
+      preferred_physical_traits: '',
+      preferred_character_traits: '',
+      deal_breakers: '',
+      dream_first_date: '',
       open_to_long_distance: false,
       okay_with_opposite_gender_friends: false,
       religion_deal_breaker: false,
@@ -72,7 +86,7 @@ export default function Apply() {
         answers: {
           instagram_handle: values.instagram_handle,
           location: values.location,
-          age: values.age,
+          birth_date: values.birth_date,
           height_cm: values.height_cm,
           work: values.work,
           gender_identity: values.gender_identity,
@@ -92,7 +106,9 @@ export default function Apply() {
           disclaimer_agreed: true as const,
         },
       }, submissionKey ?? '')
-      navigate(`/success?alias=${encodeURIComponent(result.alias)}&id=${result.applicantId}`)
+      navigate(`/success?alias=${encodeURIComponent(result.alias)}&id=${result.applicantId}`, {
+        state: { magicToken: result.magicToken ?? null },
+      })
     } catch (err) {
       setSubmitError(err instanceof Error ? err.message : t('apply.error'))
       setIsSubmitting(false)
@@ -116,8 +132,9 @@ export default function Apply() {
   )
 
   return (
-    <div className="min-h-screen bg-bg">
-      <div className="mx-auto w-full max-w-form px-4 pt-8 pb-24">
+    <div className="relative min-h-screen bg-bg">
+      <LifeBackground fixed />
+      <div className="relative z-10 mx-auto w-full max-w-form px-4 pt-8 pb-24">
         <div className="mb-6">
           <div className="flex items-center gap-3 mb-6">
             <a href="/" className="flex items-center gap-1.5 text-sm text-muted hover:text-primary transition-colors duration-200" aria-label={t('apply.back')}>

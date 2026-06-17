@@ -4,9 +4,12 @@ import type { Control, FieldErrors } from 'react-hook-form'
 import type { FormValues } from '../types/form'
 import Input from '../components/ui/Input'
 import RadioCardGroup from '../components/ui/RadioCard'
+import Autocomplete from '../components/ui/Autocomplete'
+import { OCCUPATIONS } from '../data/occupations'
+import { RELIGIONS } from '../data/religions'
 
 interface Props { control: Control<FormValues>; errors: FieldErrors<FormValues> }
-export const FIELDS: (keyof FormValues)[] = ['age', 'work', 'gender_identity', 'sexual_orientation', 'religion']
+export const FIELDS: (keyof FormValues)[] = ['birth_date', 'work', 'gender_identity', 'sexual_orientation', 'religion']
 
 // Values stay in English — they drive matching logic in the API
 const genderOptions = [
@@ -32,10 +35,9 @@ export default function Step2AboutYou({ control, errors }: Props) {
       </div>
       <div className="flex flex-col gap-4">
         <div className="grid grid-cols-2 gap-3">
-          <Controller name="age" control={control} render={({ field }) => (
-            <Input label={t('steps.s2.age')} type="number" placeholder={t('steps.s2.agePlaceholder')}
-              error={errors.age?.message} required {...field}
-              onChange={e => field.onChange(e.target.value === '' ? undefined : Number(e.target.value))}
+          <Controller name="birth_date" control={control} render={({ field }) => (
+            <Input label={t('steps.s2.birthDate')} type="date"
+              error={errors.birth_date?.message} required {...field}
               value={field.value ?? ''} />
           )} />
           <Controller name="height_cm" control={control} render={({ field }) => (
@@ -46,8 +48,8 @@ export default function Step2AboutYou({ control, errors }: Props) {
           )} />
         </div>
         <Controller name="work" control={control} render={({ field }) => (
-          <Input label={t('steps.s2.work')} placeholder={t('steps.s2.workPlaceholder')}
-            error={errors.work?.message} required {...field} />
+          <Autocomplete label={t('steps.s2.work')} placeholder={t('steps.s2.workPlaceholder')}
+            error={errors.work?.message} required suggestions={OCCUPATIONS} {...field} />
         )} />
         <Controller name="gender_identity" control={control} render={({ field }) => (
           <RadioCardGroup label={t('steps.s2.gender')} options={genderOptions}
@@ -60,8 +62,8 @@ export default function Step2AboutYou({ control, errors }: Props) {
             error={errors.sexual_orientation?.message} columns={2} />
         )} />
         <Controller name="religion" control={control} render={({ field }) => (
-          <Input label={t('steps.s2.religion')} placeholder={t('steps.s2.religionPlaceholder')}
-            error={errors.religion?.message} required {...field} />
+          <Autocomplete label={t('steps.s2.religion')} placeholder={t('steps.s2.religionPlaceholder')}
+            error={errors.religion?.message} required suggestions={RELIGIONS} {...field} />
         )} />
       </div>
     </div>

@@ -18,6 +18,8 @@ export interface MatchDoc {
   applicantBAlias: string;
   /** Symmetric score: average of A→B and B→A scores */
   score: number;
+  /** Per-dimension scores from the algorithm that produced this match */
+  breakdown?: Record<string, number>;
   algorithm: string;
   status: MatchStatus;
   initiatorId?: ObjectId;       // who clicked "I want to contact"
@@ -25,6 +27,10 @@ export interface MatchDoc {
   dateIdeas?: string[];         // AI-generated, populated at in_progress
   contactRequestedAt?: Date;
   contactRespondedAt?: Date;
+  /** Applicant ids (hex strings) for whom the partner-identity reveal on the
+   *  matches page has already been audit-logged — keeps repeat page loads
+   *  from writing a new log entry every time. */
+  identityViewLoggedFor?: string[];
   notes?: string;
   createdAt: Date;
   updatedAt: Date;

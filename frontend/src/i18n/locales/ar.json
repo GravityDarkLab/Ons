@@ -1,6 +1,31 @@
 {
   "brand": "أنس",
-
+  "common": {
+    "yes": "نعم",
+    "no": "لا",
+    "dismiss": "إغلاق",
+    "timeAgo": {
+      "justNow": "الآن",
+      "minutesAgo_zero": "منذ أقل من دقيقة",
+      "minutesAgo_one": "منذ دقيقة",
+      "minutesAgo_two": "منذ دقيقتين",
+      "minutesAgo_few": "منذ {{count}} دقائق",
+      "minutesAgo_many": "منذ {{count}} دقيقة",
+      "minutesAgo_other": "منذ {{count}} دقيقة",
+      "hoursAgo_zero": "منذ أقل من ساعة",
+      "hoursAgo_one": "منذ ساعة",
+      "hoursAgo_two": "منذ ساعتين",
+      "hoursAgo_few": "منذ {{count}} ساعات",
+      "hoursAgo_many": "منذ {{count}} ساعة",
+      "hoursAgo_other": "منذ {{count}} ساعة",
+      "daysAgo_zero": "منذ أقل من يوم",
+      "daysAgo_one": "منذ يوم",
+      "daysAgo_two": "منذ يومين",
+      "daysAgo_few": "منذ {{count}} أيام",
+      "daysAgo_many": "منذ {{count}} يومًا",
+      "daysAgo_other": "منذ {{count}} يوم"
+    }
+  },
   "invite": {
     "title": "بالدعوة فقط",
     "subtitle": "هذه تجربة مواعدة خاصة. أدخل مفتاح الدعوة للمتابعة.",
@@ -11,7 +36,6 @@
     "noInvite": "لا تملك دعوة؟",
     "noInviteLink": "اسأل صديقاً مسجلاً بالفعل."
   },
-
   "home": {
     "badge": "الخصوصية أولاً · بالدعوة فقط",
     "headline": "ابحث عن\nشريك حياتك.",
@@ -19,13 +43,24 @@
     "cta": "قدّم طلبك الآن",
     "howItWorks": "كيف يعمل",
     "cards": [
-      { "emoji": "🗒️", "title": "أكمل النموذج", "desc": "أجب على استبيان قصير عنك وعمّا تبحث عنه." },
-      { "emoji": "🔒", "title": "نحمي هويتك", "desc": "يُشفَّر حسابك على إنستغرام. تحصل على اسم مستعار. فقط المسؤولون يعرفون الرابط." },
-      { "emoji": "💌", "title": "نقوم بالتطابق", "desc": "إذا رأينا توافقاً، نتواصل مباشرةً. لا خوارزمية تمرير." }
+      {
+        "emoji": "🗒️",
+        "title": "أكمل النموذج",
+        "desc": "أجب على استبيان قصير عنك وعمّا تبحث عنه."
+      },
+      {
+        "emoji": "🔒",
+        "title": "نحمي هويتك",
+        "desc": "يُشفَّر حسابك على إنستغرام. تحصل على اسم مستعار. فقط المسؤولون يعرفون الرابط."
+      },
+      {
+        "emoji": "💌",
+        "title": "نقوم بالتطابق",
+        "desc": "إذا رأينا توافقاً، نتواصل مباشرةً. لا خوارزمية تمرير."
+      }
     ],
-    "footer": "© 2025 أنس · صُنع بعناية"
+    "footer": "© {{year}} أنس · صُنع بعناية"
   },
-
   "apply": {
     "stepOf": "الخطوة {{current}} من {{total}}",
     "back": "رجوع",
@@ -34,7 +69,6 @@
     "submitting": "جارٍ الإرسال…",
     "error": "حدث خطأ ما. يرجى المحاولة مجدداً."
   },
-
   "steps": {
     "s1": {
       "title": "من أنت؟",
@@ -47,8 +81,7 @@
     "s2": {
       "title": "عنك",
       "subtitle": "ساعدنا على فهمك بشكل أفضل.",
-      "age": "العمر",
-      "agePlaceholder": "25",
+      "birthDate": "تاريخ الميلاد",
       "height": "الطول (سم)",
       "heightPlaceholder": "175",
       "heightHint": "اختياري",
@@ -96,20 +129,27 @@
       "disclaimerRequired": "يجب الموافقة للمتابعة."
     }
   },
-
   "success": {
     "title": "أنت في القائمة.",
-    "subtitle": "سنتواصل معك عندما نجد توافقك.",
+    "subtitle": "احفظ هذا الرابط — إنه الطريقة الوحيدة للوصول إلى ملفك الشخصي.",
     "aliasLabel": "اسمك المستعار هو",
-    "aliasHint": "احتفظ بهذا الاسم المستعار — هكذا سنشير إليك عند التواصل.",
-    "privacy": "في هذه الأثناء، هويتك مشفرة بأمان. لن نشارك معلوماتك أبداً مع أطراف ثالثة.",
+    "aliasHint": "هذا هو اسمك الرمزي. سنستخدمه عند التواصل معك.",
+    "unknownAlias": "شخص مجهول",
+    "warning": "هذه هي الطريقة الوحيدة للوصول إلى ملفك الشخصي. بمجرد مغادرتك لهذه الصفحة، لن نتمكن من إظهاره لك مرة أخرى.",
+    "linkLabel": "رابط ملفك الشخصي",
+    "copyLink": "نسخ الرابط",
+    "copied": "تم النسخ!",
+    "download": "تحميل .txt",
+    "done": "تم ←",
+    "laterHint": "يمكنك أيضاً الوصول إلى ملفك الشخصي لاحقاً عبر /profile/login باستخدام رابطك السحري.",
     "backHome": "العودة إلى الرئيسية"
   },
-
   "admin": {
     "subtitle": "المسؤول",
     "login": {
       "title": "وصول المسؤول",
+      "tagline": "حيث تلتقي القلوب المتوافقة.",
+      "subtitle": "الوصول إلى لوحة التحكم",
       "username": "اسم المستخدم",
       "password": "كلمة المرور",
       "submit": "تسجيل الدخول",
@@ -121,7 +161,10 @@
       "matching": "التطابق",
       "matches": "الأزواج",
       "auditLogs": "سجل التدقيق",
-      "signOut": "تسجيل الخروج"
+      "signOut": "تسجيل الخروج",
+      "toggleSidebar": "تبديل الشريط الجانبي",
+      "roleAdmin": "مدير",
+      "roleSuperAdmin": "مدير عام"
     },
     "dashboard": {
       "title": "لوحة التحكم",
@@ -133,33 +176,62 @@
       "quickActions": "إجراءات سريعة",
       "runMatching": "تشغيل التطابق",
       "viewApplicants": "عرض المتقدمين",
-      "auditLogs": "سجل التدقيق"
+      "auditLogs": "سجل التدقيق",
+      "recentMatches": "أحدث الأزواج",
+      "recentActivity": "النشاط الأخير",
+      "noMatchesYet": "لا توجد أزواج حتى الآن.",
+      "noActivityYet": "لا يوجد نشاط حتى الآن.",
+      "viewAll": "عرض الكل ←",
+      "scoreLabel": "الدرجة: {{score}}%",
+      "auditActions": {
+        "RESOLVE_IDENTITY": "تم الكشف عن الهوية",
+        "APPLICANT_REVEAL_IDENTITY": "تم الكشف عن حساب إنستغرام",
+        "VIEW_APPLICANT": "تم عرض المتقدم",
+        "DEACTIVATE_APPLICANT": "تم إلغاء تنشيط المتقدم",
+        "ADMIN_LOGIN": "تسجيل دخول المسؤول",
+        "CREATE_QUESTIONNAIRE": "تم إنشاء الاستبيان",
+        "REGENERATE_MAGIC_LINK": "تم تجديد الرابط السحري",
+        "APPLICANT_SELF_DELETE": "حذف المتقدم لحسابه"
+      }
     },
     "applicants": {
       "title": "المتقدمون",
       "total": "{{count}} إجمالاً",
       "all": "الكل",
-      "active": "نشط",
+      "applied": "تم التقديم",
       "matched": "متطابق",
       "inactive": "غير نشط",
-      "withdrawn": "مسحوب",
+      "dating": "مواعدة",
       "searchPlaceholder": "بحث باسم الكودنيم…",
       "colAlias": "الاسم المستعار",
       "colStatus": "الحالة",
-      "colLocation": "الموقع",
-      "colAge": "العمر",
+      "colVersion": "الإصدار",
+      "colActions": "الإجراءات",
       "colSubmitted": "تاريخ التقديم",
-      "view": "عرض ←",
+      "viewLink": "عرض ←",
       "empty": "لا يوجد متقدمون.",
       "page": "الصفحة {{current}} من {{total}}",
       "prev": "السابق →",
-      "next": "← التالي"
+      "next": "← التالي",
+      "deletedToast": "تم حذف {{alias}}",
+      "scheduledDeletion": "مجدول للحذف",
+      "colDeletesOn": "تاريخ الحذف",
+      "deleteDescription": "يعطّل هذا المتقدم فورًا ويجدول حذفه نهائيًا بعد 180 يومًا.",
+      "viewApplicant": "عرض المتقدم",
+      "viewApplicantAria": "عرض {{alias}}",
+      "deleteApplicant": "حذف المتقدم",
+      "deleteApplicantAria": "حذف {{alias}}",
+      "deleteConfirmTitle": "حذف {{alias}}؟",
+      "deleteError": "فشل الحذف"
     },
     "detail": {
       "back": "المتقدمون",
       "submitted": "قُدِّم بتاريخ {{date}}",
       "withdraw": "سحب",
-      "withdrawConfirm": "سحب هذا المتقدم؟ سيتم تعيين حالته على 'مسحوب'.",
+      "withdrawConfirm": "سحب هذا المتقدم؟ سيتم تعيين حالته على 'غير نشط'.",
+      "version": "الإصدار",
+      "status": "الحالة",
+      "superAdminRequired": "كشف الهوية يتطلب صلاحيات المشرف الأعلى",
       "identity": "الهوية",
       "reveal": "كشف حساب إنستغرام",
       "auditNote": "كل كشف يُسجَّل في سجل التدقيق.",
@@ -168,7 +240,14 @@
       "viewAllMatches": "عرض الكل ←",
       "page": "الصفحة {{current}} من {{total}}",
       "prev": "السابق →",
-      "next": "← التالي"
+      "next": "← التالي",
+      "withdrawn": "تم سحب المتقدم",
+      "magicLink": "الرابط السحري",
+      "regenerateMagicLink": "إعادة إنشاء الرابط السحري",
+      "regenerateMagicLinkConfirm": "سيؤدي هذا إلى إبطال الرابط السحري الحالي للمتقدم وإعادة تعيين كلمة مروره — سيحتاج إلى تعيين كلمة جديدة. هل تريد إنشاء رابط جديد لمشاركته معه مباشرة؟",
+      "newMagicLinkHint": "رابط سحري جديد — شاركه مع المتقدم مباشرة. لن يتم عرضه مرة أخرى.",
+      "copy": "نسخ",
+      "copied": "تم النسخ ✓"
     },
     "matching": {
       "title": "التطابق",
@@ -181,8 +260,17 @@
       "cosineHint": "تشابه جيب التمام على المتجهات العددية",
       "embedding": "التضمين",
       "embeddingHint": "التشابه الدلالي عبر تضمينات النص",
+      "lastRunSummary": "آخر تشغيل: {{time}} · تم اقتراح {{count}} زوج",
+      "neverRun": "لم يتم التشغيل أبداً",
+      "confirmTitle": "تشغيل التطابق باستخدام {{algorithm}}؟",
+      "confirmBody": "سيؤدي هذا إلى إنشاء اقتراحات أزواج جديدة.",
+      "cancel": "إلغاء",
+      "confirmRun": "نعم، تشغيل التطابق",
       "run": "تشغيل التطابق",
       "runError": "فشل التطابق. يرجى المحاولة مجدداً.",
+      "phaseLoading": "جارٍ تحميل المتقدمين…",
+      "phaseScoring": "جارٍ تقييم كل زوج…",
+      "phaseSaving": "جارٍ حفظ المقترحات…",
       "runComplete": "اكتمل التطابق",
       "statApplicants": "متقدمون تم تحليلهم",
       "statCouples": "أزواج مقترحة",
@@ -197,9 +285,12 @@
       "total": "{{count}} زوج",
       "all": "الكل",
       "proposed": "مقترح",
-      "contacted": "تم التواصل",
-      "matched": "متطابق",
+      "in_progress": "قيد التنفيذ",
+      "dating": "مواعدة",
+      "success": "نجاح",
       "failed": "فشل",
+      "declined": "مرفوض",
+      "expired": "منتهي",
       "colCouple": "الزوج",
       "colScore": "الدرجة",
       "colAlgorithm": "الخوارزمية",
@@ -208,9 +299,12 @@
       "searchPlaceholder": "البحث بالاسم المستعار…",
       "empty": "لا توجد أزواج. قم بتشغيل التطابق لتوليد اقتراحات.",
       "markProposed": "إعادة اقتراح",
-      "markContacted": "تم التواصل",
-      "markMatched": "متطابق",
+      "markInProgress": "قيد التنفيذ",
+      "markDating": "مواعدة",
+      "markSuccess": "نجاح",
       "markFailed": "فشل",
+      "markDeclined": "مرفوض",
+      "markExpired": "منتهي",
       "editNotes": "ملاحظات",
       "cancelNotes": "إلغاء",
       "notesPlaceholder": "أضف ملاحظات حول هذا الزوج…",
@@ -219,10 +313,15 @@
       "deleteConfirm": "حذف هذا الاقتراح نهائياً؟",
       "page": "الصفحة {{current}} من {{total}}",
       "prev": "السابق →",
-      "next": "← التالي"
+      "next": "← التالي",
+      "statusUpdated": "تم تحديث الحالة",
+      "notesSaved": "تم حفظ الملاحظات",
+      "deleted": "تم حذف التوافق",
+      "updateError": "فشل التحديث"
     },
     "audit": {
       "title": "سجل التدقيق",
+      "subtitle": "جميع إجراءات الإدارة والمتقدمين",
       "events": "{{count}} أحداث",
       "colAction": "الإجراء",
       "colTarget": "الهدف",
@@ -232,7 +331,192 @@
       "empty": "لا توجد أحداث بعد.",
       "page": "الصفحة {{current}} من {{total}}",
       "prev": "السابق →",
-      "next": "← التالي"
+      "next": "← التالي",
+      "by": "بواسطة {{id}}",
+      "targetAlias": "الاسم المستعار: {{alias}}"
+    }
+  },
+  "portal": {
+    "login": {
+      "yourProfile": "ملفك الشخصي",
+      "magicLinkHint": "يرجى استخدام رابطك السحري للوصول إلى ملفك الشخصي. راجع رسالة التأكيد التي تلقيتها بعد إرسال طلبك.",
+      "backToHome": "العودة إلى الرئيسية",
+      "verifying": "جارٍ التحقق من الرابط…",
+      "linkInvalid": "الرابط غير صالح",
+      "invalidOrExpired": "رابط غير صالح أو منتهي الصلاحية.",
+      "welcome": "مرحبًا بك في Ons",
+      "firstTimeSetup": "أنت تقوم بإعداد ملفك الشخصي لأول مرة.",
+      "choosePassword": "اختر كلمة مرور",
+      "passwordTooShort": "يجب أن تتكون كلمة المرور من 8 أحرف على الأقل.",
+      "setPasswordFailed": "تعذر تعيين كلمة المرور. حاول مرة أخرى.",
+      "suggest": "✨ اقترح لي واحدة",
+      "generating": "جارٍ الإنشاء…",
+      "setPassword": "تعيين كلمة المرور",
+      "settingPassword": "جارٍ تعيين كلمة المرور…",
+      "suggestedPasswordHint": "كلمة المرور المقترحة — انسخها في مكان آمن قبل المتابعة:",
+      "copy": "نسخ",
+      "copied": "تم النسخ ✓",
+      "welcomeBack": "مرحبًا بعودتك",
+      "enterPasswordHint": "أدخل كلمة المرور للوصول إلى ملفك الشخصي.",
+      "password": "كلمة المرور",
+      "signIn": "تسجيل الدخول",
+      "signingIn": "جارٍ تسجيل الدخول…",
+      "invalidCredentials": "كلمة مرور غير صحيحة. حاول مرة أخرى."
+    },
+    "dashboard": {
+      "loading": "جارٍ التحميل…",
+      "loadError": "فشل تحميل الملف الشخصي",
+      "openSettings": "فتح الإعدادات",
+      "hello": "مرحبًا، {{alias}}",
+      "findingMatches": "نبحث عن أفضل التوافقات لك. سيتم إشعارك عندما تكون جاهزة.",
+      "threshold": "الحد الأدنى: {{percent}}%",
+      "submitted": "تم الإرسال في {{date}}",
+      "minScore": "الحد الأدنى لنسبة التوافق:",
+      "dormantTitle": "حسابك في وضع السكون",
+      "dormantBody": "شكرًا لكونك جزءًا من Ons.",
+      "nextPhaseTitle": "لا توجد توافقات حالياً",
+      "nextPhaseBody": "ستصل توافقات جديدة مع جولة التوفيق القادمة — عُد غداً.",
+      "noneAtThresholdTitle": "لا توافقات عند هذه النسبة",
+      "noneAtThresholdBody": "اخفض المؤشر لرؤية المزيد من التوافقات.",
+      "deletion": {
+        "title": "الوقت المتبقي حتى الحذف",
+        "body": "سيتم حذف حسابك وبياناتك نهائياً عند وصول هذا العداد إلى الصفر.",
+        "days": "أيام",
+        "hours": "ساعات",
+        "minutes": "دقائق",
+        "seconds": "ثوانٍ",
+        "cancelButton": "الاحتفاظ بحسابي",
+        "cancelTitle": "الاحتفاظ بحسابي",
+        "cancelConfirm": "سيؤدي هذا إلى إلغاء الحذف المجدول واستعادة حسابك إلى مجموعة التوفيق.",
+        "cancelYes": "نعم، احتفظ بحسابي",
+        "cancelFailed": "فشل إلغاء الحذف.",
+        "deleteNowButton": "حذف حسابي الآن",
+        "deleteNowTitle": "حذف الحساب الآن",
+        "deleteNowConfirm": "سيؤدي هذا إلى حذف حسابك وجميع البيانات المرتبطة به فوراً وبشكل نهائي. لا يمكن التراجع عن هذا الإجراء.",
+        "deleteNowYes": "نعم، احذف الآن",
+        "deleteNowFailed": "فشل حذف الحساب."
+      }
+    },
+    "matches": {
+      "empty": "لا توجد توافقات لعرضها.",
+      "reachOut": "أريد التواصل",
+      "wantsToMeet": "{{alias}} يرغب في لقائك",
+      "requested": "طُلب {{time}}",
+      "accept": "قبول",
+      "decline": "رفض",
+      "waiting": "في الانتظار",
+      "dating": "أنت تواعد {{alias}}",
+      "matchScore": "التوافق: {{percent}}%",
+      "howDidItGo": "كيف سارت الأمور؟",
+      "workedOut": "نجح الأمر ✓",
+      "didntWork": "لم ينجح",
+      "iceBreakers": "كاسرات الجليد",
+      "dateIdeas": "أفكار للمواعدة",
+      "aboutPartner": "نبذة عن {{alias}}",
+      "scoreBreakdown": "تفاصيل النتيجة",
+      "genericError": "حدث خطأ ما. حاول مرة أخرى.",
+      "status": {
+        "success": "نجاح",
+        "failed": "فشل",
+        "declined": "مرفوض",
+        "expired": "منتهي"
+      },
+      "confirmContactTitle": "إنه توافق!",
+      "confirmContactBody": "{{alias}} هو @{{handle}} على إنستغرام. مستعد للتواصل؟ إذا تخطيت الآن، سيُغلق هذا التوافق نهائياً وستنتظر جولة التوفيق القادمة.",
+      "confirmContactYes": "نعم، صِلنا",
+      "confirmContactNo": "لا، أتخطى",
+      "withdrawNotice": "تم إغلاق التوافق. ستصل توافقات جديدة مع جولة التوفيق القادمة — عُد غداً.",
+      "whyThisMatch": "لماذا هذا التوافق؟",
+      "breakdown": {
+        "relationship_type": {
+          "label": "أهداف العلاقة",
+          "description": "مدى توافق أهدافكما من العلاقة (طويلة الأمد، قصيرة الأمد، إلخ)."
+        },
+        "deal_breakers": {
+          "label": "نقاط رفض قاطعة",
+          "description": "هل تظهر الأمور التي يرفضها أحدكما في نمط حياة الآخر."
+        },
+        "religion_compatibility": {
+          "label": "التوافق الديني",
+          "description": "مدى توافق خلفياتكما الدينية وانفتاحكما."
+        },
+        "affection_importance": {
+          "label": "أهمية المودة الجسدية",
+          "description": "مدى تقارب وجهات نظركما حول المودة الجسدية."
+        },
+        "long_distance": {
+          "label": "العلاقة عن بعد",
+          "description": "هل أنتما منفتحان على علاقة عن بعد."
+        },
+        "lifestyle": {
+          "label": "نمط الحياة",
+          "description": "مدى تشابه أنماط حياتكما اليومية."
+        },
+        "numeric_compatibility": {
+          "label": "التفضيلات الأساسية",
+          "description": "مدى توافق تفضيلات علاقتكما من الناحية الهيكلية."
+        },
+        "lifestyle_similarity": {
+          "label": "نمط الحياة",
+          "description": "مدى تشابه أنماط حياتكما بناءً على ما كتبتماه."
+        },
+        "character_cross_match": {
+          "label": "توافق الشخصية",
+          "description": "مدى توافق شخصياتكما مع ما يبحث عنه كل منكما."
+        },
+        "character_a_wants_b": {
+          "label": "شخصيتهم مقابل ما تبحث عنه",
+          "description": "مدى توافق شخصية الطرف الآخر مع ما قلت إنك تبحث عنه."
+        },
+        "character_b_wants_a": {
+          "label": "شخصيتك مقابل ما يبحثون عنه",
+          "description": "مدى توافق شخصيتك مع ما قاله الطرف الآخر إنه يبحث عنه."
+        },
+        "deal_breaker_penalty": {
+          "label": "نقاط رفض قاطعة",
+          "description": "هل تظهر الأمور التي يرفضها أحدكما في نمط حياة الآخر."
+        }
+      }
+    },
+    "settings": {
+      "title": "الإعدادات",
+      "close": "إغلاق الإعدادات",
+      "signOut": "تسجيل الخروج",
+      "changePassword": "تغيير كلمة المرور",
+      "currentPassword": "كلمة المرور الحالية",
+      "newPassword": "كلمة المرور الجديدة",
+      "confirmPassword": "تأكيد كلمة المرور الجديدة",
+      "currentRequired": "كلمة المرور الحالية مطلوبة.",
+      "newTooShort": "يجب أن تتكون كلمة المرور الجديدة من 8 أحرف على الأقل.",
+      "noMatch": "كلمتا المرور غير متطابقتين.",
+      "updateFailed": "تعذر تحديث كلمة المرور.",
+      "updated": "تم تحديث كلمة المرور ✓",
+      "saving": "جارٍ الحفظ…",
+      "save": "حفظ كلمة المرور الجديدة",
+      "sessionTitle": "الجلسة",
+      "sessionNote": "تسجيل الخروج من هذا الجهاز. يبقى رابطك السحري وكلمة مرورك صالحين.",
+      "deactivateTitle": "إلغاء تفعيل الحساب",
+      "deactivateNote": "بعد إلغاء التفعيل، سيُجدول حسابك للحذف خلال 180 يومًا.",
+      "deactivateButton": "إلغاء تفعيل حسابي",
+      "deactivateConfirm": "هل أنت متأكد؟ لا يمكن التراجع عن هذا. سيُجدول حسابك للحذف خلال 180 يومًا.",
+      "deactivateYes": "نعم، إلغاء التفعيل",
+      "cancel": "إلغاء",
+      "deactivateFailed": "تعذر إلغاء تفعيل الحساب.",
+      "alreadyDeactivated": "حسابك معطّل بالفعل. يمكنك إلغاء الحذف المجدول أو تنفيذه فورًا من لوحة التحكم."
+    },
+    "profile": {
+      "tabMatches": "التوافقات",
+      "tabProfile": "ملفي الشخصي",
+      "intro": "حدِّث إجاباتك في أي وقت — سيتم استخدامها في البحث القادم عن توافقاتك.",
+      "instagramLocked": "لتغيير معرّف الإنستغرام الخاص بك، يرجى التواصل مع المشرفين.",
+      "save": "حفظ التغييرات",
+      "saved": "تم تحديث ملفك الشخصي.",
+      "saveError": "تعذّر حفظ التغييرات. يرجى المحاولة مرة أخرى.",
+      "loadError": "تعذّر تحميل ملفك الشخصي.",
+      "unsaved": "لديك تغييرات غير محفوظة",
+      "adminLockedNote": "لا يمكن تغيير هذه البيانات إلا من قبل مشرف — تواصل معنا إذا كان هناك ما يحتاج إلى تصحيح.",
+      "savedButton": "تم الحفظ",
+      "yearsOld": "{{age}} عامًا"
     }
   }
 }

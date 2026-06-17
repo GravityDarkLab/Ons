@@ -1,30 +1,45 @@
 import { ObjectId } from "mongodb";
+import { AppError } from "../errors.js";
 import { getDb } from "../db/connection.js";
-import { getApplicantsCollection, getMatchesCollection } from "../db/collections.js";
-import type { ApplicantDoc } from "../models/applicant.model.js";
+import {
+  getApplicantsCollection,
+  getMatchesCollection,
+  getIdentitiesCollection,
+  getEmbeddingsCollection,
+} from "../db/collections.js";
+import type { ApplicantDoc, ApplicantStatus } from "../models/applicant.model.js";
 import type { MatchDoc } from "../models/match.model.js";
 import {
   toMatchView,
   assertMatchTransition,
   expireConflictingMatches,
   transitionApplicantStatus,
+  applyMatchStatusSideEffects,
+  DELETION_GRACE_MS,
   type ApplicantMatchView,
-} from "./match.service.js";
-import { resolveIdentityById } from "../privacy/identity.service.js";
+} from "./match-state.service.js";
+import {
+  resolveIdentityById,
+  revealIdentityById,
+  identityExistsById,
+} from "../privacy/identity.service.js";
 import { hashMagicToken } from "../privacy/magic-token.js";
 import { writeAuditLog } from "../middleware/audit.middleware.js";
 import { generateIceBreakers } from "./icebreaker.service.js";
+import { embedApplicant } from "./embedding.service.js";
 
 // ── Auth ──────────────────────────────────────────────────────────────────────
 
 export type LoginAttemptResult =
   | { status: "ok"; applicant: ApplicantDoc }
   | { status: "first_login" }
-  | null; // wrong token or wrong password
+  | { status: "password_required" }
+  | null; // unknown magic token, or wrong password
 
 export async function loginWithMagicToken(
   magicToken: string,
-  password?: string
+  password?: string,
+  currentApplicantId?: string | null
 ): Promise<LoginAttemptResult> {
   const db  = await getDb();
   const col = getApplicantsCollection(db);
@@ -32,9 +47,15 @@ export async function loginWithMagicToken(
   const doc = await col.findOne({ magicToken: hashMagicToken(magicToken) });
   if (!doc) return null;
 
+  // Already signed in as this applicant — refresh the session instead of
+  // re-prompting for a password (e.g. revisiting the magic link).
+  if (currentApplicantId && doc._id.equals(currentApplicantId)) {
+    return { status: "ok", applicant: doc };
+  }
+
   if (doc.passwordHash === null) return { status: "first_login" };
 
-  if (!password) return null;
+  if (!password) return { status: "password_required" };
   const ok = await Bun.password.verify(password, doc.passwordHash);
   return ok ? { status: "ok", applicant: doc } : null;
 }
@@ -50,10 +71,7 @@ export async function setPassword(
   if (!doc) return null;
 
   if (doc.passwordHash !== null) {
-    throw Object.assign(
-      new Error("Password already set. Use change-password to update it."),
-      { statusCode: 409 }
-    );
+    throw new AppError("Password already set. Use change-password to update it.", 409);
   }
 
   const passwordHash = await Bun.password.hash(newPassword);
@@ -71,17 +89,14 @@ export async function changePassword(
   const col = getApplicantsCollection(db);
 
   const doc = await col.findOne({ _id: new ObjectId(applicantId) });
-  if (!doc) throw Object.assign(new Error("Not found"), { statusCode: 404 });
+  if (!doc) throw new AppError("Not found", 404);
 
   if (!doc.passwordHash) {
-    throw Object.assign(
-      new Error("No password set. Use set-password for first-time setup."),
-      { statusCode: 400 }
-    );
+    throw new AppError("No password set. Use set-password for first-time setup.", 400);
   }
 
   const ok = await Bun.password.verify(currentPassword, doc.passwordHash);
-  if (!ok) throw Object.assign(new Error("Current password is incorrect"), { statusCode: 401 });
+  if (!ok) throw new AppError("Current password is incorrect", 401);
 
   const passwordHash = await Bun.password.hash(newPassword);
   const now = new Date();
@@ -96,6 +111,7 @@ export interface ApplicantProfileView {
   status: ApplicantDoc["status"];
   scoreThreshold: number;
   createdAt: Date;
+  deletionScheduledAt: Date | null;
 }
 
 export async function getMyProfile(applicantId: string): Promise<ApplicantProfileView | null> {
@@ -111,7 +127,71 @@ export async function getMyProfile(applicantId: string): Promise<ApplicantProfil
     status:         doc.status,
     scoreThreshold: doc.scoreThreshold ?? 0.8,
     createdAt:      doc.createdAt,
+    deletionScheduledAt: doc.deletionScheduledAt ?? null,
   };
+}
+
+// ── Answers (self-service questionnaire edits) ───────────────────────────────
+
+// Never sent to the applicant editor: instagram_handle is defense in depth
+// (identities live in a separate, encrypted collection), disclaimer_agreed
+// is a one-time consent with no display value.
+const HIDDEN_ANSWER_KEYS = new Set(["instagram_handle", "disclaimer_agreed"]);
+
+// Shown to the applicant (read-only) but never overwritten by them:
+// birth_date and gender_identity are identity facts only admins may change.
+const LOCKED_ANSWER_KEYS = new Set([
+  ...HIDDEN_ANSWER_KEYS,
+  "birth_date",
+  "gender_identity",
+]);
+
+export async function getMyAnswers(
+  applicantId: string
+): Promise<Record<string, unknown> | null> {
+  const db  = await getDb();
+  const col = getApplicantsCollection(db);
+
+  const doc = await col.findOne(
+    { _id: new ObjectId(applicantId) },
+    { projection: { answers: 1 } }
+  );
+  if (!doc) return null;
+
+  return Object.fromEntries(
+    Object.entries(doc.answers ?? {}).filter(([key]) => !HIDDEN_ANSWER_KEYS.has(key))
+  );
+}
+
+export async function updateMyAnswers(
+  applicantId: string,
+  updates: Record<string, unknown>
+): Promise<void> {
+  const db  = await getDb();
+  const col = getApplicantsCollection(db);
+  const oid = new ObjectId(applicantId);
+
+  const doc = await col.findOne({ _id: oid }, { projection: { answers: 1, alias: 1 } });
+  if (!doc) throw new AppError("Not found", 404);
+
+  // Merge over the stored answers so locked keys survive untouched.
+  // The validator already rejects them in `updates`; filtering again here
+  // keeps the invariant even if a future caller skips validation.
+  const merged: Record<string, unknown> = { ...(doc.answers ?? {}) };
+  for (const [key, value] of Object.entries(updates)) {
+    if (LOCKED_ANSWER_KEYS.has(key)) continue;
+    merged[key] = value;
+  }
+  // height_cm is the only optional field — absence in a full-form update means cleared
+  if (!("height_cm" in updates)) delete merged["height_cm"];
+
+  await col.updateOne({ _id: oid }, { $set: { answers: merged, updatedAt: new Date() } });
+
+  // Refresh embeddings in the background (same as submission) so the next
+  // matching run scores against the updated text
+  embedApplicant(oid, merged).catch((err) =>
+    console.error(`[profile] Background embedding refresh failed for ${doc.alias}:`, err)
+  );
 }
 
 // ── Matches ───────────────────────────────────────────────────────────────────
@@ -119,7 +199,8 @@ export async function getMyProfile(applicantId: string): Promise<ApplicantProfil
 export async function getMyMatches(
   applicantId: string,
   threshold: number,
-  limit: number
+  limit: number,
+  audit: { ipAddress: string; userAgent: string } = { ipAddress: "unknown", userAgent: "unknown" },
 ): Promise<ApplicantMatchView[]> {
   const db       = await getDb();
   const appCol   = getApplicantsCollection(db);
@@ -145,7 +226,60 @@ export async function getMyMatches(
     .limit(limit)
     .toArray();
 
-  return docs.map((d) => toMatchView(d, oid));
+  // Batch-load partner answers so each card can show who the match is —
+  // answers hold only public questionnaire fields, never the Instagram handle
+  const partnerIds = docs.map((d) =>
+    d.applicantAId.equals(oid) ? d.applicantBId : d.applicantAId
+  );
+  const partners = partnerIds.length
+    ? await appCol
+        .find({ _id: { $in: partnerIds } }, { projection: { answers: 1 } })
+        .toArray()
+    : [];
+  const answersById = new Map(partners.map((p) => [p._id.toHexString(), p.answers]));
+
+  // Reveal partner identities for committed matches (in_progress/dating) —
+  // the contact flow already revealed the target's handle to the initiator,
+  // and the initiator consented by initiating. The decryption is audit-logged
+  // once per applicant per match, not on every page load.
+  const instagramByMatchId = new Map<string, string>();
+  for (const d of docs) {
+    if (d.status !== "in_progress" && d.status !== "dating") continue;
+    const partnerId = d.applicantAId.equals(oid) ? d.applicantBId : d.applicantAId;
+    const alreadyLogged = d.identityViewLoggedFor?.includes(applicantId) ?? false;
+
+    const handle = alreadyLogged
+      ? await resolveIdentityById(partnerId)
+      : await revealIdentityById(partnerId, {
+          actor: { actorId: applicantId, ipAddress: audit.ipAddress, userAgent: audit.userAgent },
+          action: "APPLICANT_REVEAL_IDENTITY",
+          targetAlias: d.applicantAId.equals(oid) ? d.applicantBAlias : d.applicantAAlias,
+          metadata: {
+            actorType: "applicant",
+            matchId: d._id.toHexString(),
+            reason: "match_view",
+          },
+        });
+    if (!handle) continue;
+    instagramByMatchId.set(d._id.toHexString(), handle);
+
+    if (!alreadyLogged) {
+      await matchCol.updateOne(
+        { _id: d._id },
+        { $addToSet: { identityViewLoggedFor: applicantId } }
+      );
+    }
+  }
+
+  return docs.map((d) => {
+    const partnerId = d.applicantAId.equals(oid) ? d.applicantBId : d.applicantAId;
+    return toMatchView(
+      d,
+      oid,
+      answersById.get(partnerId.toHexString()),
+      instagramByMatchId.get(d._id.toHexString())
+    );
+  });
 }
 
 // ── Contact flow ──────────────────────────────────────────────────────────────
@@ -169,12 +303,12 @@ export async function requestContact(
 
   let matchOid: ObjectId;
   try { matchOid = new ObjectId(matchId); } catch {
-    throw Object.assign(new Error("Match not found"), { statusCode: 404 });
+    throw new AppError("Match not found", 404);
   }
 
   // Load match to authorise the actor before the atomic write
   const match = await matchCol.findOne({ _id: matchOid });
-  if (!match) throw Object.assign(new Error("Match not found"), { statusCode: 404 });
+  if (!match) throw new AppError("Match not found", 404);
 
   assertMatchTransition(match, "contact", actorId);
 
@@ -192,10 +326,13 @@ export async function requestContact(
     ? await generateIceBreakers(actorDoc, targetDoc)
     : { questions: [], dateIdeas: [] };
 
-  // Pre-flight identity check before any mutation — prevents stuck state if identity is missing
-  const targetInstagram = await resolveIdentityById(targetId);
-  if (!targetInstagram) {
-    throw Object.assign(new Error("Target identity not found"), { statusCode: 404 });
+  // Pre-flight identity check before any mutation — avoids an atomic write
+  // attempt in the common case where the identity is already gone. This is
+  // existence-only; the decrypt (and its audit log) happens below via
+  // revealIdentityById, after the atomic claim but before any irreversible
+  // side effects on the actor's other matches.
+  if (!(await identityExistsById(targetId))) {
+    throw new AppError("Target identity not found", 404);
   }
 
   const now = new Date();
@@ -212,33 +349,60 @@ export async function requestContact(
         dateIdeas,
         contactRequestedAt: now,
         updatedAt:          now,
+        // The contact reveal is logged below — repeat views on the matches
+        // page must not write another entry for the initiator
+        identityViewLoggedFor: [applicantId],
       },
     },
     { returnDocument: "after" },
   );
 
   if (!claimed) {
-    throw Object.assign(
-      new Error("Match is no longer available for contact — it may have been claimed concurrently"),
-      { statusCode: 409 },
-    );
+    throw new AppError("Match is no longer available for contact — it may have been claimed concurrently", 409);
   }
 
-  // Write audit log after winning the race (identity was pre-fetched without side-effects)
-  await writeAuditLog(
-    { adminId: applicantId, ipAddress: audit.ipAddress, userAgent: audit.userAgent },
-    "APPLICANT_REVEAL_IDENTITY",
-    {
-      targetApplicantId: targetId,
-      metadata: {
-        actorType: "applicant",
-        matchId,
-        targetAlias: match.applicantAId.equals(actorId)
-          ? match.applicantBAlias
-          : match.applicantAAlias,
+  // Decrypt + audit log after winning the race — revealIdentityById logs
+  // before the plaintext is returned. Done before expireConflictingMatches
+  // below: if the target's identity vanished between the pre-flight check
+  // and here (e.g. they self-deleted concurrently), roll the claim back to
+  // "proposed" instead of leaving it stuck in_progress with the actor's
+  // other matches already expired.
+  const targetInstagram = await revealIdentityById(targetId, {
+    actor: { actorId: applicantId, ipAddress: audit.ipAddress, userAgent: audit.userAgent },
+    action: "APPLICANT_REVEAL_IDENTITY",
+    targetAlias: match.applicantAId.equals(actorId)
+      ? match.applicantBAlias
+      : match.applicantAAlias,
+    metadata: {
+      actorType: "applicant",
+      matchId,
+      reason: "contact_request",
+    },
+  });
+
+  if (!targetInstagram) {
+    await matchCol.updateOne(
+      { _id: matchOid, status: "in_progress", initiatorId: actorId },
+      {
+        $set:   { status: "proposed", updatedAt: new Date() },
+        $unset: {
+          initiatorId:           "",
+          iceBreakers:           "",
+          dateIdeas:             "",
+          contactRequestedAt:    "",
+          identityViewLoggedFor: "",
+        },
       },
-    }
-  );
+    );
+    throw new AppError("Target identity not found", 404);
+  }
+
+  // Exclusive contact: committing to one match expires the initiator's other
+  // proposed/in_progress matches. The target's other matches are untouched —
+  // they haven't acted yet. (Accept later expires both sides as before.)
+  // Runs only after the reveal above succeeds, so a failed request never
+  // costs the actor their other matches.
+  await expireConflictingMatches([actorId], matchOid);
 
   return { targetInstagram, iceBreakers: questions, dateIdeas };
 }
@@ -255,29 +419,82 @@ export async function respondToContact(
 
   let matchOid: ObjectId;
   try { matchOid = new ObjectId(matchId); } catch {
-    throw Object.assign(new Error("Match not found"), { statusCode: 404 });
+    throw new AppError("Match not found", 404);
   }
 
   const match = await matchCol.findOne({ _id: matchOid });
-  if (!match) throw Object.assign(new Error("Match not found"), { statusCode: 404 });
+  if (!match) throw new AppError("Match not found", 404);
 
   assertMatchTransition(match, "respond", actorId);
 
   const now = new Date();
 
+  // Atomic claim — the status filter prevents concurrent accept/decline from
+  // both applying after passing assertMatchTransition on the same snapshot
+  const claimed = await matchCol.findOneAndUpdate(
+    { _id: matchOid, status: "in_progress" },
+    {
+      $set: {
+        status:             accept ? "dating" : "declined",
+        contactRespondedAt: now,
+        updatedAt:          now,
+      },
+    },
+    { returnDocument: "after" },
+  );
+
+  if (!claimed) {
+    throw new AppError("Match was already responded to", 409);
+  }
+
   if (accept) {
-    await matchCol.updateOne(
-      { _id: matchOid },
-      { $set: { status: "dating", contactRespondedAt: now, updatedAt: now } }
-    );
     const ids = [match.applicantAId, match.applicantBId];
-    await transitionApplicantStatus(ids, "dating");
-    await expireConflictingMatches(ids);
-  } else {
-    await matchCol.updateOne(
-      { _id: matchOid },
-      { $set: { status: "declined", contactRespondedAt: now, updatedAt: now } }
-    );
+    await applyMatchStatusSideEffects("dating", ids);
+  }
+}
+
+/**
+ * Initiator backs out after the identity reveal. The match becomes "declined"
+ * (terminal) so the pair is permanently excluded from future matching runs —
+ * the applicant waits for the next matching phase for fresh matches.
+ */
+export async function withdrawContact(
+  applicantId: string,
+  matchId: string
+): Promise<void> {
+  const db       = await getDb();
+  const matchCol = getMatchesCollection(db);
+
+  const actorId = new ObjectId(applicantId);
+
+  let matchOid: ObjectId;
+  try { matchOid = new ObjectId(matchId); } catch {
+    throw new AppError("Match not found", 404);
+  }
+
+  const match = await matchCol.findOne({ _id: matchOid });
+  if (!match) throw new AppError("Match not found", 404);
+
+  assertMatchTransition(match, "withdraw", actorId);
+
+  const now = new Date();
+
+  // Atomic claim — a concurrent accept/decline from the target wins or loses
+  // the race cleanly instead of both transitions applying
+  const claimed = await matchCol.findOneAndUpdate(
+    { _id: matchOid, status: "in_progress" },
+    {
+      $set: {
+        status:             "declined",
+        contactRespondedAt: now,
+        updatedAt:          now,
+      },
+    },
+    { returnDocument: "after" },
+  );
+
+  if (!claimed) {
+    throw new AppError("Match was already responded to", 409);
   }
 }
 
@@ -293,30 +510,101 @@ export async function reportOutcome(
 
   let matchOid: ObjectId;
   try { matchOid = new ObjectId(matchId); } catch {
-    throw Object.assign(new Error("Match not found"), { statusCode: 404 });
+    throw new AppError("Match not found", 404);
   }
 
   const match = await matchCol.findOne({ _id: matchOid });
-  if (!match) throw Object.assign(new Error("Match not found"), { statusCode: 404 });
+  if (!match) throw new AppError("Match not found", 404);
 
   assertMatchTransition(match, "outcome", actorId);
 
   const now = new Date();
   const ids  = [match.applicantAId, match.applicantBId];
 
-  if (outcome === "success") {
-    await matchCol.updateOne({ _id: matchOid }, { $set: { status: "success", updatedAt: now } });
-    const deletionScheduledAt = new Date(now.getTime() + 180 * 24 * 60 * 60 * 1000);
-    await transitionApplicantStatus(ids, "inactive", { deletionScheduledAt });
-  } else {
-    await matchCol.updateOne({ _id: matchOid }, { $set: { status: "failed", updatedAt: now } });
-    await transitionApplicantStatus(ids, "applied");
+  // Atomic claim — only one partner's outcome report wins; a concurrent
+  // conflicting report gets 409 instead of silently overwriting state
+  const claimed = await matchCol.findOneAndUpdate(
+    { _id: matchOid, status: { $in: ["dating", "in_progress"] } },
+    { $set: { status: outcome === "success" ? "success" : "failed", updatedAt: now } },
+    { returnDocument: "after" },
+  );
+
+  if (!claimed) {
+    throw new AppError("Outcome was already reported for this match", 409);
   }
+
+  // Mirror deactivateMyAccount: a partner heading toward deletion shouldn't
+  // leave other proposed/in_progress matches around for someone else to contact.
+  await applyMatchStatusSideEffects(outcome, ids);
 }
 
 export async function deactivateMyAccount(applicantId: string): Promise<void> {
   const oid                = new ObjectId(applicantId);
-  const deletionScheduledAt = new Date(Date.now() + 180 * 24 * 60 * 60 * 1000);
+  const deletionScheduledAt = new Date(Date.now() + DELETION_GRACE_MS);
   await transitionApplicantStatus([oid], "inactive", { deletionScheduledAt });
   await expireConflictingMatches([oid]);
+}
+
+/**
+ * Cancels a pending account deletion and restores the applicant to the
+ * matching pool. Only valid while a deletion is actually scheduled.
+ *
+ * Restores to "dating" rather than "applied" if the applicant still has a
+ * match in "dating" status — otherwise they'd re-enter the matching pool
+ * while still tied to an active match.
+ */
+export async function cancelAccountDeletion(applicantId: string): Promise<void> {
+  const db       = await getDb();
+  const appCol   = getApplicantsCollection(db);
+  const matchCol = getMatchesCollection(db);
+  const oid      = new ObjectId(applicantId);
+
+  const datingMatch = await matchCol.findOne({
+    status: "dating",
+    $or: [{ applicantAId: oid }, { applicantBId: oid }],
+  });
+  const restoredStatus: ApplicantStatus = datingMatch ? "dating" : "applied";
+
+  const result = await appCol.findOneAndUpdate(
+    { _id: oid, status: "inactive", deletionScheduledAt: { $exists: true } },
+    { $set: { status: restoredStatus, updatedAt: new Date() }, $unset: { deletionScheduledAt: "" } },
+  );
+
+  if (!result) throw new AppError("No deletion is scheduled for this account", 409);
+}
+
+/**
+ * Immediate, irreversible self-deletion — bypasses the configurable
+ * deletion grace period (DELETION_GRACE_DAYS / DELETION_GRACE_MS).
+ * Removes the applicant document, their identity record, embeddings, and
+ * any matches involving them.
+ */
+export async function deleteMyAccountNow(
+  applicantId: string,
+  audit: { ipAddress: string; userAgent: string } = { ipAddress: "unknown", userAgent: "unknown" },
+): Promise<void> {
+  const db  = await getDb();
+  const oid = new ObjectId(applicantId);
+
+  const appCol        = getApplicantsCollection(db);
+  const matchCol      = getMatchesCollection(db);
+  const identitiesCol = getIdentitiesCollection(db);
+  const embeddingsCol = getEmbeddingsCollection(db);
+
+  const doc = await appCol.findOne({ _id: oid });
+  if (!doc) throw new AppError("Not found", 404);
+
+  // Audit before the data it references is removed
+  await writeAuditLog(
+    { actorId: applicantId, ipAddress: audit.ipAddress, userAgent: audit.userAgent },
+    "APPLICANT_SELF_DELETE",
+    { targetApplicantId: oid, targetAlias: doc.alias, metadata: { actorType: "applicant" } },
+  );
+
+  await Promise.all([
+    appCol.deleteOne({ _id: oid }),
+    identitiesCol.deleteOne({ applicantId: oid }),
+    embeddingsCol.deleteOne({ applicantId: oid }),
+    matchCol.deleteMany({ $or: [{ applicantAId: oid }, { applicantBId: oid }] }),
+  ]);
 }

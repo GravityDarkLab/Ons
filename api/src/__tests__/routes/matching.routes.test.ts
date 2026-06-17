@@ -1,25 +1,53 @@
 import { describe, it, expect, mock, beforeEach } from "bun:test";
+import { AppError } from "../../errors.js";
+
+mock.module("../../middleware/rateLimit.middleware.js", () => {
+  const noop = async (_c: unknown, next: () => Promise<void>) => { await next(); };
+  return {
+    formSubmitRateLimiter:   noop,
+    adminRateLimiter:        noop,
+    adminLoginRateLimiter:   noop,
+    profileRateLimiter:      noop,
+    profileLoginRateLimiter: noop,
+    createRateLimiter:       () => noop,
+  };
+});
 
 // ── Mock engine before any imports ────────────────────────────────────────────
 
 const mockGetCandidates         = mock(async () => [] as any[]);
 const mockRunFullMatchingPass   = mock(async () => ({} as Record<string, any[]>));
-const mockGenerateCoupleProposals = mock(() => [] as any[]);
 const mockSaveMatchProposals    = mock(async (..._: any[]) => 0);
 const mockLoadActiveApplicants  = mock(async () => [] as any[]);
 
+// generateCoupleProposals (matching/proposals.js) is pure and DB-free, so it
+// stays unmocked. Bun's mock.module is process-global: mocking it here would
+// replace the shared export binding and poison the unit tests in full runs.
 mock.module("../../matching/engine.js", () => ({
   getCandidates:          mockGetCandidates,
   runFullMatchingPass:    mockRunFullMatchingPass,
-  generateCoupleProposals: mockGenerateCoupleProposals,
   ALGORITHM_REGISTRY:     {},
 }));
 
 // match.service is used by the matching controller to persist couple proposals.
 // Mock it so tests never attempt a real MongoDB connection.
 mock.module("../../services/match.service.js", () => ({
-  saveMatchProposals:   mockSaveMatchProposals,
-  loadActiveApplicants: mockLoadActiveApplicants,
+  saveMatchProposals:       mockSaveMatchProposals,
+  loadActiveApplicants:     mockLoadActiveApplicants,
+}));
+
+// match-state.service is used by the matching controller to promote applicants
+// after a matching pass. Mock it so tests never attempt a real MongoDB connection.
+mock.module("../../services/match-state.service.js", () => ({
+  promoteAppliedToMatched: mock(async () => 0),
+}));
+
+const mockGetConfig = mock(async () => null as unknown);
+const mockSetConfig = mock(async () => {});
+
+mock.module("../../services/appConfig.service.js", () => ({
+  getConfig: mockGetConfig,
+  setConfig: mockSetConfig,
 }));
 
 import { Hono } from "hono";
@@ -63,6 +91,10 @@ beforeEach(() => {
   mockRunFullMatchingPass.mockReset();
   mockSaveMatchProposals.mockReset();
   mockLoadActiveApplicants.mockReset();
+  mockGetConfig.mockReset();
+  mockSetConfig.mockReset();
+  mockGetConfig.mockResolvedValue(null);
+  mockSetConfig.mockResolvedValue(undefined);
   mockGetCandidates.mockResolvedValue(makeCandidates());
   mockRunFullMatchingPass.mockResolvedValue({
     "64b1234567890abcdef01234": makeCandidates(2),
@@ -75,7 +107,7 @@ beforeEach(() => {
 
 describe("GET /matching/candidates/:applicantId", () => {
   it("returns 200 with a candidates array", async () => {
-    const res = await get("/matching/candidates/64b1234567890abcdef01234");
+    const res = await get("/matching/candidates/64b1234567890abcdef01234", await adminToken());
     expect(res.status).toBe(200);
     const body = await res.json() as any;
     expect(body.success).toBe(true);
@@ -84,7 +116,7 @@ describe("GET /matching/candidates/:applicantId", () => {
   });
 
   it("passes algorithm query param to getCandidates", async () => {
-    await get("/matching/candidates/abc123?algorithm=cosine&top=5");
+    await get("/matching/candidates/abc123?algorithm=cosine&top=5", await adminToken());
     const [id, topN, algo] = mockGetCandidates.mock.calls[0] as unknown as [string, number, string];
     expect(id).toBe("abc123");
     expect(topN).toBe(5);
@@ -92,40 +124,43 @@ describe("GET /matching/candidates/:applicantId", () => {
   });
 
   it("uses baseline algorithm by default", async () => {
-    await get("/matching/candidates/abc123");
+    await get("/matching/candidates/abc123", await adminToken());
     const [, , algo] = mockGetCandidates.mock.calls[0] as unknown as [string, number, string];
     expect(algo).toBe("baseline");
   });
 
   it("caps top at 50 regardless of query param", async () => {
-    await get("/matching/candidates/abc123?top=999");
+    await get("/matching/candidates/abc123?top=999", await adminToken());
     const [, topN] = mockGetCandidates.mock.calls[0] as unknown as [string, number, string];
     expect(topN).toBe(50);
   });
 
   it("returns 404 when engine throws 'not found'", async () => {
-    mockGetCandidates.mockRejectedValue(new Error("Active applicant not found: abc123"));
-    const res = await get("/matching/candidates/abc123");
+    mockGetCandidates.mockRejectedValue(new AppError("Active applicant not found: abc123", 404));
+    const res = await get("/matching/candidates/abc123", await adminToken());
     expect(res.status).toBe(404);
     const body = await res.json() as any;
     expect(body.success).toBe(false);
   });
 
-  it("returns 404 for invalid applicant ID", async () => {
-    mockGetCandidates.mockRejectedValue(new Error("Invalid applicant ID: not-an-id"));
-    const res = await get("/matching/candidates/not-an-id");
-    expect(res.status).toBe(404);
+  it("returns 400 for invalid applicant ID", async () => {
+    mockGetCandidates.mockRejectedValue(new AppError("Invalid applicant ID: not-an-id", 400));
+    const res = await get("/matching/candidates/not-an-id", await adminToken());
+    expect(res.status).toBe(400);
   });
 
   it("returns 500 when engine throws an unexpected error", async () => {
     mockGetCandidates.mockRejectedValue(new Error("DB connection lost"));
-    const res = await get("/matching/candidates/abc123");
+    const res = await get("/matching/candidates/abc123", await adminToken());
     expect(res.status).toBe(500);
   });
 
-  it("this route is public — no token required", async () => {
+  // tested: candidates endpoint requires admin auth — compatibility data and
+  // paid embedding calls must not be reachable anonymously
+  it("returns 401 without a token", async () => {
     const res = await get("/matching/candidates/64b1234567890abcdef01234");
-    expect(res.status).not.toBe(401);
+    expect(res.status).toBe(401);
+    expect(mockGetCandidates).not.toHaveBeenCalled();
   });
 });
 
@@ -168,11 +203,11 @@ describe("POST /matching/run", () => {
     expect(res.status).toBe(422);
   });
 
-  it("returns 500 when the engine throws", async () => {
-    mockRunFullMatchingPass.mockRejectedValue(new Error("No active questionnaire found"));
+  it("returns 404 when the engine throws", async () => {
+    mockRunFullMatchingPass.mockRejectedValue(new AppError("No active questionnaire found", 404));
     const token = await adminToken();
     const res = await post("/matching/run", { algorithm: "baseline" }, token);
-    expect(res.status).toBe(500);
+    expect(res.status).toBe(404);
     const body = await res.json() as any;
     expect(body.success).toBe(false);
     expect(body.error).toMatch(/questionnaire/i);
@@ -188,5 +223,51 @@ describe("POST /matching/run", () => {
     const res = await post("/matching/run", { algorithm: "baseline" }, token);
     const body = await res.json() as any;
     expect(body.totalApplicants).toBe(3);
+  });
+});
+
+// ── GET /matching/last-run ────────────────────────────────────────────────────
+
+// tested: persisted last-run summary — auth gate, null when never run,
+// stored value passthrough, and write-through on POST /matching/run
+describe("GET /matching/last-run", () => {
+  it("returns 401 without a token", async () => {
+    const res = await get("/matching/last-run");
+    expect(res.status).toBe(401);
+  });
+
+  it("returns null data when matching has never run", async () => {
+    mockGetConfig.mockResolvedValue(null);
+    const res = await get("/matching/last-run", await adminToken());
+    expect(res.status).toBe(200);
+    const body = await res.json() as any;
+    expect(body.success).toBe(true);
+    expect(body.data).toBeNull();
+  });
+
+  it("returns the stored last-run summary", async () => {
+    const stored = {
+      at: new Date().toISOString(),
+      algorithm: "embedding-cosine",
+      totalApplicants: 12,
+      couplesProposed: 4,
+      durationMs: 850,
+      triggeredBy: "admin",
+    };
+    mockGetConfig.mockResolvedValue(stored);
+    const res = await get("/matching/last-run", await adminToken());
+    const body = await res.json() as any;
+    expect(body.data).toEqual(stored);
+  });
+
+  it("POST /matching/run persists the last-run summary", async () => {
+    const token = await adminToken();
+    await post("/matching/run", { algorithm: "baseline" }, token);
+    expect(mockSetConfig).toHaveBeenCalledTimes(1);
+    const [key, value] = mockSetConfig.mock.calls[0] as unknown as [string, any];
+    expect(key).toBe("matching.lastRun");
+    expect(value.algorithm).toBe("baseline");
+    expect(value.triggeredBy).toBe("admin");
+    expect(typeof value.durationMs).toBe("number");
   });
 });

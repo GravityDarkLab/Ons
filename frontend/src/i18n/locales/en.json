@@ -1,6 +1,19 @@
 {
   "brand": "Ons",
-
+  "common": {
+    "yes": "Yes",
+    "no": "No",
+    "dismiss": "Dismiss",
+    "timeAgo": {
+      "justNow": "just now",
+      "minutesAgo_one": "{{count}} minute ago",
+      "minutesAgo_other": "{{count}} minutes ago",
+      "hoursAgo_one": "{{count}} hour ago",
+      "hoursAgo_other": "{{count}} hours ago",
+      "daysAgo_one": "{{count}} day ago",
+      "daysAgo_other": "{{count}} days ago"
+    }
+  },
   "invite": {
     "title": "Invite only",
     "subtitle": "This is a private matchmaking experience. Enter your invite key to continue.",
@@ -11,7 +24,6 @@
     "noInvite": "Don't have an invite?",
     "noInviteLink": "Ask a friend who's already in."
   },
-
   "home": {
     "badge": "Privacy first · Invite only",
     "headline": "Find your\nperson.",
@@ -19,13 +31,24 @@
     "cta": "Apply Now",
     "howItWorks": "How it works",
     "cards": [
-      { "emoji": "🗒️", "title": "Fill the form", "desc": "Answer a short questionnaire about you and what you're looking for." },
-      { "emoji": "🔒", "title": "We protect your identity", "desc": "Your Instagram handle is encrypted. You get a codename. Only admins know the link." },
-      { "emoji": "💌", "title": "We make the match", "desc": "If we see a connection, we reach out directly. No algorithm swiping." }
+      {
+        "emoji": "🗒️",
+        "title": "Fill the form",
+        "desc": "Answer a short questionnaire about you and what you're looking for."
+      },
+      {
+        "emoji": "🔒",
+        "title": "We protect your identity",
+        "desc": "Your Instagram handle is encrypted. You get a codename. Only admins know the link."
+      },
+      {
+        "emoji": "💌",
+        "title": "We make the match",
+        "desc": "If we see a connection, we reach out directly. No algorithm swiping."
+      }
     ],
-    "footer": "© 2025 Ons · Built with care"
+    "footer": "© {{year}} Ons · Built with care"
   },
-
   "apply": {
     "stepOf": "Step {{current}} of {{total}}",
     "back": "Back",
@@ -34,7 +57,6 @@
     "submitting": "Submitting…",
     "error": "Something went wrong. Please try again."
   },
-
   "steps": {
     "s1": {
       "title": "Who are you?",
@@ -47,8 +69,7 @@
     "s2": {
       "title": "About you",
       "subtitle": "Help us understand who you are.",
-      "age": "Age",
-      "agePlaceholder": "25",
+      "birthDate": "Birth date",
       "height": "Height (cm)",
       "heightPlaceholder": "175",
       "heightHint": "Optional",
@@ -96,20 +117,27 @@
       "disclaimerRequired": "You must agree to continue."
     }
   },
-
   "success": {
     "title": "You're in.",
-    "subtitle": "We'll reach out when we find your match.",
+    "subtitle": "Save this link — it's the only way to access your profile.",
     "aliasLabel": "Your alias is",
-    "aliasHint": "Keep this alias safe — it's how we'll refer to you when we reach out.",
-    "privacy": "In the meantime, your identity is safely encrypted. We'll never share your information with third parties.",
+    "aliasHint": "This is your codename. We'll use it when we reach out.",
+    "unknownAlias": "Mystery Person",
+    "warning": "This is the only way to access your profile. Once you leave this page, we cannot show it to you again.",
+    "linkLabel": "Your profile link",
+    "copyLink": "Copy link",
+    "copied": "Copied!",
+    "download": "Download .txt",
+    "done": "Done →",
+    "laterHint": "You can also access your profile later at /profile/login with your magic link.",
     "backHome": "Back to home"
   },
-
   "admin": {
     "subtitle": "Admin",
     "login": {
       "title": "Admin access",
+      "tagline": "Where compatible hearts meet.",
+      "subtitle": "Access your dashboard",
       "username": "Username",
       "password": "Password",
       "submit": "Sign in",
@@ -121,7 +149,10 @@
       "matching": "Matching",
       "matches": "Matches",
       "auditLogs": "Audit Logs",
-      "signOut": "Sign out"
+      "signOut": "Sign out",
+      "toggleSidebar": "Toggle sidebar",
+      "roleAdmin": "Admin",
+      "roleSuperAdmin": "Super Admin"
     },
     "dashboard": {
       "title": "Dashboard",
@@ -133,33 +164,62 @@
       "quickActions": "Quick actions",
       "runMatching": "Run matching",
       "viewApplicants": "View applicants",
-      "auditLogs": "Audit logs"
+      "auditLogs": "Audit logs",
+      "recentMatches": "Recent Matches",
+      "recentActivity": "Recent Activity",
+      "noMatchesYet": "No matches yet.",
+      "noActivityYet": "No activity yet.",
+      "viewAll": "View all →",
+      "scoreLabel": "Score: {{score}}%",
+      "auditActions": {
+        "RESOLVE_IDENTITY": "Identity resolved",
+        "APPLICANT_REVEAL_IDENTITY": "Instagram handle revealed",
+        "VIEW_APPLICANT": "Applicant viewed",
+        "DEACTIVATE_APPLICANT": "Applicant deactivated",
+        "ADMIN_LOGIN": "Admin login",
+        "CREATE_QUESTIONNAIRE": "Questionnaire created",
+        "REGENERATE_MAGIC_LINK": "Magic link regenerated",
+        "APPLICANT_SELF_DELETE": "Applicant self-deleted"
+      }
     },
     "applicants": {
       "title": "Applicants",
       "total": "{{count}} total",
       "all": "All",
-      "active": "Active",
+      "applied": "Applied",
       "matched": "Matched",
       "inactive": "Inactive",
-      "withdrawn": "Withdrawn",
+      "dating": "Dating",
       "searchPlaceholder": "Search by alias…",
       "colAlias": "Alias",
       "colStatus": "Status",
-      "colLocation": "Location",
-      "colAge": "Age",
+      "colVersion": "Version",
+      "colActions": "Actions",
       "colSubmitted": "Submitted",
-      "view": "View →",
+      "viewLink": "View →",
       "empty": "No applicants found.",
       "page": "Page {{current}} of {{total}}",
       "prev": "← Prev",
-      "next": "Next →"
+      "next": "Next →",
+      "deletedToast": "{{alias}} deleted",
+      "scheduledDeletion": "Scheduled for deletion",
+      "colDeletesOn": "Deletes on",
+      "deleteDescription": "Deactivates this applicant immediately and schedules permanent deletion in 180 days.",
+      "viewApplicant": "View applicant",
+      "viewApplicantAria": "View {{alias}}",
+      "deleteApplicant": "Delete applicant",
+      "deleteApplicantAria": "Delete {{alias}}",
+      "deleteConfirmTitle": "Delete {{alias}}?",
+      "deleteError": "Delete failed"
     },
     "detail": {
       "back": "Applicants",
       "submitted": "Submitted {{date}}",
       "withdraw": "Withdraw",
-      "withdrawConfirm": "Withdraw this applicant? Their status will be set to withdrawn.",
+      "withdrawConfirm": "Withdraw this applicant? Their status will be set to inactive.",
+      "version": "Version",
+      "status": "Status",
+      "superAdminRequired": "Identity reveal requires super admin access",
       "identity": "Identity",
       "reveal": "Reveal Instagram handle",
       "auditNote": "Every reveal is audit-logged.",
@@ -168,7 +228,14 @@
       "viewAllMatches": "View all →",
       "page": "Page {{current}} of {{total}}",
       "prev": "← Prev",
-      "next": "Next →"
+      "next": "Next →",
+      "withdrawn": "Applicant withdrawn",
+      "magicLink": "Magic link",
+      "regenerateMagicLink": "Regenerate magic link",
+      "regenerateMagicLinkConfirm": "This invalidates the applicant's current magic link and clears their password — they'll set a new one. Generate a new link to share with them directly?",
+      "newMagicLinkHint": "New magic link — share it with the applicant directly. It won't be shown again.",
+      "copy": "Copy",
+      "copied": "Copied ✓"
     },
     "matching": {
       "title": "Matching",
@@ -181,8 +248,17 @@
       "cosineHint": "Cosine similarity on numeric vectors",
       "embedding": "Embedding",
       "embeddingHint": "Semantic similarity via text embeddings",
+      "lastRunSummary": "Last run: {{time}} · {{count}} pairs proposed",
+      "neverRun": "Never run",
+      "confirmTitle": "Run matching with {{algorithm}}?",
+      "confirmBody": "This will create new match proposals.",
+      "cancel": "Cancel",
+      "confirmRun": "Yes, run matching",
       "run": "Run matching",
       "runError": "Matching failed. Please try again.",
+      "phaseLoading": "Loading applicants…",
+      "phaseScoring": "Scoring every pair…",
+      "phaseSaving": "Saving proposals…",
       "runComplete": "Matching complete",
       "statApplicants": "Applicants scored",
       "statCouples": "Couple proposals saved",
@@ -197,9 +273,12 @@
       "total": "{{count}} matches",
       "all": "All",
       "proposed": "Proposed",
-      "contacted": "Contacted",
-      "matched": "Matched",
+      "in_progress": "In Progress",
+      "dating": "Dating",
+      "success": "Success",
       "failed": "Failed",
+      "declined": "Declined",
+      "expired": "Expired",
       "colCouple": "Couple",
       "colScore": "Score",
       "colAlgorithm": "Algorithm",
@@ -208,9 +287,12 @@
       "searchPlaceholder": "Search by alias…",
       "empty": "No matches found. Run the matching algorithm to generate couple proposals.",
       "markProposed": "Re-propose",
-      "markContacted": "Contacted",
-      "markMatched": "Matched",
+      "markInProgress": "In Progress",
+      "markDating": "Dating",
+      "markSuccess": "Success",
       "markFailed": "Failed",
+      "markDeclined": "Declined",
+      "markExpired": "Expired",
       "editNotes": "Notes",
       "cancelNotes": "Cancel",
       "notesPlaceholder": "Add notes about this couple…",
@@ -219,10 +301,15 @@
       "deleteConfirm": "Delete this match proposal permanently?",
       "page": "Page {{current}} of {{total}}",
       "prev": "← Prev",
-      "next": "Next →"
+      "next": "Next →",
+      "statusUpdated": "Status updated",
+      "notesSaved": "Notes saved",
+      "deleted": "Match deleted",
+      "updateError": "Update failed"
     },
     "audit": {
       "title": "Audit Logs",
+      "subtitle": "All administrative and applicant actions",
       "events": "{{count}} events",
       "colAction": "Action",
       "colTarget": "Target",
@@ -232,7 +319,192 @@
       "empty": "No audit events yet.",
       "page": "Page {{current}} of {{total}}",
       "prev": "← Prev",
-      "next": "Next →"
+      "next": "Next →",
+      "by": "by {{id}}",
+      "targetAlias": "Alias: {{alias}}"
+    }
+  },
+  "portal": {
+    "login": {
+      "yourProfile": "Your profile",
+      "magicLinkHint": "Please use your magic link to access your profile. Check the confirmation message you received after submitting your application.",
+      "backToHome": "Back to home",
+      "verifying": "Verifying your link…",
+      "linkInvalid": "Link invalid",
+      "invalidOrExpired": "Invalid or expired link.",
+      "welcome": "Welcome to Ons",
+      "firstTimeSetup": "You're setting up your profile for the first time.",
+      "choosePassword": "Choose a password",
+      "passwordTooShort": "Password must be at least 8 characters.",
+      "setPasswordFailed": "Failed to set password. Please try again.",
+      "suggest": "✨ Suggest one for me",
+      "generating": "Generating…",
+      "setPassword": "Set password",
+      "settingPassword": "Setting password…",
+      "suggestedPasswordHint": "Your suggested password — copy it somewhere safe before continuing:",
+      "copy": "Copy",
+      "copied": "Copied ✓",
+      "welcomeBack": "Welcome back",
+      "enterPasswordHint": "Enter your password to access your profile.",
+      "password": "Password",
+      "signIn": "Sign in",
+      "signingIn": "Signing in…",
+      "invalidCredentials": "Incorrect password. Please try again."
+    },
+    "dashboard": {
+      "loading": "Loading…",
+      "loadError": "Failed to load profile",
+      "openSettings": "Open settings",
+      "hello": "Hello, {{alias}}",
+      "findingMatches": "We're finding your best matches. You'll be notified when they're ready.",
+      "threshold": "Threshold: {{percent}}%",
+      "submitted": "Submitted {{date}}",
+      "minScore": "Min. match score:",
+      "dormantTitle": "Your account is dormant",
+      "dormantBody": "Thank you for being part of Ons.",
+      "nextPhaseTitle": "No matches right now",
+      "nextPhaseBody": "New matches arrive with the next matching phase — check back tomorrow.",
+      "noneAtThresholdTitle": "No matches at this score",
+      "noneAtThresholdBody": "Lower the slider to see more matches.",
+      "deletion": {
+        "title": "Time until deletion",
+        "body": "Your account and data will be permanently deleted when this reaches zero.",
+        "days": "Days",
+        "hours": "Hours",
+        "minutes": "Min",
+        "seconds": "Sec",
+        "cancelButton": "Keep my account",
+        "cancelTitle": "Keep my account",
+        "cancelConfirm": "This cancels the scheduled deletion and restores your account to the matching pool.",
+        "cancelYes": "Yes, keep my account",
+        "cancelFailed": "Failed to cancel deletion.",
+        "deleteNowButton": "Delete my account now",
+        "deleteNowTitle": "Delete account now",
+        "deleteNowConfirm": "This immediately and permanently deletes your account and all associated data. This cannot be undone.",
+        "deleteNowYes": "Yes, delete now",
+        "deleteNowFailed": "Failed to delete account."
+      }
+    },
+    "matches": {
+      "empty": "No matches to show.",
+      "reachOut": "I want to reach out",
+      "wantsToMeet": "{{alias}} wants to meet you",
+      "requested": "requested {{time}}",
+      "accept": "Accept",
+      "decline": "Decline",
+      "waiting": "Waiting",
+      "dating": "You're dating {{alias}}",
+      "matchScore": "Match: {{percent}}%",
+      "howDidItGo": "How did it go?",
+      "workedOut": "It worked out ✓",
+      "didntWork": "It didn't",
+      "iceBreakers": "Ice-breakers",
+      "dateIdeas": "Date ideas",
+      "aboutPartner": "About {{alias}}",
+      "scoreBreakdown": "Score breakdown",
+      "genericError": "Something went wrong. Please try again.",
+      "status": {
+        "success": "Success",
+        "failed": "Failed",
+        "declined": "Declined",
+        "expired": "Expired"
+      },
+      "confirmContactTitle": "It's a match!",
+      "confirmContactBody": "{{alias}} is @{{handle}} on Instagram. Ready to reach out? If you pass now, this match closes for good and you will wait for the next matching phase for new matches.",
+      "confirmContactYes": "Yes, connect us",
+      "confirmContactNo": "No, pass",
+      "withdrawNotice": "Match closed. You will see new matches at the next matching phase — check back tomorrow.",
+      "whyThisMatch": "Why this match?",
+      "breakdown": {
+        "relationship_type": {
+          "label": "Relationship goals",
+          "description": "How well your relationship goals (long-term, short-term, etc.) line up."
+        },
+        "deal_breakers": {
+          "label": "Deal-breaker check",
+          "description": "Whether either person's deal-breakers show up in the other's lifestyle."
+        },
+        "religion_compatibility": {
+          "label": "Religion",
+          "description": "How compatible your religious backgrounds and openness are."
+        },
+        "affection_importance": {
+          "label": "Affection style",
+          "description": "How closely your views on physical affection match."
+        },
+        "long_distance": {
+          "label": "Long distance",
+          "description": "Whether you're both open to a long-distance relationship."
+        },
+        "lifestyle": {
+          "label": "Lifestyle",
+          "description": "How similar your day-to-day lifestyles are."
+        },
+        "numeric_compatibility": {
+          "label": "Core preferences",
+          "description": "How closely your relationship preferences line up structurally."
+        },
+        "lifestyle_similarity": {
+          "label": "Lifestyle",
+          "description": "How similar your lifestyles are based on what you wrote."
+        },
+        "character_cross_match": {
+          "label": "Personality fit",
+          "description": "How well your personalities match what each of you is looking for."
+        },
+        "character_a_wants_b": {
+          "label": "Their vibe vs. what you want",
+          "description": "How well their personality matches what you said you're looking for."
+        },
+        "character_b_wants_a": {
+          "label": "Your vibe vs. what they want",
+          "description": "How well your personality matches what they said they're looking for."
+        },
+        "deal_breaker_penalty": {
+          "label": "Deal-breaker check",
+          "description": "Whether either person's deal-breakers show up in the other's lifestyle."
+        }
+      }
+    },
+    "settings": {
+      "title": "Settings",
+      "close": "Close settings",
+      "signOut": "Sign out",
+      "changePassword": "Change password",
+      "currentPassword": "Current password",
+      "newPassword": "New password",
+      "confirmPassword": "Confirm new password",
+      "currentRequired": "Current password is required.",
+      "newTooShort": "New password must be at least 8 characters.",
+      "noMatch": "Passwords do not match.",
+      "updateFailed": "Failed to update password.",
+      "updated": "Password updated ✓",
+      "saving": "Saving…",
+      "save": "Save new password",
+      "sessionTitle": "Session",
+      "sessionNote": "Sign out on this device. Your magic link and password keep working.",
+      "deactivateTitle": "Deactivate account",
+      "deactivateNote": "Once deactivated, your account will be scheduled for deletion in 180 days.",
+      "deactivateButton": "Deactivate my account",
+      "deactivateConfirm": "Are you sure? This cannot be undone. Your account will be scheduled for deletion in 180 days.",
+      "deactivateYes": "Yes, deactivate",
+      "cancel": "Cancel",
+      "deactivateFailed": "Failed to deactivate account.",
+      "alreadyDeactivated": "Your account is already deactivated. You can cancel or speed up the scheduled deletion from your dashboard."
+    },
+    "profile": {
+      "tabMatches": "Matches",
+      "tabProfile": "My profile",
+      "intro": "Update your answers anytime — they're used the next time we look for your matches.",
+      "instagramLocked": "To change your Instagram handle, please contact the admins.",
+      "save": "Save changes",
+      "saved": "Your profile has been updated.",
+      "saveError": "Couldn't save your changes. Please try again.",
+      "loadError": "Couldn't load your profile.",
+      "unsaved": "You have unsaved changes",
+      "adminLockedNote": "These details can only be changed by an admin — get in touch if something needs fixing.",
+      "savedButton": "Saved",
+      "yearsOld": "{{age}} years old"
     }
   }
 }

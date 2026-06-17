@@ -1,6 +1,6 @@
 import { Hono } from "hono";
-import { z } from "zod";
 import { zValidator } from "@hono/zod-validator";
+import { validationHook } from "../validators/validation-hook.js";
 import {
   profileLoginSchema,
   setPasswordSchema,
@@ -8,6 +8,7 @@ import {
   matchQuerySchema,
   respondSchema,
   outcomeSchema,
+  updateAnswersSchema,
 } from "../validators/profile.validator.js";
 import {
   login,
@@ -15,28 +16,23 @@ import {
   changePassword,
   suggestPassword,
   me,
+  answers,
+  updateAnswers,
   matches,
   contact,
   respond,
+  withdraw,
   outcome,
   deactivate,
+  cancelDeletion,
+  deleteNow,
+  logout,
 } from "../controllers/profile.controller.js";
 import { requireApplicant } from "../middleware/applicant.auth.middleware.js";
 import {
   profileLoginRateLimiter,
   profileRateLimiter,
 } from "../middleware/rateLimit.middleware.js";
-
-function validationErr(result: { error: z.ZodError }, c: any) {
-  return c.json(
-    {
-      success: false,
-      error:   "Validation failed",
-      details: z.flattenError(result.error).fieldErrors,
-    },
-    422
-  );
-}
 
 export const profileRoutes = new Hono();
 
@@ -45,22 +41,23 @@ export const profileRoutes = new Hono();
 profileRoutes.post(
   "/login",
   profileLoginRateLimiter,
-  zValidator("json", profileLoginSchema, (r, c) => {
-    if (!r.success) return validationErr(r as any, c);
-  }),
+  zValidator("json", profileLoginSchema, validationHook),
   login
 );
 
 profileRoutes.post(
   "/set-password",
   profileLoginRateLimiter,
-  zValidator("json", setPasswordSchema, (r, c) => {
-    if (!r.success) return validationErr(r as any, c);
-  }),
+  zValidator("json", setPasswordSchema, validationHook),
   setPassword
 );
 
 profileRoutes.get("/suggest-password", suggestPassword);
+
+// /logout is a one-shot cookie clear, like admin's — not a brute-force
+// surface, so it's exempt from rate limiting and doesn't require a valid
+// session (an already-expired session can still "log out" cleanly).
+profileRoutes.post("/logout", logout);
 
 // ── Protected ──────────────────────────────────────────────────────────────────
 
@@ -68,12 +65,19 @@ profileRoutes.use("*", profileRateLimiter);
 
 profileRoutes.get("/me", requireApplicant, me);
 
+profileRoutes.get("/answers", requireApplicant, answers);
+
+profileRoutes.put(
+  "/answers",
+  requireApplicant,
+  zValidator("json", updateAnswersSchema, validationHook),
+  updateAnswers
+);
+
 profileRoutes.get(
   "/matches",
   requireApplicant,
-  zValidator("query", matchQuerySchema, (r, c) => {
-    if (!r.success) return validationErr(r as any, c);
-  }),
+  zValidator("query", matchQuerySchema, validationHook),
   matches
 );
 
@@ -82,28 +86,28 @@ profileRoutes.post("/matches/:id/contact", requireApplicant, contact);
 profileRoutes.post(
   "/matches/:id/respond",
   requireApplicant,
-  zValidator("json", respondSchema, (r, c) => {
-    if (!r.success) return validationErr(r as any, c);
-  }),
+  zValidator("json", respondSchema, validationHook),
   respond
 );
+
+profileRoutes.post("/matches/:id/withdraw", requireApplicant, withdraw);
 
 profileRoutes.post(
   "/matches/:id/outcome",
   requireApplicant,
-  zValidator("json", outcomeSchema, (r, c) => {
-    if (!r.success) return validationErr(r as any, c);
-  }),
+  zValidator("json", outcomeSchema, validationHook),
   outcome
 );
 
 profileRoutes.post(
   "/change-password",
   requireApplicant,
-  zValidator("json", changePasswordSchema, (r, c) => {
-    if (!r.success) return validationErr(r as any, c);
-  }),
+  zValidator("json", changePasswordSchema, validationHook),
   changePassword
 );
 
 profileRoutes.post("/deactivate", requireApplicant, deactivate);
+
+profileRoutes.post("/cancel-deletion", requireApplicant, cancelDeletion);
+
+profileRoutes.post("/delete-now", requireApplicant, deleteNow);

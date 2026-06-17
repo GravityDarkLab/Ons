@@ -1,21 +1,30 @@
 import { useEffect, useState } from 'react'
 import { useSearchParams, useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
-import { fetchApplicants } from '../api/client'
-import type { Applicant, ApplicantStatus } from '../types'
-
-const STATUS_BADGE: Record<ApplicantStatus, string> = {
-  active:    'bg-success-light text-success',
-  matched:   'bg-accent-light text-accent',
-  inactive:  'bg-border text-muted',
-  withdrawn: 'bg-error-light text-error',
-}
+import { fetchApplicants, deactivateApplicant } from '../api/client'
+import Badge from '../../components/ui/Badge'
+import ConfirmDialog from '../../components/ui/ConfirmDialog'
+import Skeleton from '../../components/ui/Skeleton'
+import { useToast } from '../../components/ui/Toast'
+import { applicantStatusTone } from '../../components/ui/statusTones'
+import { Th, PageButton, TrashIcon } from '../components/Table'
+import type { Applicant } from '../types'
 
 const LIMIT = 20
+
+function EyeIcon() {
+  return (
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
+      <circle cx="12" cy="12" r="3" />
+    </svg>
+  )
+}
 
 export function Applicants() {
   const { t } = useTranslation()
   const navigate = useNavigate()
+  const { success, error: toastError } = useToast()
   const [searchParams, setSearchParams] = useSearchParams()
   const status = searchParams.get('status') ?? ''
   const page   = parseInt(searchParams.get('page') ?? '1', 10)
@@ -26,26 +35,42 @@ export function Applicants() {
   const [loading, setLoading]       = useState(true)
   const [search, setSearch]         = useState('')
   const [debouncedSearch, setDebouncedSearch] = useState('')
+  const [pendingDelete, setPendingDelete] = useState<Applicant | null>(null)
+  const [deleteLoading, setDeleteLoading] = useState(false)
 
   // Debounce search input by 300 ms
   useEffect(() => {
-    const t = setTimeout(() => setDebouncedSearch(search), 300)
-    return () => clearTimeout(t)
+    const timer = setTimeout(() => setDebouncedSearch(search), 300)
+    return () => clearTimeout(timer)
   }, [search])
 
   const FILTERS = [
     { value: '',          label: t('admin.applicants.all') },
-    { value: 'active',    label: t('admin.applicants.active') },
+    { value: 'applied',   label: t('admin.applicants.applied') },
     { value: 'matched',   label: t('admin.applicants.matched') },
+    { value: 'dating',    label: t('admin.applicants.dating') },
     { value: 'inactive',  label: t('admin.applicants.inactive') },
-    { value: 'withdrawn', label: t('admin.applicants.withdrawn') },
+    { value: 'scheduled', label: t('admin.applicants.scheduledDeletion') },
   ]
 
-  useEffect(() => {
+  const isScheduledTab = status === 'scheduled'
+
+  function loadApplicants() {
     setLoading(true)
-    fetchApplicants(page, LIMIT, status || undefined, debouncedSearch || undefined)
+    fetchApplicants(
+      page,
+      LIMIT,
+      isScheduledTab ? undefined : (status || undefined),
+      debouncedSearch || undefined,
+      isScheduledTab,
+    )
       .then(res => { setApplicants(res.data); setTotal(res.total); setTotalPages(res.totalPages) })
       .finally(() => setLoading(false))
+  }
+
+  useEffect(() => {
+    loadApplicants()
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [page, status, debouncedSearch])
 
   function setFilter(s: string) { setSearchParams(s ? { status: s } : {}); setSearch('') }
@@ -53,10 +78,25 @@ export function Applicants() {
     setSearchParams(prev => { const n = new URLSearchParams(prev); n.set('page', String(p)); return n })
   }
 
+  async function handleDelete() {
+    if (!pendingDelete) return
+    setDeleteLoading(true)
+    try {
+      await deactivateApplicant(pendingDelete.id)
+      success(t('admin.applicants.deletedToast', { alias: pendingDelete.alias }))
+      setPendingDelete(null)
+      loadApplicants()
+    } catch (err) {
+      toastError(err instanceof Error ? err.message : t('admin.applicants.deleteError'))
+    } finally {
+      setDeleteLoading(false)
+    }
+  }
+
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-xl font-semibold text-primary">{t('admin.applicants.title')}</h1>
+        <h1 className="text-2xl font-semibold tracking-tight text-primary">{t('admin.applicants.title')}</h1>
         <p className="text-sm text-muted mt-0.5">{loading ? '—' : t('admin.applicants.total', { count: total })}</p>
       </div>
 
@@ -67,6 +107,7 @@ export function Applicants() {
         </svg>
         <input
           type="text"
+          name="search"
           value={search}
           onChange={e => setSearch(e.target.value)}
           placeholder={t('admin.applicants.searchPlaceholder')}
@@ -81,63 +122,134 @@ export function Applicants() {
         )}
       </div>
 
-      <div className="flex gap-1 bg-surface border border-border rounded-xl p-1 w-fit">
+      {/* Status filter chips */}
+      <div className="flex flex-wrap gap-2">
         {FILTERS.map(f => (
-          <button key={f.value} onClick={() => setFilter(f.value)}
-            className={`px-3 py-1.5 rounded-lg text-sm transition-colors ${
-              status === f.value ? 'bg-primary text-white font-medium' : 'text-muted hover:text-primary'
-            }`}>
+          <button
+            key={f.value}
+            onClick={() => setFilter(f.value)}
+            className={`rounded-full px-3 py-1 text-sm transition-colors ${
+              status === f.value
+                ? 'bg-accent text-bg'
+                : 'bg-surface border border-border text-muted hover:text-primary hover:border-accent/40'
+            }`}
+          >
             {f.label}
           </button>
         ))}
       </div>
 
-      <div className="bg-surface border border-border rounded-2xl overflow-hidden">
+      {/* Desktop table */}
+      <div className="hidden md:block bg-surface border border-border rounded-2xl overflow-hidden shadow-card">
         <table className="w-full text-sm">
-          <thead>
+          <thead className="bg-surface-subtle">
             <tr className="border-b border-border">
               <Th>{t('admin.applicants.colAlias')}</Th>
               <Th>{t('admin.applicants.colStatus')}</Th>
-              <Th>{t('admin.applicants.colLocation')}</Th>
-              <Th>{t('admin.applicants.colAge')}</Th>
+              <Th>{isScheduledTab ? t('admin.applicants.colDeletesOn') : (t('admin.applicants.colVersion') ?? 'Version')}</Th>
               <Th>{t('admin.applicants.colSubmitted')}</Th>
-              <Th />
+              <Th>{t('admin.applicants.colActions') ?? 'Actions'}</Th>
             </tr>
           </thead>
           <tbody>
             {loading ? (
               Array.from({ length: 6 }).map((_, i) => (
-                <tr key={i} className="border-b border-border last:border-0 animate-pulse">
-                  {Array.from({ length: 6 }).map((_, j) => (
-                    <td key={j} className="px-4 py-3.5"><div className="h-4 bg-border rounded w-20" /></td>
+                <tr key={i} className="border-b border-border last:border-0">
+                  {Array.from({ length: 5 }).map((_, j) => (
+                    <td key={j} className="px-4 py-3.5"><Skeleton className="h-4 w-20" /></td>
                   ))}
                 </tr>
               ))
             ) : applicants.length === 0 ? (
-              <tr><td colSpan={6} className="px-4 py-10 text-center text-sm text-muted">{t('admin.applicants.empty')}</td></tr>
+              <tr><td colSpan={5} className="px-4 py-10 text-center text-sm text-muted">{t('admin.applicants.empty')}</td></tr>
             ) : (
               applicants.map(a => (
                 <tr
                   key={a.id}
-                  onClick={() => navigate(`/admin/applicants/${a.id}`)}
-                  className="border-b border-border last:border-0 hover:bg-bg transition-colors cursor-pointer"
+                  className="group border-b border-border last:border-0 hover:bg-bg transition-colors"
                 >
                   <td className="px-4 py-3.5 font-mono text-xs text-primary">{a.alias}</td>
                   <td className="px-4 py-3.5">
-                    <span className={`inline-flex px-2 py-0.5 rounded-full text-xs font-medium ${STATUS_BADGE[a.status]}`}>
+                    <Badge tone={applicantStatusTone(a.status)} size="sm">
                       {t(`admin.applicants.${a.status}`)}
-                    </span>
+                    </Badge>
                   </td>
-                  <td className="px-4 py-3.5 text-muted">{String(a.answers.location ?? '—')}</td>
-                  <td className="px-4 py-3.5 text-muted">{String(a.answers.age ?? '—')}</td>
+                  <td className="px-4 py-3.5 text-muted text-xs">
+                    {isScheduledTab && a.deletionScheduledAt
+                      ? new Date(a.deletionScheduledAt).toLocaleDateString()
+                      : a.questionnaireVersion}
+                  </td>
                   <td className="px-4 py-3.5 text-muted">{new Date(a.createdAt).toLocaleDateString()}</td>
-                  <td className="px-4 py-3.5 text-right text-muted">→</td>
+                  <td className="px-4 py-3.5">
+                    <div className="flex items-center gap-1">
+                      <button
+                        onClick={() => navigate(`/admin/applicants/${a.id}`)}
+                        className="p-1.5 rounded-lg text-muted hover:text-primary hover:bg-surface-subtle focus-visible:ring-2 focus-visible:ring-accent/40 outline-none transition-colors"
+                        title={t('admin.applicants.viewApplicant')}
+                        aria-label={t('admin.applicants.viewApplicantAria', { alias: a.alias })}
+                      >
+                        <EyeIcon />
+                      </button>
+                      <button
+                        onClick={() => setPendingDelete(a)}
+                        className="p-1.5 rounded-lg text-muted hover:text-error hover:bg-error-light focus-visible:ring-2 focus-visible:ring-accent/40 outline-none transition-colors"
+                        title={t('admin.applicants.deleteApplicant')}
+                        aria-label={t('admin.applicants.deleteApplicantAria', { alias: a.alias })}
+                      >
+                        <TrashIcon />
+                      </button>
+                    </div>
+                  </td>
                 </tr>
               ))
             )}
           </tbody>
         </table>
       </div>
+
+      {/* Mobile card grid */}
+      <div className="md:hidden grid grid-cols-1 gap-3">
+        {loading ? (
+          Array.from({ length: 4 }).map((_, i) => (
+            <div key={i} className="bg-surface border border-border rounded-2xl p-4 space-y-2 shadow-card">
+              <Skeleton className="h-4 w-32" />
+              <Skeleton className="h-3 w-20" />
+            </div>
+          ))
+        ) : applicants.length === 0 ? (
+          <p className="text-center text-sm text-muted py-10">{t('admin.applicants.empty')}</p>
+        ) : (
+          applicants.map(a => (
+            <div key={a.id} className="bg-surface border border-border rounded-2xl p-4 shadow-card">
+              <div className="flex items-center justify-between mb-2">
+                <span className="font-mono text-xs font-bold text-primary">{a.alias}</span>
+                <Badge tone={applicantStatusTone(a.status)} size="sm">
+                  {t(`admin.applicants.${a.status}`)}
+                </Badge>
+              </div>
+              <p className="text-xs text-muted mb-3">{new Date(a.createdAt).toLocaleDateString()}</p>
+              <button
+                onClick={() => navigate(`/admin/applicants/${a.id}`)}
+                className="text-xs text-accent hover:underline"
+              >
+                {t('admin.applicants.viewLink') ?? 'View →'}
+              </button>
+            </div>
+          ))
+        )}
+      </div>
+
+      <ConfirmDialog
+        open={pendingDelete !== null}
+        title={pendingDelete ? t('admin.applicants.deleteConfirmTitle', { alias: pendingDelete.alias }) : ''}
+        description={t('admin.applicants.deleteDescription')}
+        confirmLabel={t('admin.matches.delete')}
+        cancelLabel={t('admin.matching.cancel')}
+        tone="danger"
+        loading={deleteLoading}
+        onConfirm={handleDelete}
+        onClose={() => setPendingDelete(null)}
+      />
 
       {totalPages > 1 && (
         <div className="flex items-center justify-between text-sm">
@@ -149,18 +261,5 @@ export function Applicants() {
         </div>
       )}
     </div>
-  )
-}
-
-function Th({ children }: { children?: React.ReactNode }) {
-  return <th className="px-4 py-3 text-left text-xs font-medium text-muted uppercase tracking-wider">{children}</th>
-}
-
-function PageButton({ children, onClick, disabled }: { children: React.ReactNode; onClick: () => void; disabled: boolean }) {
-  return (
-    <button onClick={onClick} disabled={disabled}
-      className="px-3 py-1.5 rounded-lg border border-border text-sm disabled:opacity-40 hover:bg-bg transition-colors">
-      {children}
-    </button>
   )
 }

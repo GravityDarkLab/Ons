@@ -1,4 +1,6 @@
 import { BrowserRouter, Routes, Route } from 'react-router-dom'
+import { ToastProvider } from './components/ui/Toast'
+import { ThemeProvider } from './theme/ThemeProvider'
 import { AuthProvider } from './admin/context/AuthContext'
 import { ProtectedRoute } from './admin/components/ProtectedRoute'
 import { AdminLayout } from './admin/components/AdminLayout'
@@ -13,10 +15,13 @@ import InviteGate from './components/InviteGate'
 import Home from './pages/Home'
 import Apply from './pages/Apply'
 import Success from './pages/Success'
+import ProfileLoginPage from './pages/profile/ProfileLoginPage'
+import ProfileDashboard from './pages/profile/ProfileDashboard'
 
 export default function App() {
   return (
     <BrowserRouter>
+      <ToastProvider>
       <Routes>
         {/* ── Admin (session auth, no invite gate) ─────────────────────
             AuthProvider is scoped here — getMe() is only called when
@@ -24,6 +29,7 @@ export default function App() {
         <Route
           path="/admin/*"
           element={
+            <ThemeProvider>
             <AuthProvider>
               <Routes>
                 <Route path="login" element={<Login />} />
@@ -46,8 +52,13 @@ export default function App() {
                 />
               </Routes>
             </AuthProvider>
+            </ThemeProvider>
           }
         />
+
+        {/* ── Applicant portal (HttpOnly cookie session) ───────────────── */}
+        <Route path="/profile/login" element={<ThemeProvider><ProfileLoginPage /></ThemeProvider>} />
+        <Route path="/profile" element={<ThemeProvider><ProfileDashboard /></ThemeProvider>} />
 
         {/* ── Public form (invite gate) ─────────────────────────────── */}
         <Route
@@ -63,6 +74,7 @@ export default function App() {
           }
         />
       </Routes>
+      </ToastProvider>
     </BrowserRouter>
   )
 }

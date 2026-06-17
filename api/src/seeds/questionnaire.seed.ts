@@ -46,14 +46,12 @@ const questionnaire: Omit<QuestionnaireDoc, "_id" | "createdAt" | "updatedAt"> =
           placeholder: "City, Country",
         },
         {
-          id: "age",
-          label: "Age",
-          type: "number",
+          id: "birth_date",
+          label: "Birth date",
+          type: "date",
           sensitive: false,
           required: true,
           order: 2,
-          min: 18,
-          max: 100,
         },
         {
           id: "height_cm",

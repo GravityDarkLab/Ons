@@ -1,6 +1,39 @@
 import '@testing-library/jest-dom'
 import { cleanup } from '@testing-library/react'
-import { afterEach, vi } from 'vitest'
+import { afterEach, beforeAll, vi } from 'vitest'
+
+// Node.js 22 defines `localStorage = undefined` as an experimental Web Storage global.
+// jsdom 29 does not override it, so we provide a minimal in-memory implementation.
+const makeStorage = () => {
+  let store: Record<string, string> = {}
+  return {
+    getItem:     (k: string) => store[k] ?? null,
+    setItem:     (k: string, v: string) => { store[k] = v },
+    removeItem:  (k: string) => { delete store[k] },
+    clear:       () => { store = {} },
+    key:         (i: number) => Object.keys(store)[i] ?? null,
+    get length() { return Object.keys(store).length },
+  }
+}
+
+beforeAll(() => {
+  Object.defineProperty(globalThis, 'localStorage', { value: makeStorage(), writable: true })
+  Object.defineProperty(globalThis, 'sessionStorage', { value: makeStorage(), writable: true })
+  // jsdom has no matchMedia; ThemeProvider needs it
+  Object.defineProperty(window, 'matchMedia', {
+    writable: true,
+    value: vi.fn().mockImplementation((query: string) => ({
+      matches: false,
+      media: query,
+      onchange: null,
+      addEventListener: vi.fn(),
+      removeEventListener: vi.fn(),
+      addListener: vi.fn(),
+      removeListener: vi.fn(),
+      dispatchEvent: vi.fn(),
+    })),
+  })
+})
 
 afterEach(() => {
   cleanup()

@@ -15,8 +15,10 @@ info:
     - Admin endpoints are protected by a session cookie (`admin_token`) set by
       `POST /api/v1/admin/login`. The cookie is `HttpOnly` and `SameSite=Lax`.
       API clients may alternatively pass the raw JWT in the `Authorization: Bearer` header.
-    - Applicant profile endpoints use a separate JWT with `type: "applicant"` in the payload,
-      issued by `POST /api/v1/profile/login`. Pass it as `Authorization: Bearer <token>`.
+    - Applicant profile endpoints use a separate JWT delivered as an `HttpOnly`
+      `ons_applicant_session` cookie, set by `POST /api/v1/profile/login` and
+      `POST /api/v1/profile/set-password`. The browser sends it automatically.
+      API clients may use `Authorization: Bearer <token>` as a fallback.
       Admin JWTs are rejected on applicant endpoints and vice-versa.
 
     **Rate limits:**
@@ -79,16 +81,27 @@ components:
         when no cookie is present.
         Claims: `sub` = admin MongoDB `_id`, `role` = one of `super_admin | admin | viewer`.
 
+    ApplicantCookieAuth:
+      type: apiKey
+      in: cookie
+      name: ons_applicant_session
+      description: |
+        HttpOnly session cookie set by `POST /api/v1/profile/login` and
+        `POST /api/v1/profile/set-password`. The browser sends it automatically
+        on every request to `/api/v1/profile/*`.
+        The cookie is invisible to JavaScript (`HttpOnly`), `SameSite=Lax`, and
+        `Secure` in production. Valid for 30 days.
+
     ApplicantBearerAuth:
       type: http
       scheme: bearer
       bearerFormat: JWT
       description: |
-        JWT issued by `POST /api/v1/profile/login` for applicant self-service access.
-        Pass it as `Authorization: Bearer <token>`.
+        Fallback for API clients and tooling that cannot send cookies.
         Claims: `sub` = applicant MongoDB `_id`, `alias` = human-friendly codename,
         `type` = `"applicant"` (distinguishes from admin JWTs which carry `role` instead).
         Valid for 30 days. Admin JWTs are rejected on all `/api/v1/profile/*` endpoints.
+        The server tries the cookie first; the header is used only when no cookie is present.
 
     SubmissionKey:
       type: apiKey
@@ -142,7 +155,7 @@ components:
             items:
               type: string
           example:
-            age: ["Must be at least 18 years old"]
+            birth_date: ["Must be a valid date of someone at least 18 years old"]
             disclaimer_agreed: ["You must agree to the disclaimer"]
 
     # ── Form ──────────────────────────────────────────────────────────────────
@@ -151,7 +164,7 @@ components:
       required:
         - instagram_handle
         - location
-        - age
+        - birth_date
         - work
         - gender_identity
         - sexual_orientation
@@ -172,15 +185,17 @@ components:
         instagram_handle:
           type: string
           pattern: '^@?[\w.]+$'
-          example: "@johndoe"
+          example: "@example_user"
           description: "Sensitive — stored encrypted, never appears in matching profile."
         location:
           type: string
           example: "Paris, France"
-        age:
-          type: integer
-          minimum: 18
-          example: 27
+        birth_date:
+          type: string
+          format: date
+          pattern: '^\d{4}-\d{2}-\d{2}$'
+          example: "1997-06-15"
+          description: "YYYY-MM-DD. Applicant must be between 18 and 120 years old."
         height_cm:
           type: integer
           minimum: 100
@@ -255,7 +270,7 @@ components:
           example: "Instagram Handle"
         type:
           type: string
-          enum: [text, number, select, multiselect, range, boolean, textarea]
+          enum: [text, number, date, select, multiselect, range, boolean, textarea]
         sensitive:
           type: boolean
           description: "If true, the answer is encrypted and stored separately."
@@ -327,7 +342,7 @@ components:
                 HMAC-SHA256 of the version string, signed with a server secret.
                 Must be included verbatim in the `submissionKey` field of POST /submit.
                 Prevents version enumeration — a key for v1.0.0 cannot be forged or reused for another version.
-              example: "a3f9d2c1e4b7089f..."
+              example: "0000000000000000000000000000000000000000000000000000000000000000"
 
     QuestionnaireListResponse:
       description: "Returned by GET /questionnaire?filter=all"
@@ -409,7 +424,7 @@ components:
           format: hex
           minLength: 64
           maxLength: 64
-          example: "a3f9d2c1e4b7089f..."
+          example: "0000000000000000000000000000000000000000000000000000000000000000"
           description: |
             64-character hex token used as the login identifier for the applicant portal.
             Append to the portal URL as `?token=<value>` so the login form is pre-filled.
@@ -432,11 +447,11 @@ components:
           format: hex
           minLength: 64
           maxLength: 64
-          example: "a3f9d2c1e4b7089f..."
+          example: "0000000000000000000000000000000000000000000000000000000000000000"
           description: "64-char hex token from the form submission response."
         password:
           type: string
-          example: "amber-river-silent-fox"
+          example: "example-passphrase-123"
           description: |
             The applicant's password. Optional — omit to probe for first-login state
             without attempting password verification. If the account has no password set,
@@ -450,21 +465,26 @@ components:
         success:
           type: boolean
           enum: [true]
-        token:
-          type: string
-          description: "Applicant JWT (30-day expiry). Present only when `firstLogin` is absent."
-          example: "eyJhbGciOiJIUzI1NiJ9..."
         firstLogin:
           type: boolean
           enum: [true]
           description: |
             Present (and `true`) when the account has no password yet.
             The caller should redirect to `POST /api/v1/profile/set-password`.
-            Mutually exclusive with `token` — exactly one of the two is present.
+            When absent, the session cookie has been set — proceed to the dashboard.
+        passwordRequired:
+          type: boolean
+          enum: [true]
+          description: |
+            Present (and `true`) when the magic token is valid, the account
+            already has a password set, but `password` was omitted from the
+            request. The caller should prompt for a password and resubmit
+            `POST /api/v1/profile/login` with both `magicToken` and `password`.
+            When absent, the session cookie has been set — proceed to the dashboard.
 
     ApplicantProfileView:
       type: object
-      required: [applicantId, alias, status, scoreThreshold, createdAt]
+      required: [applicantId, alias, status, scoreThreshold, createdAt, deletionScheduledAt]
       properties:
         applicantId:
           type: string
@@ -485,6 +505,15 @@ components:
         createdAt:
           type: string
           format: date-time
+        deletionScheduledAt:
+          type: string
+          format: date-time
+          nullable: true
+          description: |
+            Set when `status` is `inactive` — the timestamp at which the account
+            and its data will be permanently deleted. `null` when no deletion
+            is scheduled. Use `POST /api/v1/profile/cancel-deletion` to clear it,
+            or `POST /api/v1/profile/delete-now` to delete immediately.
 
     MatchStatus:
       type: string
@@ -546,6 +575,27 @@ components:
             type: string
           description: "AI-generated date ideas based on both profiles. Same visibility rule as `iceBreakers`."
           example: ["Coffee walk through the old city", "Sunset picnic with homemade snacks"]
+        breakdown:
+          type: object
+          additionalProperties:
+            type: number
+          description: "Per-dimension scores (0–1) from the matching algorithm, keyed by dimension name."
+          example: { numeric_compatibility: 0.9, lifestyle_similarity: 0.7 }
+        partnerProfile:
+          type: object
+          additionalProperties: true
+          description: |
+            Partner's public questionnaire answers (location, age, work, vibe words, …).
+            Identity fields are stored encrypted in a separate collection and are never
+            part of this object; consent checkboxes are filtered out.
+          example: { location: "Paris, France", age: 27, work: "Student" }
+        partnerInstagram:
+          type: string
+          description: |
+            Partner's Instagram handle. Only present once contact is committed
+            (`status` is `in_progress` or `dating`) — never while merely proposed.
+            Each decryption is audit-logged.
+          example: "horizon.swift"
 
     ContactResult:
       type: object
@@ -553,7 +603,7 @@ components:
       properties:
         targetInstagram:
           type: string
-          example: "@partner_handle"
+          example: "@example_partner"
           description: "Decrypted Instagram handle of the match partner. Triggers an `APPLICANT_REVEAL_IDENTITY` audit log entry."
         iceBreakers:
           type: array
@@ -577,7 +627,7 @@ components:
         password:
           type: string
           format: password
-          example: "s3cr3t"
+          example: "example-password-123"
 
     AdminLoginResponse:
       type: object
@@ -643,7 +693,7 @@ components:
           additionalProperties: true
           example:
             location: "Paris, France"
-            age: 27
+            birth_date: "1997-06-15"
             height_cm: 178
             work: "Software Engineer"
             relationship_type: "Long Term"
@@ -710,11 +760,30 @@ components:
               example: "Blue Falcon"
             instagramHandle:
               type: string
-              example: "@johndoe"
+              example: "@example_user"
               description: "Decrypted Instagram handle. This response is audit-logged."
             applicantId:
               type: string
               example: "64f1a2b3c4d5e6f7a8b9c0d1"
+
+    RegenerateMagicLinkResponse:
+      type: object
+      required: [success, data]
+      properties:
+        success:
+          type: boolean
+          enum: [true]
+        data:
+          type: object
+          required: [alias, magicToken]
+          properties:
+            alias:
+              type: string
+              example: "Blue Falcon"
+            magicToken:
+              type: string
+              description: "Raw magic-link token. Returned only once and never stored — relay it to the applicant."
+              example: "0000000000000000000000000000000000000000000000000000000000000000"
 
     # ── Audit log ─────────────────────────────────────────────────────────────
     AuditLogEntry:
@@ -736,7 +805,6 @@ components:
           type: string
           enum:
             - RESOLVE_IDENTITY
-            - LIST_APPLICANTS
             - VIEW_APPLICANT
             - DEACTIVATE_APPLICANT
             - ADMIN_LOGIN
@@ -986,7 +1054,7 @@ paths:
                       version: "1.0.0"
                       name: "Matching Form v1"
                       isActive: true
-                      submissionKey: "<64-hex-hmac-key>"
+                      submissionKey: "0000000000000000000000000000000000000000000000000000000000000000"
                       sections:
                         - id: "identity"
                           title: "Your Identity"
@@ -1068,9 +1136,9 @@ paths:
             example:
               questionnaireVersion: "1.0.0"
               answers:
-                instagram_handle: "@johndoe"
+                instagram_handle: "@example_user"
                 location: "Paris, France"
-                age: 27
+                birth_date: "1997-06-15"
                 height_cm: 178
                 work: "Software Engineer"
                 gender_identity: "Male"
@@ -1099,7 +1167,7 @@ paths:
                 success: true
                 alias: "Blue Falcon"
                 applicantId: "64f1a2b3c4d5e6f7a8b9c0d1"
-                magicToken: "a3f9d2c1e4b7089f4a2c8d1e6f3b9a0c..."
+                magicToken: "0000000000000000000000000000000000000000000000000000000000000000"
                 message: "Your profile has been submitted successfully. Save your magic link — you will set your password on first login."
         '409':
           description: Instagram handle already registered
@@ -1269,7 +1337,7 @@ paths:
         - BearerAuth: []
       description: |
         Returns a paginated list of applicant profiles. No sensitive data
-        (instagram handles) is included. Audit-logged as LIST_APPLICANTS.
+        (instagram handles) is included.
       parameters:
         - name: status
           in: query
@@ -1417,7 +1485,7 @@ paths:
                 success: true
                 data:
                   alias: "Blue Falcon"
-                  instagramHandle: "@johndoe"
+                  instagramHandle: "@example_user"
                   applicantId: "64f1a2b3c4d5e6f7a8b9c0d1"
         '401':
           $ref: '#/components/responses/Unauthorized'
@@ -1432,6 +1500,60 @@ paths:
                 error: "Forbidden"
         '404':
           description: Identity record not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /api/v1/admin/applicants/{id}/regenerate-magic-link:
+    post:
+      tags: [Admin – Applicants]
+      summary: Regenerate an applicant's magic link
+      operationId: regenerateMagicLink
+      security:
+        - CookieAuth: []
+        - BearerAuth: []
+      description: |
+        Issues a fresh magic link for an applicant who lost theirs, invalidating
+        the previous one. Their password is also cleared, so the new link takes
+        them through first-login set-password again.
+
+        🔒 **Requires `super_admin` role.** Regular `admin` and `viewer` roles receive 403.
+
+        ⚠️ **The raw token is returned only in this response and is never stored** —
+        relay it to the applicant out-of-band. Audit-logged as REGENERATE_MAGIC_LINK.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+          example: "64f1a2b3c4d5e6f7a8b9c0d1"
+      responses:
+        '200':
+          description: New magic link issued
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RegenerateMagicLinkResponse'
+              example:
+                success: true
+                data:
+                  alias: "Blue Falcon"
+                  magicToken: "0000000000000000000000000000000000000000000000000000000000000000"
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          description: Insufficient role — super_admin required
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                success: false
+                error: "Forbidden"
+        '404':
+          description: Applicant not found
           content:
             application/json:
               schema:
@@ -1615,6 +1737,58 @@ paths:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
 
+  /api/v1/matching/last-run:
+    get:
+      tags: [Matching]
+      summary: Get the most recent matching pass summary (admin only)
+      operationId: getMatchingLastRun
+      security:
+        - CookieAuth: []
+        - BearerAuth: []
+      description: |
+        Returns the persisted summary of the last matching pass (manual or
+        scheduled), or `null` if matching has never run. Stored in the
+        `app_config` collection under the `matching.lastRun` key.
+      responses:
+        '200':
+          description: Last-run summary, or null when matching has never run
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    nullable: true
+                    type: object
+                    properties:
+                      at:
+                        type: string
+                        format: date-time
+                      algorithm:
+                        type: string
+                      totalApplicants:
+                        type: integer
+                      couplesProposed:
+                        type: integer
+                      durationMs:
+                        type: integer
+                      triggeredBy:
+                        type: string
+                        enum: [admin, scheduler]
+              example:
+                success: true
+                data:
+                  at: "2026-06-10T09:03:55.643Z"
+                  algorithm: "embedding-cosine"
+                  totalApplicants: 97
+                  couplesProposed: 667
+                  durationMs: 25
+                  triggeredBy: "admin"
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
   /api/v1/matching/run:
     post:
       tags: [Matching]
@@ -1698,13 +1872,24 @@ paths:
       description: |
         Identifies an applicant by `magicToken` and verifies their password.
 
-        **Two possible success responses (both 200):**
-        - `{ token }` — password verified, JWT returned, proceed to dashboard
+        **Three possible success responses (all 200):**
+        - `{ success: true }` + `Set-Cookie: ons_applicant_session=<jwt>` — password
+          verified, session cookie set, proceed to dashboard
         - `{ firstLogin: true }` — account has no password yet; redirect to
-          `POST /api/v1/profile/set-password` before issuing a JWT
+          `POST /api/v1/profile/set-password` before setting the cookie
+        - `{ passwordRequired: true }` — magic token is valid and a password is
+          already set, but `password` was omitted; prompt the user for their
+          password and resubmit with both fields
 
-        `password` is optional — omitting it is the idiomatic way to trigger a
-        first-login check without attempting verification.
+        `password` is optional — omitting it is the idiomatic way to probe a
+        magic link's state (first-login vs. returning user) without attempting
+        verification.
+
+        If the request already carries a valid `ons_applicant_session`
+        cookie/Bearer token **for the same applicant identified by
+        `magicToken`**, the session is refreshed and `{ success: true }` is
+        returned immediately — revisiting your own magic link while already
+        signed in does not re-prompt for a password.
 
         **Rate limit:** 10 requests per minute per IP.
       requestBody:
@@ -1717,30 +1902,41 @@ paths:
               with_password:
                 summary: Returning user with password set
                 value:
-                  magicToken: "a3f9d2c1e4b7089f4a2c8d1e6f3b9a0c..."
-                  password: "amber-river-silent-fox"
+                  magicToken: "0000000000000000000000000000000000000000000000000000000000000000"
+                  password: "example-passphrase-123"
               first_login_check:
                 summary: First-login check (no password yet)
                 value:
-                  magicToken: "a3f9d2c1e4b7089f4a2c8d1e6f3b9a0c..."
+                  magicToken: "0000000000000000000000000000000000000000000000000000000000000000"
       responses:
         '200':
-          description: Token issued or first-login detected
+          description: Session cookie set, or first-login detected
+          headers:
+            Set-Cookie:
+              description: |
+                `ons_applicant_session=<jwt>; Path=/; HttpOnly; SameSite=Lax`
+                Present only when `firstLogin` is absent (password verified).
+              schema:
+                type: string
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/ProfileLoginResponse'
               examples:
                 authenticated:
-                  summary: Password correct — JWT returned
+                  summary: Password correct — session cookie set
                   value:
                     success: true
-                    token: "eyJhbGciOiJIUzI1NiJ9..."
                 first_login:
                   summary: No password set — redirect to set-password
                   value:
                     success: true
                     firstLogin: true
+                password_required:
+                  summary: Password already set — prompt for it
+                  value:
+                    success: true
+                    passwordRequired: true
         '401':
           description: Unknown magic token or wrong password
           content:
@@ -1763,12 +1959,36 @@ paths:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
 
+  /api/v1/profile/logout:
+    post:
+      tags: [Profile]
+      summary: Log out of the applicant portal
+      operationId: profileLogout
+      description: |
+        Clears the `ons_applicant_session` cookie. A one-shot, idempotent
+        action — no session is required, so it is exempt from rate limiting
+        (mirrors `POST /api/v1/admin/logout`).
+      responses:
+        '200':
+          description: Logged out
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    enum: [true]
+              example:
+                success: true
+
   /api/v1/profile/me:
     get:
       tags: [Profile]
       summary: Get my profile
       operationId: getMyProfile
       security:
+        - ApplicantCookieAuth: []
         - ApplicantBearerAuth: []
       description: |
         Returns the authenticated applicant's non-sensitive profile:
@@ -1799,12 +2019,126 @@ paths:
         '401':
           $ref: '#/components/responses/Unauthorized'
 
+  /api/v1/profile/answers:
+    get:
+      tags: [Profile]
+      summary: Get my questionnaire answers
+      operationId: getMyAnswers
+      security:
+        - ApplicantCookieAuth: []
+        - ApplicantBearerAuth: []
+      description: |
+        Returns the authenticated applicant's own questionnaire answers for
+        self-service editing. `instagram_handle` is never included — identity
+        answers live encrypted in a separate collection — and the one-time
+        `disclaimer_agreed` consent is filtered out as well. `birth_date` and
+        `gender_identity` are included for display but are read-only — see
+        `PUT` below.
+      responses:
+        '200':
+          description: The applicant's editable answers
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [success, data]
+                properties:
+                  success:
+                    type: boolean
+                    enum: [true]
+                  data:
+                    type: object
+                    required: [answers]
+                    properties:
+                      answers:
+                        type: object
+                        additionalProperties: true
+              example:
+                success: true
+                data:
+                  answers:
+                    location: "Paris, France"
+                    birth_date: "1997-06-15"
+                    gender_identity: "Female"
+                    work: "Student"
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          description: Applicant not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+    put:
+      tags: [Profile]
+      summary: Update my questionnaire answers
+      operationId: updateMyAnswers
+      security:
+        - ApplicantCookieAuth: []
+        - ApplicantBearerAuth: []
+      description: |
+        Replaces the applicant's editable questionnaire answers. Field rules
+        match the original submission. `instagram_handle` and
+        `disclaimer_agreed` are rejected — changing the Instagram handle
+        requires contacting an admin. `birth_date` and `gender_identity` are
+        also rejected — these identity facts can only be changed by an admin.
+        Embeddings are refreshed in the background so the next matching run
+        uses the updated answers.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [answers]
+              properties:
+                answers:
+                  type: object
+                  additionalProperties: true
+                  description: |
+                    All editable questionnaire answers (full replacement of the
+                    editable set). Unknown keys, `instagram_handle`,
+                    `disclaimer_agreed`, `birth_date`, and `gender_identity`
+                    are rejected with a 422.
+            example:
+              answers:
+                location: "Paris, France"
+                work: "Student"
+      responses:
+        '200':
+          description: Answers updated
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    enum: [true]
+              example:
+                success: true
+        '422':
+          description: Validation failed (unknown key, instagram_handle, disclaimer_agreed, birth_date, gender_identity, or invalid value)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          description: Applicant not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
   /api/v1/profile/matches:
     get:
       tags: [Profile]
       summary: List my matches
       operationId: getMyMatches
       security:
+        - ApplicantCookieAuth: []
         - ApplicantBearerAuth: []
       description: |
         Returns the authenticated applicant's matches, filtered by score threshold.
@@ -1828,7 +2162,7 @@ paths:
           schema:
             type: integer
             minimum: 1
-            maximum: 10
+            maximum: 50
             default: 10
           description: "Maximum number of matches to return."
       responses:
@@ -1864,12 +2198,16 @@ paths:
       summary: Request contact — reveal partner's Instagram
       operationId: requestContact
       security:
+        - ApplicantCookieAuth: []
         - ApplicantBearerAuth: []
       description: |
         Initiates the contact flow for a `proposed` match:
         1. Decrypts the partner's Instagram handle (audit-logged as `APPLICANT_REVEAL_IDENTITY`)
         2. Generates AI ice-breakers and date ideas tailored to both profiles
         3. Transitions match → `in_progress`; sets the authenticated applicant as `initiatorId`
+        4. Expires all other `proposed`/`in_progress` matches of the initiator —
+           contact is exclusive; expired matches become eligible again in the
+           next matching phase
 
         The partner's Instagram is returned **only** to the initiator in this response —
         it is never exposed to the target or in any other endpoint.
@@ -1900,7 +2238,7 @@ paths:
               example:
                 success: true
                 data:
-                  targetInstagram: "@partner_handle"
+                  targetInstagram: "@example_partner"
                   iceBreakers:
                     - "What's the most spontaneous trip you've taken?"
                     - "What does your ideal Sunday look like?"
@@ -1928,6 +2266,7 @@ paths:
       summary: Respond to a contact request
       operationId: respondToContact
       security:
+        - ApplicantCookieAuth: []
         - ApplicantBearerAuth: []
       description: |
         Called by the **target** of a contact request (the non-initiator) to accept or decline.
@@ -1995,12 +2334,71 @@ paths:
               schema:
                 $ref: '#/components/schemas/ValidationErrorResponse'
 
+  /api/v1/profile/matches/{id}/withdraw:
+    post:
+      tags: [Profile]
+      summary: Withdraw a contact request
+      operationId: withdrawContact
+      security:
+        - ApplicantCookieAuth: []
+        - ApplicantBearerAuth: []
+      description: |
+        Called by the **initiator** of a contact request to back out after the
+        identity reveal. The match → `declined` (terminal) and the pair is
+        permanently excluded from future matching runs. The initiator's other
+        matches were already expired at contact time, so they wait for the next
+        matching phase to receive fresh matches.
+
+        Returns 403 if called by a non-participant or by the target;
+        409 if the match is not in `in_progress` state.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+          example: "64f1a2b3c4d5e6f7a8b9c0d5"
+      responses:
+        '200':
+          description: Contact request withdrawn
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    enum: [true]
+              example:
+                success: true
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          description: Not a participant, or called by the target instead of the initiator
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Match not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '409':
+          description: Match is not in `in_progress` state
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
   /api/v1/profile/matches/{id}/outcome:
     post:
       tags: [Profile]
       summary: Report match outcome
       operationId: reportOutcome
       security:
+        - ApplicantCookieAuth: []
         - ApplicantBearerAuth: []
       description: |
         Either applicant in a `dating` or `in_progress` match can self-report the outcome.
@@ -2070,12 +2468,14 @@ paths:
       summary: Deactivate my account
       operationId: deactivateMyAccount
       security:
+        - ApplicantCookieAuth: []
         - ApplicantBearerAuth: []
       description: |
         Deactivates the authenticated applicant's account:
         - Status → `inactive`; `deletionScheduledAt` = now + 180 days
         - All `proposed`/`in_progress` matches → `expired`
         - No data is deleted immediately
+        - Clears the `ons_applicant_session` cookie
 
         Idempotent — safe to call on an already-inactive account.
       responses:
@@ -2094,6 +2494,82 @@ paths:
         '401':
           $ref: '#/components/responses/Unauthorized'
 
+  /api/v1/profile/cancel-deletion:
+    post:
+      tags: [Profile]
+      summary: Cancel a scheduled account deletion
+      operationId: cancelAccountDeletion
+      security:
+        - ApplicantCookieAuth: []
+        - ApplicantBearerAuth: []
+      description: |
+        Cancels a pending deletion scheduled by `POST /api/v1/profile/deactivate`
+        (or by a successful match outcome):
+        - Status → `applied`; `deletionScheduledAt` is cleared
+        - The applicant re-enters the matching pool
+
+        Returns `409` if the account has no deletion currently scheduled.
+      responses:
+        '200':
+          description: Deletion cancelled
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    enum: [true]
+              example:
+                success: true
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '409':
+          description: No deletion is currently scheduled for this account
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /api/v1/profile/delete-now:
+    post:
+      tags: [Profile]
+      summary: Permanently delete my account immediately
+      operationId: deleteMyAccountNow
+      security:
+        - ApplicantCookieAuth: []
+        - ApplicantBearerAuth: []
+      description: |
+        Immediately and irreversibly deletes the authenticated applicant's
+        account, bypassing the 180-day grace period:
+        - The applicant document, identity record, and embeddings are deleted
+        - Any matches involving the applicant are removed
+        - An audit log entry is written before deletion
+        - Clears the `ons_applicant_session` cookie
+
+        This action cannot be undone.
+      responses:
+        '200':
+          description: Account permanently deleted
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    enum: [true]
+              example:
+                success: true
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          description: Applicant not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
   /api/v1/profile/set-password:
     post:
       tags: [Profile]
@@ -2103,8 +2579,9 @@ paths:
         Sets the applicant's password for the first time. Only works when
         `passwordHash` is null (account never had a password set).
 
-        On success the password is stored as a bcrypt hash and a JWT is returned,
-        logging the applicant in immediately.
+        On success the password is stored as a bcrypt hash and the
+        `ons_applicant_session` HttpOnly cookie is set, logging the applicant
+        in immediately — no token is returned in the response body.
 
         Use `GET /api/v1/profile/suggest-password` to offer a generated passphrase.
 
@@ -2122,26 +2599,31 @@ paths:
                   format: hex
                   minLength: 64
                   maxLength: 64
-                  example: "a3f9d2c1e4b7089f4a2c8d1e6f3b9a0c..."
+                  example: "0000000000000000000000000000000000000000000000000000000000000000"
                 newPassword:
                   type: string
                   minLength: 8
-                  example: "amber-river-silent-fox"
+                  example: "example-passphrase-123"
       responses:
         '200':
-          description: Password set — JWT returned
+          description: Password set — session cookie set
+          headers:
+            Set-Cookie:
+              description: |
+                `ons_applicant_session=<jwt>; Path=/; HttpOnly; SameSite=Lax`
+              schema:
+                type: string
           content:
             application/json:
               schema:
                 type: object
-                required: [success, token]
+                required: [success]
                 properties:
                   success:
                     type: boolean
                     enum: [true]
-                  token:
-                    type: string
-                    example: "eyJhbGciOiJIUzI1NiJ9..."
+              example:
+                success: true
         '401':
           description: Unknown magic token
           content:
@@ -2189,7 +2671,7 @@ paths:
                     enum: [true]
                   suggestion:
                     type: string
-                    example: "amber-river-silent-fox"
+                    example: "example-generated-passphrase"
 
   /api/v1/profile/change-password:
     post:
@@ -2197,6 +2679,7 @@ paths:
       summary: Change password
       operationId: changePassword
       security:
+        - ApplicantCookieAuth: []
         - ApplicantBearerAuth: []
       description: |
         Changes the authenticated applicant's password. Requires the current
@@ -2213,11 +2696,11 @@ paths:
               properties:
                 currentPassword:
                   type: string
-                  example: "amber-river-silent-fox"
+                  example: "example-current-passphrase-123"
                 newPassword:
                   type: string
                   minLength: 8
-                  example: "cascade-stone-swift-oak"
+                  example: "example-new-passphrase-123"
       responses:
         '200':
           description: Password updated

@@ -12,7 +12,7 @@ function getChatEndpoint(): { url: string; apiKey: string } {
   return { url: `${base}/chat/completions`, apiKey: "local-key" };
 }
 
-const DEFAULT_CHAT_MODEL = process.env.OPENAI_CHAT_MODEL ?? "gpt-4o-mini";
+const DEFAULT_CHAT_MODEL = env.openaiChatModel;
 
 /**
  * Sends a single prompt and returns the assistant's reply.

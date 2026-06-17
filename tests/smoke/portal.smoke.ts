@@ -14,14 +14,23 @@
 import { describe, test, expect, beforeAll } from "bun:test";
 import {
   BASE, BASE_ROOT, ADMIN_USER, ADMIN_PASS,
-  get, post, maleAnswers, femaleAnswers, checkServerAvailable,
+  get, post, maleAnswers, femaleAnswers, checkServerAvailable, cookieToken,
 } from "./helpers.ts";
 
 // ── Availability check (top-level await — runs before any test is registered) ─
 
-const SERVER_AVAILABLE = await checkServerAvailable();
+const CREDS_AVAILABLE = !!(ADMIN_USER && ADMIN_PASS);
 
-if (!SERVER_AVAILABLE) {
+if (!CREDS_AVAILABLE) {
+  console.warn(`\n⚠️  Smoke tests: SMOKE_ADMIN_USER / SMOKE_ADMIN_PASS not set.\n` +
+    `   Without admin credentials most tests fail confusingly — skipping all.\n` +
+    `   Example:\n` +
+    `   SMOKE_ADMIN_USER=admin SMOKE_ADMIN_PASS=... bun test ./tests/smoke/portal.smoke.ts\n`);
+}
+
+const SERVER_AVAILABLE = CREDS_AVAILABLE && await checkServerAvailable();
+
+if (CREDS_AVAILABLE && !SERVER_AVAILABLE) {
   console.warn(`\n⚠️  Smoke tests: server not reachable at ${BASE_ROOT}\n` +
     `   Set SMOKE_BASE_URL or start the server, then re-run.\n` +
     `   All tests below will be skipped.\n`);
@@ -82,7 +91,7 @@ beforeAll(async () => {
       magicToken: sub.body.magicToken,
       newPassword: `smoke-pass-${tokenKey}-${run}`,
     });
-    (S as any)[jwtKey] = pwd.body.token ?? "";
+    (S as any)[jwtKey] = cookieToken(pwd.cookie);
   }
 
   // 4. Applicant D for deactivate section
@@ -91,7 +100,7 @@ beforeAll(async () => {
     magicToken: subD.body.magicToken,
     newPassword: `smoke-pass-d-${run}`,
   });
-  S.jwtD = pwdD.body.token ?? "";
+  S.jwtD = cookieToken(pwdD.cookie);
 
   // 5. Get a sample applicant ID for detail tests
   const list = await get("/admin/applicants?limit=1", { cookie: S.adminCookie });
@@ -356,10 +365,10 @@ describe("Profile auth — first-login flow", () => {
     expect(r.status).toBe(422);
   });
 
-  T("set-password — valid → 200 + JWT", async () => {
+  T("set-password — valid → 200 + session cookie", async () => {
     const r = await post("/profile/set-password", { magicToken: freshToken, newPassword: "valid-password-123" });
     expect(r.status).toBe(200);
-    expect(r.body.token).toBeTruthy();
+    expect(cookieToken(r.cookie)).toBeTruthy();
   });
 
   T("set-password — already set → 409", async () => {
@@ -367,10 +376,10 @@ describe("Profile auth — first-login flow", () => {
     expect(r.status).toBe(409);
   });
 
-  T("login — correct password → JWT", async () => {
+  T("login — correct password → session cookie", async () => {
     const r = await post("/profile/login", { magicToken: freshToken, password: "valid-password-123" });
     expect(r.status).toBe(200);
-    expect(r.body.token).toBeTruthy();
+    expect(cookieToken(r.cookie)).toBeTruthy();
   });
 
   T("login — wrong password → 401", async () => {
@@ -464,11 +473,11 @@ describe("Change password", () => {
     expect(r.status).toBe(200);
   });
 
-  T("login with new password → JWT", async () => {
+  T("login with new password → session cookie", async () => {
     const r = await post("/profile/login", { magicToken: S.tokenA, password: pwdANew });
     expect(r.status).toBe(200);
-    expect(r.body.token).toBeTruthy();
-    S.jwtA = r.body.token; // refresh JWT for downstream tests
+    expect(cookieToken(r.cookie)).toBeTruthy();
+    S.jwtA = cookieToken(r.cookie); // refresh JWT for downstream tests
   });
 
   T("login with old password fails after change → 401", async () => {
@@ -581,6 +590,49 @@ describe("Admin matching", () => {
     );
     expect([401, 403]).toContain(r.status);
   });
+
+  // tested: candidates endpoint is admin-only (compatibility data + paid
+  // embedding calls must not be reachable anonymously)
+  T("GET /matching/candidates — no auth → 401", async () => {
+    const r = await get(`/matching/candidates/${S.sampleApplicantId}`);
+    expect(r.status).toBe(401);
+  });
+
+  T("GET /matching/candidates — admin → 200 + candidates array", async () => {
+    // sampleApplicantId may have been deactivated by the Deactivate section
+    // (candidates 404s on inactive applicants) — fetch a currently active one
+    const list = await get("/admin/applicants?status=applied&limit=1", { cookie: S.adminCookie });
+    const activeId = list.body?.data?.[0]?.id;
+    expect(activeId).toBeTruthy();
+
+    const r = await get(
+      `/matching/candidates/${activeId}?algorithm=baseline`,
+      { cookie: S.adminCookie },
+    );
+    expect(r.status).toBe(200);
+    expect(Array.isArray(r.body.candidates)).toBe(true);
+  });
+
+  // tested: last-run persistence — POST /matching/run above must have written
+  // a summary to app_config that survives independent of component state
+  T("GET /matching/last-run — no auth → 401", async () => {
+    const r = await get("/matching/last-run");
+    expect(r.status).toBe(401);
+  });
+
+  T("GET /matching/last-run — reflects the run this suite triggered", async () => {
+    const r = await get("/matching/last-run", { cookie: S.adminCookie });
+    expect(r.status).toBe(200);
+    expect(r.body.data).toBeTruthy();
+    const d = r.body.data;
+    expect(typeof d.totalApplicants).toBe("number");
+    expect(typeof d.couplesProposed).toBe("number");
+    expect(["admin", "scheduler"]).toContain(d.triggeredBy);
+    // The run happened within this suite execution — `at` must be recent
+    const ageMs = Date.now() - new Date(d.at).getTime();
+    expect(ageMs).toBeGreaterThanOrEqual(0);
+    expect(ageMs).toBeLessThan(10 * 60 * 1000);
+  });
 });
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -623,13 +675,18 @@ describe("Audit logs", () => {
     expect((await get("/admin/audit-logs")).status).toBe(401);
   });
 
-  T("RESOLVE_IDENTITY action is logged", async () => {
-    // Trigger a reveal first to make sure it's logged
-    await get(`/admin/applicants/${S.sampleApplicantId}/identity`, { cookie: S.adminCookie });
-    const r = await get("/admin/audit-logs?limit=50", { cookie: S.adminCookie });
-    expect(r.status).toBe(200);
-    const actions = r.body.data.map((l: any) => l.action);
-    expect(actions).toContain("RESOLVE_IDENTITY");
+  T("identity reveal is role-gated and audited", async () => {
+    const reveal = await get(`/admin/applicants/${S.sampleApplicantId}/identity`, { cookie: S.adminCookie });
+    if (reveal.status === 200) {
+      // super_admin credentials: the reveal must be audit-logged
+      const r = await get("/admin/audit-logs?limit=50", { cookie: S.adminCookie });
+      expect(r.status).toBe(200);
+      const actions = r.body.data.map((l: any) => l.action);
+      expect(actions).toContain("RESOLVE_IDENTITY");
+    } else {
+      // plain admin role: identity reveal requires super_admin
+      expect(reveal.status).toBe(403);
+    }
   });
 });
 
