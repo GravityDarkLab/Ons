@@ -411,6 +411,12 @@ export function ApplicantDetail() {
                 <dt className="text-muted">{t('admin.detail.version')}</dt>
                 <dd className="text-primary font-mono text-right">{applicant.questionnaireVersion}</dd>
               </div>
+              {applicant.submissionIp && (
+                <div className="flex justify-between gap-3">
+                  <dt className="text-muted">{t('admin.detail.submissionIp')}</dt>
+                  <dd className="text-primary font-mono text-right text-xs">{applicant.submissionIp}</dd>
+                </div>
+              )}
             </dl>
 
             {/* Divider */}
