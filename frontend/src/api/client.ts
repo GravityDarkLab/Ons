@@ -28,7 +28,7 @@ export async function submitForm(
       'Content-Type': 'application/json',
       'X-Submission-Key': submissionKey,
     },
-    body: JSON.stringify(payload),
+    body: JSON.stringify({ ...payload, _verify: '' }),
   })
   if (!res.ok) {
     const err = await res.json()

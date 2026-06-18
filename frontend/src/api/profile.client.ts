@@ -34,9 +34,16 @@ export interface ProfileView {
 export type LoginResult = { type: 'first_login' } | { type: 'password_required' } | { type: 'ok' }
 
 export interface ContactResult {
-  targetInstagram: string
+  targetInstagram?: string
   iceBreakers: string[]
   dateIdeas: string[]
+}
+
+export interface MatchSummary {
+  pros: string[]
+  cons: string[]
+  generatedAt: string
+  model: string
 }
 
 // ── Core request helper ──────────────────────────────────────────────────────
@@ -174,6 +181,14 @@ export async function reportOutcome(
     `/profile/matches/${matchId}/outcome`,
     { method: 'POST', body: JSON.stringify({ outcome }) },
   )
+}
+
+export async function getMatchSummary(matchId: string): Promise<MatchSummary> {
+  const body = await profileRequest<{ data: MatchSummary }>(
+    `/profile/matches/${matchId}/summary`,
+    { method: 'GET' },
+  )
+  return body.data
 }
 
 export async function deactivateAccount(): Promise<void> {

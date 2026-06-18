@@ -6,6 +6,7 @@ import Spinner from '../../components/ui/Spinner'
 import { matchStatusTone } from '../../components/ui/statusTones'
 import { useTimeAgo } from '../../lib/timeAgo'
 import { getBreakdownEntry } from './matchBreakdownLabels'
+import { PartnerProfileView } from './PartnerProfileView'
 import type { MatchView, ContactResult } from '../../api/profile.client'
 
 // ── Props ─────────────────────────────────────────────────────────────────────
@@ -120,32 +121,18 @@ function MatchBreakdown({ breakdown }: { breakdown: Record<string, number> }) {
   )
 }
 
-function formatAnswerValue(value: unknown, yes: string, no: string): string {
-  if (typeof value === 'boolean') return value ? yes : no
-  if (Array.isArray(value)) return value.map(v => String(v)).join(', ')
-  if (value === null || value === undefined || String(value).trim() === '') return '—'
-  return String(value)
-}
-
-/** Partner's public questionnaire answers — rendered raw, keyed by question id. */
-function PartnerProfileSection({ profile, alias }: { profile: Record<string, unknown>; alias: string }) {
+function InstagramLink({ handle }: { handle: string }) {
   const { t } = useTranslation()
   return (
-    <div className="mt-4 pt-4 border-t border-border">
-      <p className="text-xs font-medium text-muted uppercase tracking-wider mb-3">
-        {t('portal.matches.aboutPartner', { alias })}
-      </p>
-      <div className="space-y-2.5">
-        {Object.entries(profile).map(([key, value]) => (
-          <div key={key} className="flex justify-between gap-3 text-sm">
-            <span className="text-muted capitalize shrink-0">{key.replace(/_/g, ' ')}</span>
-            <span className="text-primary text-end break-words">
-              {formatAnswerValue(value, t('common.yes'), t('common.no'))}
-            </span>
-          </div>
-        ))}
-      </div>
-    </div>
+    <a
+      href={`https://www.instagram.com/${handle}/`}
+      target="_blank"
+      rel="noopener noreferrer"
+      aria-label={t('portal.matches.viewOnInstagram', { handle })}
+      className="text-accent font-medium text-sm mt-1 hover:underline inline-flex items-center gap-1"
+    >
+      @{handle}
+    </a>
   )
 }
 
@@ -222,7 +209,13 @@ export function MatchCard({ match, onContactRequest, onRespond, onWithdraw, onOu
   // Partner profile first (who they are), then the score breakdown (why this score)
   const detailsSection = expanded ? (
     <>
-      {hasProfile && <PartnerProfileSection profile={partnerProfile!} alias={partnerAlias} />}
+      {hasProfile && (
+        <PartnerProfileView
+          profile={partnerProfile!}
+          alias={partnerAlias}
+          matchId={matchId}
+        />
+      )}
       {hasBreakdown && <MatchBreakdown breakdown={breakdown!} />}
     </>
   ) : null
@@ -276,11 +269,7 @@ export function MatchCard({ match, onContactRequest, onRespond, onWithdraw, onOu
           }
           right={<ScoreBar score={score} />}
         />
-        {partnerHandle && (
-          <p className="text-accent font-medium text-sm mt-1">
-            @{partnerHandle}
-          </p>
-        )}
+        {partnerHandle && <InstagramLink handle={partnerHandle} />}
         {contactRequestedAt && (
           <p className="text-sm text-muted mt-0.5">
             {t('portal.matches.requested', { time: timeAgo(new Date(contactRequestedAt).getTime()) })}
@@ -325,11 +314,7 @@ export function MatchCard({ match, onContactRequest, onRespond, onWithdraw, onOu
           left={<span className="text-base font-medium text-primary">{partnerAlias}</span>}
           right={<Badge tone="warning" size="sm">{t('portal.matches.waiting')}</Badge>}
         />
-        {partnerHandle && (
-          <p className="text-accent font-medium text-sm mt-1">
-            @{partnerHandle}
-          </p>
-        )}
+        {partnerHandle && <InstagramLink handle={partnerHandle} />}
         <IceBreakersSection
           iceBreakers={displayMatch.iceBreakers}
           dateIdeas={displayMatch.dateIdeas}
@@ -370,12 +355,8 @@ export function MatchCard({ match, onContactRequest, onRespond, onWithdraw, onOu
           }
           right={<span className="text-sm text-muted">{t('portal.matches.matchScore', { percent: Math.round(score * 100) })}</span>}
         />
+        {partnerHandle && <InstagramLink handle={partnerHandle} />}
         {detailsSection}
-        {partnerHandle && (
-          <p className="text-accent font-medium text-sm mt-1">
-            @{partnerHandle}
-          </p>
-        )}
         {perspective === 'initiator' && (
           <IceBreakersSection
             iceBreakers={displayMatch.iceBreakers}
@@ -483,10 +464,7 @@ export function MatchCard({ match, onContactRequest, onRespond, onWithdraw, onOu
       <ConfirmDialog
         open={pendingContact !== null}
         title={t('portal.matches.confirmContactTitle')}
-        description={t('portal.matches.confirmContactBody', {
-          alias: partnerAlias,
-          handle: pendingContact?.targetInstagram ?? '',
-        })}
+        description={t('portal.matches.confirmContactBody', { alias: partnerAlias })}
         confirmLabel={t('portal.matches.confirmContactYes')}
         cancelLabel={t('portal.matches.confirmContactNo')}
         loading={withdrawing}
