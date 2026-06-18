@@ -1,0 +1,30 @@
+import type { ApplicantDoc } from "../../models/applicant.model.js";
+
+function normalizeReligion(answers: Record<string, unknown>): string {
+  const v = answers["religion"];
+  return typeof v === "string" ? v.trim().toLowerCase() : "";
+}
+
+/**
+ * Returns false if either applicant has marked religion as a deal breaker
+ * and the two applicants have different religions. Both directions are checked.
+ *
+ * Missing or blank religion strings skip the check (pass through).
+ */
+export function isReligionCompatible(a: ApplicantDoc, b: ApplicantDoc): boolean {
+  const aAnswers = a.answers as Record<string, unknown>;
+  const bAnswers = b.answers as Record<string, unknown>;
+
+  const aReligion = normalizeReligion(aAnswers);
+  const bReligion = normalizeReligion(bAnswers);
+
+  if (!aReligion || !bReligion) return true;
+
+  const religionsMatch = aReligion === bReligion;
+  if (religionsMatch) return true;
+
+  if (aAnswers["religion_deal_breaker"] === true) return false;
+  if (bAnswers["religion_deal_breaker"] === true) return false;
+
+  return true;
+}

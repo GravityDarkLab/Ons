@@ -7,6 +7,8 @@ import { getApplicantsCollection, getMatchesCollection } from "../db/collections
 import { getActiveQuestionnaire } from "../services/questionnaire.service.js";
 import { isOrientationCompatible } from "./filters/orientation.filter.js";
 import { isAgeCompatible } from "./filters/age.filter.js";
+import { isReligionCompatible } from "./filters/religion.filter.js";
+import { isLongDistanceCompatible } from "./filters/location.filter.js";
 import { prepare, score } from "./scorer.js";
 
 export interface MatchScore {
@@ -44,7 +46,11 @@ export async function getActiveContactApplicantIds(): Promise<Set<string>> {
 
 function applyFilters(target: ApplicantDoc, candidates: ApplicantDoc[]): ApplicantDoc[] {
   return candidates.filter(
-    (c) => isOrientationCompatible(target, c) && isAgeCompatible(target, c)
+    (c) =>
+      isOrientationCompatible(target, c) &&
+      isAgeCompatible(target, c) &&
+      isReligionCompatible(target, c) &&
+      isLongDistanceCompatible(target, c),
   );
 }
 

@@ -65,6 +65,32 @@ Both directions must pass:
 | Asexual | Any | ✅ (other side's filter still applies) |
 | Unknown / missing | Any | ✅ pass-through |
 
+### Religion deal-breaker (`filters/religion.filter.ts`)
+
+If either applicant has `religion_deal_breaker = true` and their religions differ → reject.
+
+| A `religion_deal_breaker` | B `religion_deal_breaker` | Same religion? | Compatible? |
+|---|---|---|---|
+| `true` | any | ✅ | ✅ |
+| `true` | any | ❌ | ❌ |
+| `false` | `true` | ❌ | ❌ |
+| `false` | `false` | any | ✅ |
+
+Missing or blank `religion` → skip (pass-through). Comparison is case-insensitive.
+
+### Long-distance deal-breaker (`filters/location.filter.ts`)
+
+If either applicant has `open_to_long_distance = false` and they are in different cities → reject.
+
+| A `open_to_long_distance` | B `open_to_long_distance` | Same city? | Compatible? |
+|---|---|---|---|
+| `false` | any | ✅ | ✅ |
+| `false` | any | ❌ | ❌ |
+| `true` | `false` | ❌ | ❌ |
+| `true` | `true` | any | ✅ |
+
+Missing or blank `location` → skip (pass-through). Comparison is case-insensitive exact match on the stored string.
+
 ### Age preferences (`filters/age.filter.ts`)
 
 Each applicant can express age constraints via three optional answers:

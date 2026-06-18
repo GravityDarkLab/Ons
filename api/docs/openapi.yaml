@@ -1962,6 +1962,12 @@ paths:
         `applicantId → top 10 ranked candidates`. Computationally
         O(n²) — intended for offline/scheduled use, not real-time.
 
+        **Four hard pre-filters run before any scoring** (pairs that fail are never scored):
+        1. **Orientation** — incompatible sexual orientations are excluded.
+        2. **Age** — `open_to_older=false`/`open_to_younger=false` vetoes, plus outer gap limit.
+        3. **Religion** — if either person has `religion_deal_breaker=true` and religions differ → excluded.
+        4. **Long distance** — if either person has `open_to_long_distance=false` and locations differ → excluded.
+
         Embeddings are loaded from the DB (written at form submission time).
         Only missing or stale embeddings trigger API calls — in steady state
         this is O(1) extra work. Stale = wrong model or outdated `textVersion`.
