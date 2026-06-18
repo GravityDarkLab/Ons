@@ -7,6 +7,27 @@ import RadioCardGroup from '../components/ui/RadioCard'
 import Toggle from '../components/ui/Toggle'
 import Input from '../components/ui/Input'
 
+function countWords(value: string | undefined): number {
+  return (value ?? '').trim().split(/\s+/).filter(Boolean).length
+}
+
+function WordCountRow({ value }: { value: string | undefined }) {
+  const { t } = useTranslation()
+  const words = countWords(value)
+  return (
+    <div className="flex justify-between items-center pe-0.5">
+      {words > 0 && words < 5 ? (
+        <p className="text-xs text-muted">{t('steps.writeMoreHint')}</p>
+      ) : (
+        <span />
+      )}
+      <span className="text-xs text-muted ms-auto">
+        {t('steps.wordCount', { count: words })}
+      </span>
+    </div>
+  )
+}
+
 interface Props { control: Control<FormValues>; errors: FieldErrors<FormValues> }
 export const FIELDS: (keyof FormValues)[] = [
   'relationship_type', 'open_to_long_distance',
@@ -89,16 +110,25 @@ export default function Step4Preferences({ control, errors }: Props) {
         </div>
 
         <Controller name="preferred_physical_traits" control={control} render={({ field }) => (
-          <Textarea label={t('steps.s4.physicalTraits')} placeholder={t('steps.s4.physicalTraitsPlaceholder')}
-            rows={3} error={errors.preferred_physical_traits?.message} required {...field} />
+          <div className="flex flex-col gap-1">
+            <Textarea label={t('steps.s4.physicalTraits')} placeholder={t('steps.s4.physicalTraitsPlaceholder')}
+              rows={3} error={errors.preferred_physical_traits?.message} required {...field} />
+            <WordCountRow value={field.value as string} />
+          </div>
         )} />
         <Controller name="preferred_character_traits" control={control} render={({ field }) => (
-          <Textarea label={t('steps.s4.characterTraits')} placeholder={t('steps.s4.characterTraitsPlaceholder')}
-            rows={3} error={errors.preferred_character_traits?.message} required {...field} />
+          <div className="flex flex-col gap-1">
+            <Textarea label={t('steps.s4.characterTraits')} placeholder={t('steps.s4.characterTraitsPlaceholder')}
+              rows={3} error={errors.preferred_character_traits?.message} required {...field} />
+            <WordCountRow value={field.value as string} />
+          </div>
         )} />
         <Controller name="deal_breakers" control={control} render={({ field }) => (
-          <Textarea label={t('steps.s4.dealBreakers')} placeholder={t('steps.s4.dealBreakersPlaceholder')}
-            rows={3} error={errors.deal_breakers?.message} required {...field} />
+          <div className="flex flex-col gap-1">
+            <Textarea label={t('steps.s4.dealBreakers')} placeholder={t('steps.s4.dealBreakersPlaceholder')}
+              rows={3} error={errors.deal_breakers?.message} required {...field} />
+            <WordCountRow value={field.value as string} />
+          </div>
         )} />
         <div className="flex flex-col gap-2">
           <Controller name="okay_with_opposite_gender_friends" control={control} render={({ field }) => (
