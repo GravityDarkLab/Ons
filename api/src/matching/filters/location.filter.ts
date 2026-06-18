@@ -1,9 +1,5 @@
 import type { ApplicantDoc } from "../../models/applicant.model.js";
-
-function normalizeLocation(answers: Record<string, unknown>): string {
-  const v = answers["location"];
-  return typeof v === "string" ? v.trim().toLowerCase() : "";
-}
+import { normalizeAnswer } from "./answer.util.js";
 
 /**
  * Returns false if either applicant is not open to long distance
@@ -16,8 +12,8 @@ export function isLongDistanceCompatible(a: ApplicantDoc, b: ApplicantDoc): bool
   const aAnswers = a.answers as Record<string, unknown>;
   const bAnswers = b.answers as Record<string, unknown>;
 
-  const aLoc = normalizeLocation(aAnswers);
-  const bLoc = normalizeLocation(bAnswers);
+  const aLoc = normalizeAnswer(aAnswers, "location");
+  const bLoc = normalizeAnswer(bAnswers, "location");
 
   if (!aLoc || !bLoc) return true;
 

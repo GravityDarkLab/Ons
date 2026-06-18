@@ -1,9 +1,5 @@
 import type { ApplicantDoc } from "../../models/applicant.model.js";
-
-function normalizeReligion(answers: Record<string, unknown>): string {
-  const v = answers["religion"];
-  return typeof v === "string" ? v.trim().toLowerCase() : "";
-}
+import { normalizeAnswer } from "./answer.util.js";
 
 /**
  * Returns false if either applicant has marked religion as a deal breaker
@@ -15,8 +11,8 @@ export function isReligionCompatible(a: ApplicantDoc, b: ApplicantDoc): boolean 
   const aAnswers = a.answers as Record<string, unknown>;
   const bAnswers = b.answers as Record<string, unknown>;
 
-  const aReligion = normalizeReligion(aAnswers);
-  const bReligion = normalizeReligion(bAnswers);
+  const aReligion = normalizeAnswer(aAnswers, "religion");
+  const bReligion = normalizeAnswer(bAnswers, "religion");
 
   if (!aReligion || !bReligion) return true;
 
