@@ -11,6 +11,10 @@ export const formSubmissionSchema = z.object({
     .string()
     .regex(/^\d+\.\d+\.\d+$/, "questionnaireVersion must be semver (e.g. 1.0.0)"),
 
+  // Honeypot: legitimate clients always send this field empty; bots that
+  // scrape and fill all fields will populate it, triggering a silent reject.
+  _verify: z.string().optional(),
+
   answers: z
     .object({
       // Identity (sensitive)

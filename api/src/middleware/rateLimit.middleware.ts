@@ -96,11 +96,12 @@ export function createRateLimiter(options: {
 }
 
 /**
- * Rate limiter for public form submission: 100 requests per 10 minutes.
+ * Rate limiter for public form submission: 3 submissions per hour per IP.
+ * High enough to allow retries; low enough to stop automated loops.
  */
 export const formSubmitRateLimiter = createRateLimiter({
-  windowMs: 10 * 60 * 1000,
-  maxRequests: 100,
+  windowMs: 60 * 60 * 1000,
+  maxRequests: 3,
   message: "Too many form submissions. Please wait before trying again.",
 });
 

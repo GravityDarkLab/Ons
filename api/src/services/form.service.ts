@@ -32,8 +32,12 @@ export class DuplicateInstagramError extends AppError {
 
 export async function processFormSubmission(
   input: FormSubmissionInput,
-  submissionKey: string
+  submissionKey: string,
+  ipAddress = "unknown",
 ): Promise<FormSubmissionResult> {
+  // Honeypot — filled only by bots that scrape and submit all form fields
+  if (input._verify) throw new AppError("Invalid submission", 400);
+
   // 1. Load questionnaire
   const questionnaire = await getQuestionnaireByVersion(input.questionnaireVersion);
 
@@ -113,6 +117,7 @@ export async function processFormSubmission(
     magicToken: hashMagicToken(magicToken), // store hash; raw token returned to user only
     passwordHash: null,
     scoreThreshold: 0.8,
+    submissionIp: ipAddress,
     createdAt: now,
     updatedAt: now,
   });

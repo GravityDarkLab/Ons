@@ -62,9 +62,13 @@ export async function getQuestionnaire(c: Context): Promise<Response> {
 export async function submitForm(c: ValidatedContext<{ json: FormSubmissionInput }>): Promise<Response> {
   const body = c.req.valid("json");
   const submissionKey = c.req.header("X-Submission-Key") ?? "";
+  const ipAddress =
+    c.req.header("x-forwarded-for")?.split(",")[0]?.trim() ??
+    c.req.header("x-real-ip") ??
+    "unknown";
 
   try {
-    const result = await processFormSubmission(body, submissionKey);
+    const result = await processFormSubmission(body, submissionKey, ipAddress);
 
     return c.json(
       {
