@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { useSearchParams, useNavigate } from 'react-router-dom'
+import { useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { fetchApplicants, deactivateApplicant } from '../api/client'
 import Badge from '../../components/ui/Badge'
@@ -8,6 +8,8 @@ import Skeleton from '../../components/ui/Skeleton'
 import { useToast } from '../../components/ui/Toast'
 import { applicantStatusTone } from '../../components/ui/statusTones'
 import { Th, PageButton, TrashIcon } from '../components/Table'
+import { usePagedFilter } from '../hooks/usePagedFilter'
+import { useDebouncedValue } from '../hooks/useDebouncedValue'
 import type { Applicant } from '../types'
 
 const LIMIT = 20
@@ -25,24 +27,16 @@ export function Applicants() {
   const { t } = useTranslation()
   const navigate = useNavigate()
   const { success, error: toastError } = useToast()
-  const [searchParams, setSearchParams] = useSearchParams()
-  const status = searchParams.get('status') ?? ''
-  const page   = parseInt(searchParams.get('page') ?? '1', 10)
+  const { page, filterValue: status, setFilter: setStatusFilter, setPage } = usePagedFilter('status')
 
   const [applicants, setApplicants] = useState<Applicant[]>([])
   const [total, setTotal]           = useState(0)
   const [totalPages, setTotalPages] = useState(1)
   const [loading, setLoading]       = useState(true)
   const [search, setSearch]         = useState('')
-  const [debouncedSearch, setDebouncedSearch] = useState('')
+  const debouncedSearch = useDebouncedValue(search)
   const [pendingDelete, setPendingDelete] = useState<Applicant | null>(null)
   const [deleteLoading, setDeleteLoading] = useState(false)
-
-  // Debounce search input by 300 ms
-  useEffect(() => {
-    const timer = setTimeout(() => setDebouncedSearch(search), 300)
-    return () => clearTimeout(timer)
-  }, [search])
 
   const FILTERS = [
     { value: '',          label: t('admin.applicants.all') },
@@ -73,10 +67,7 @@ export function Applicants() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [page, status, debouncedSearch])
 
-  function setFilter(s: string) { setSearchParams(s ? { status: s } : {}); setSearch('') }
-  function setPage(p: number) {
-    setSearchParams(prev => { const n = new URLSearchParams(prev); n.set('page', String(p)); return n })
-  }
+  function setFilter(s: string) { setStatusFilter(s); setSearch('') }
 
   async function handleDelete() {
     if (!pendingDelete) return
