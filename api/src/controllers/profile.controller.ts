@@ -25,6 +25,7 @@ import {
 } from "../middleware/applicant.auth.middleware.js";
 import { generateReadablePassword } from "../privacy/magic-token.js";
 import { errorResponse } from "../utils/error-response.js";
+import { getRequestMeta } from "../utils/request-meta.js";
 import type { ValidatedContext } from "../utils/validated-context.js";
 import type {
   ProfileLoginInput,
@@ -129,9 +130,7 @@ export async function updateAnswers(c: ValidatedContext<{ json: UpdateAnswersInp
 export async function matches(c: ValidatedContext<{ query: MatchQueryInput }>): Promise<Response> {
   const applicantId = c.get("applicantId") as string;
   const { threshold, limit } = c.req.valid("query");
-  const ipAddress = c.req.header("X-Forwarded-For") ?? c.req.header("X-Real-IP") ?? "unknown";
-  const userAgent = c.req.header("User-Agent") ?? "unknown";
-  const data = await getMyMatches(applicantId, threshold, limit, { ipAddress, userAgent });
+  const data = await getMyMatches(applicantId, threshold, limit, getRequestMeta(c));
   return c.json({ success: true, data });
 }
 
@@ -151,11 +150,9 @@ export async function respond(c: ValidatedContext<{ json: RespondInput }>): Prom
   const applicantId = c.get("applicantId") as string;
   const matchId     = c.req.param("id") as string;
   const { accept }  = c.req.valid("json");
-  const ipAddress   = c.req.header("X-Forwarded-For") ?? c.req.header("X-Real-IP") ?? "unknown";
-  const userAgent   = c.req.header("User-Agent") ?? "unknown";
 
   try {
-    await respondToContact(applicantId, matchId, accept, { ipAddress, userAgent });
+    await respondToContact(applicantId, matchId, accept, getRequestMeta(c));
     return c.json({ success: true });
   } catch (err: unknown) {
     return errorResponse(c, err);
@@ -225,11 +222,9 @@ export async function cancelDeletion(c: Context): Promise<Response> {
 
 export async function deleteNow(c: Context): Promise<Response> {
   const applicantId = c.get("applicantId") as string;
-  const ipAddress   = c.req.header("X-Forwarded-For") ?? c.req.header("X-Real-IP") ?? "unknown";
-  const userAgent   = c.req.header("User-Agent") ?? "unknown";
 
   try {
-    await deleteMyAccountNow(applicantId, { ipAddress, userAgent });
+    await deleteMyAccountNow(applicantId, getRequestMeta(c));
     deleteCookie(c, APPLICANT_COOKIE, { path: "/" });
     return c.json({ success: true });
   } catch (err: unknown) {

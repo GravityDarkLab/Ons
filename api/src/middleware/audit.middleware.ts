@@ -4,6 +4,7 @@ import { ObjectId } from "mongodb";
 import { getDb } from "../db/connection.js";
 import { getAuditLogsCollection } from "../db/collections.js";
 import type { AuditAction } from "../models/auditLog.model.js";
+import { getRequestMeta } from "../utils/request-meta.js";
 
 export interface AuditContext {
   // The actor performing the action — an admin's id for admin-initiated
@@ -57,15 +58,6 @@ export function extractAuditContext(
   actorId: string,
   c: Context
 ): AuditContext {
-  const req = c.req.raw;
-
-  const ipAddress =
-    req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ??
-    req.headers.get("x-real-ip") ??
-    getConnInfo(c).remote.address ??
-    "unknown";
-
-  const userAgent = req.headers.get("user-agent") ?? "unknown";
-
+  const { ipAddress, userAgent } = getRequestMeta(c, getConnInfo(c).remote.address ?? "unknown");
   return { actorId, ipAddress, userAgent };
 }
