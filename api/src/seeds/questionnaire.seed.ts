@@ -1,14 +1,19 @@
 /**
- * Seeds the initial questionnaire v1.0.0 into MongoDB.
+ * Seeds the questionnaire into MongoDB.
  * Run with: bun run src/seeds/questionnaire.seed.ts
  *
- * This script is idempotent — it upserts by version.
+ * Options:
+ *   --clean   drop all existing questionnaires before seeding (full reset)
+ *
+ * This script is idempotent without --clean — it upserts by version.
  */
 
 import { ObjectId } from "mongodb";
 import { getDb, closeDb } from "../db/connection.js";
 import { getQuestionnairesCollection } from "../db/collections.js";
 import type { QuestionnaireDoc } from "../models/questionnaire.model.js";
+
+const CLEAN = process.argv.includes("--clean");
 
 const questionnaire: Omit<QuestionnaireDoc, "_id" | "createdAt" | "updatedAt"> = {
   version: "1.1.0",
@@ -276,12 +281,18 @@ const questionnaire: Omit<QuestionnaireDoc, "_id" | "createdAt" | "updatedAt"> =
 
 async function seed() {
   console.log("[SEED] Starting questionnaire seed...");
+  console.log(`[SEED] Clean mode: ${CLEAN}`);
 
   const db = await getDb();
   const col = getQuestionnairesCollection(db);
 
-  // Deactivate all existing questionnaires before inserting the new one
-  await col.updateMany({}, { $set: { isActive: false, updatedAt: new Date() } });
+  if (CLEAN) {
+    const { deletedCount } = await col.deleteMany({});
+    console.log(`[SEED] Deleted ${deletedCount} existing questionnaire(s).`);
+  } else {
+    // Deactivate all existing questionnaires before inserting the new one
+    await col.updateMany({}, { $set: { isActive: false, updatedAt: new Date() } });
+  }
 
   const result = await col.updateOne(
     { version: questionnaire.version },

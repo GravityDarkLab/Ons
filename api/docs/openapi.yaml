@@ -22,7 +22,7 @@ info:
       Admin JWTs are rejected on applicant endpoints and vice-versa.
 
     **Rate limits:**
-    - Public form submission: 100 requests per 10 minutes per IP
+    - Public form submission: 3 requests per hour per IP
     - Admin login: 10 requests per minute per IP
     - Admin endpoints: 200 requests per minute per IP
     - Profile login: 10 requests per minute per IP
@@ -638,6 +638,40 @@ components:
           example: ["Coffee walk through the old city", "Sunset picnic with homemade snacks"]
           description: "AI-generated first-date suggestions based on both profiles."
 
+    MatchSummary:
+      type: object
+      required: [pros, cons, generatedAt, model]
+      description: |
+        AI-generated compatibility summary for a match pair. Generated once per match
+        by the LLM, then cached on the match document. Subsequent fetches are instant
+        (no LLM call). Cache is invalidated when `COMPLETION_MODEL` env var changes.
+      properties:
+        pros:
+          type: array
+          items:
+            type: string
+          minItems: 1
+          maxItems: 3
+          description: "2–3 one-sentence compatibility strengths."
+          example: ["Both value long-term commitment and share similar relationship goals.", "Your lifestyle habits align closely — non-smoking, socially active."]
+        cons:
+          type: array
+          items:
+            type: string
+          minItems: 1
+          maxItems: 2
+          description: "1–2 constructive notes on where they differ."
+          example: ["You differ on religious importance — worth an early conversation."]
+        generatedAt:
+          type: string
+          format: date-time
+          description: "When the summary was first generated."
+          example: "2026-06-18T10:30:00.000Z"
+        model:
+          type: string
+          description: "Model identifier used to generate the summary (e.g. gpt-4o-mini). Used for cache invalidation."
+          example: "gpt-4o-mini"
+
     # ── Auth ──────────────────────────────────────────────────────────────────
     AdminLoginRequest:
       type: object
@@ -708,7 +742,7 @@ components:
           example: "Blue Falcon"
         questionnaireVersion:
           type: string
-          example: "1.0.0"
+          example: "1.1.0"
         answers:
           type: object
           description: "All non-sensitive answers. instagram_handle is never present."
@@ -721,6 +755,10 @@ components:
             relationship_type: "Long Term"
         status:
           $ref: '#/components/schemas/ApplicantStatus'
+        submissionIp:
+          type: string
+          description: "IP address recorded at form submission time. Useful for spotting duplicate account creation from the same address. Admin-only field."
+          example: "203.0.113.42"
         createdAt:
           type: string
           format: date-time
@@ -1126,7 +1164,7 @@ paths:
         first, copy the `submissionKey` from the response, then click **Authorize**
         and paste it under **SubmissionKey**.
 
-        **Rate limit:** 100 requests per 10 minutes per IP.
+        **Rate limit:** 3 requests per hour per IP.
       parameters:
         - in: header
           name: X-Submission-Key
@@ -1143,7 +1181,7 @@ paths:
             schema:
               $ref: '#/components/schemas/FormSubmissionRequest'
             example:
-              questionnaireVersion: "1.0.0"
+              questionnaireVersion: "1.1.0"
               answers:
                 instagram_handle: "@example_user"
                 location: "Paris, France"
@@ -2624,6 +2662,72 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ValidationErrorResponse'
+
+  /api/v1/profile/matches/{id}/summary:
+    get:
+      tags: [Profile]
+      summary: Get AI compatibility summary for a match
+      operationId: getMatchSummary
+      security:
+        - ApplicantCookieAuth: []
+        - ApplicantBearerAuth: []
+      description: |
+        Returns an AI-generated compatibility summary (pros / cons) for the given match.
+
+        **Caching:** The first call generates the summary via the configured LLM and
+        persists it on the match document. All subsequent calls return the cached copy
+        instantly (zero LLM calls). The cache is invalidated automatically if the
+        `COMPLETION_MODEL` env var is changed to a different model identifier.
+
+        **Authorization:** Only participants of the match can request its summary.
+        Returns `403` otherwise.
+
+        The summary is generated in a professional, warm tone. It highlights 2–3
+        genuine compatibility strengths and 1–2 constructive notes on differences —
+        never harsh or discouraging.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Match ID (MongoDB ObjectId as hex string)
+          example: "64f1a2b3c4d5e6f7a8b9c0d5"
+      responses:
+        '200':
+          description: Summary returned (either freshly generated or from cache)
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [success, data]
+                properties:
+                  success:
+                    type: boolean
+                    enum: [true]
+                  data:
+                    $ref: '#/components/schemas/MatchSummary'
+              example:
+                success: true
+                data:
+                  pros:
+                    - "Both value long-term commitment and share similar relationship goals."
+                    - "Your lifestyle habits align closely — non-smoking, socially active."
+                  cons:
+                    - "You differ on religious importance — worth an early conversation."
+                  generatedAt: "2026-06-18T10:30:00.000Z"
+                  model: "gpt-4o-mini"
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          description: |
+            Match not found, or the authenticated applicant is not a participant.
+            Both cases return 404 intentionally (privacy-by-design: a 403 would
+            confirm the match exists, which leaks information to non-participants).
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
 
   /api/v1/profile/deactivate:
     post:
