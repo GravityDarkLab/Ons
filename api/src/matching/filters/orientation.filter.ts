@@ -74,10 +74,3 @@ function _wantsGender(
       return true;
   }
 }
-
-export function filterCandidates(
-  target: ApplicantDoc,
-  candidates: ApplicantDoc[]
-): ApplicantDoc[] {
-  return candidates.filter((c) => isOrientationCompatible(target, c));
-}

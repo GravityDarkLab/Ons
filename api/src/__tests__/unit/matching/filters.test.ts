@@ -1,5 +1,5 @@
 import { describe, it, expect } from "bun:test";
-import { isOrientationCompatible, filterCandidates } from "../../../matching/filters/orientation.filter.js";
+import { isOrientationCompatible } from "../../../matching/filters/orientation.filter.js";
 import type { ApplicantDoc } from "../../../models/applicant.model.js";
 import { ObjectId } from "mongodb";
 
@@ -201,42 +201,5 @@ describe("isOrientationCompatible — Asexual / missing", () => {
     const pnts = makeApplicant("Prefer not to say", "Male");
     expect(isOrientationCompatible(pnts, makeApplicant("Straight", "Female"))).toBe(true);
     expect(isOrientationCompatible(pnts, makeApplicant("Bisexual", "Female"))).toBe(true);
-  });
-});
-
-describe("filterCandidates", () => {
-  it("removes incompatible candidates, keeps compatible ones", () => {
-    const target = makeApplicant("Straight", "Male");
-    const compatible = makeApplicant("Straight", "Female");
-    const incompatible1 = makeApplicant("Straight", "Male");
-    const incompatible2 = makeApplicant("Lesbian", "Female");
-
-    const result = filterCandidates(target, [compatible, incompatible1, incompatible2]);
-    expect(result).toHaveLength(1);
-    expect(result[0]).toBe(compatible);
-  });
-
-  it("returns empty array when all candidates are incompatible", () => {
-    const target = makeApplicant("Straight", "Male");
-    const candidates = [
-      makeApplicant("Straight", "Male"),
-      makeApplicant("Gay", "Male"),
-      makeApplicant("Lesbian", "Female"),
-    ];
-    expect(filterCandidates(target, candidates)).toHaveLength(0);
-  });
-
-  it("returns all candidates when all are compatible (Bisexual target)", () => {
-    const target = makeApplicant("Bisexual", "Female");
-    const candidates = [
-      makeApplicant("Bisexual", "Male"),
-      makeApplicant("Straight", "Male"),
-      makeApplicant("Bisexual", "Female"),
-    ];
-    expect(filterCandidates(target, candidates)).toHaveLength(3);
-  });
-
-  it("handles empty candidates list", () => {
-    expect(filterCandidates(makeApplicant("Straight", "Male"), [])).toEqual([]);
   });
 });
