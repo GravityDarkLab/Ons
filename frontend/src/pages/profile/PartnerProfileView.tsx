@@ -3,19 +3,12 @@ import { useTranslation } from 'react-i18next'
 import { getMatchSummary } from '../../api/profile.client'
 import type { MatchSummary } from '../../api/profile.client'
 import Spinner from '../../components/ui/Spinner'
+import Badge from '../../components/ui/Badge'
 
 interface Props {
   profile: Record<string, unknown>
   alias: string
   matchId: string
-}
-
-function Chip({ children }: { children: React.ReactNode }) {
-  return (
-    <span className="inline-flex items-center text-xs bg-bg border border-border rounded-full px-2.5 py-0.5 text-primary">
-      {children}
-    </span>
-  )
 }
 
 function WordCard({ label, text }: { label: string; text: string }) {
@@ -101,7 +94,7 @@ export function PartnerProfileView({ profile, alias, matchId }: Props) {
             {t('portal.matches.aboutPartner', { alias })}
           </p>
           <div className="flex flex-wrap gap-1.5">
-            {snapshotChips.map((chip, i) => <Chip key={i}>{chip}</Chip>)}
+            {snapshotChips.map((chip, i) => <Badge key={i}>{chip}</Badge>)}
           </div>
         </div>
       )}
