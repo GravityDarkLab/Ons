@@ -1,6 +1,7 @@
 import type { ApplicantStatus, MatchStatus } from '../types/status'
+import { API_BASE } from '../config/api'
 
-const BASE = (import.meta.env.VITE_API_URL ?? 'http://localhost:3001') + '/api/v1'
+const BASE = API_BASE + '/api/v1'
 
 // ── Types ────────────────────────────────────────────────────────────────────
 

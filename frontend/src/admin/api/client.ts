@@ -1,6 +1,5 @@
 import type { Applicant, AuditLog, Match, MatchCandidate, MatchingRun, MatchingLastRun, MatchStatus, Paginated } from '../types'
-
-const BASE = import.meta.env.VITE_API_URL ?? 'http://localhost:3001'
+import { API_BASE as BASE } from '../../config/api'
 
 // All requests include credentials so the browser sends the HttpOnly session cookie.
 async function request<T>(path: string, opts: RequestInit = {}): Promise<T> {

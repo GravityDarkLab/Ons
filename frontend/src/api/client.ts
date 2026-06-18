@@ -1,6 +1,5 @@
 import type { FormPayload } from '../types/form'
-
-const BASE = import.meta.env.VITE_API_URL ?? 'http://localhost:3001'
+import { API_BASE as BASE } from '../config/api'
 
 export interface QuestionnaireData {
   version: string
