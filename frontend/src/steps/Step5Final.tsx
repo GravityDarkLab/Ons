@@ -4,10 +4,7 @@ import type { Control, FieldErrors } from 'react-hook-form'
 import type { FormValues } from '../types/form'
 import Textarea from '../components/ui/Textarea'
 import Slider from '../components/ui/Slider'
-
-function countWords(value: string | undefined): number {
-  return (value ?? '').trim().split(/\s+/).filter(Boolean).length
-}
+import WordCountHint from '../components/ui/WordCountHint'
 
 interface Props { control: Control<FormValues>; errors: FieldErrors<FormValues> }
 export const FIELDS: (keyof FormValues)[] = ['physical_affection_importance', 'dream_first_date', 'disclaimer_agreed']
@@ -28,25 +25,13 @@ export default function Step5Final({ control, errors }: Props) {
               error={errors.physical_affection_importance?.message} />
           </div>
         )} />
-        <Controller name="dream_first_date" control={control} render={({ field }) => {
-          const words = countWords(field.value as string)
-          return (
-            <div className="flex flex-col gap-1">
-              <Textarea label={t('steps.s5.firstDate')} placeholder={t('steps.s5.firstDatePlaceholder')}
-                rows={4} error={errors.dream_first_date?.message} required {...field} />
-              <div className="flex justify-between items-center pe-0.5">
-                {words > 0 && words < 5 ? (
-                  <p className="text-xs text-muted">{t('steps.writeMoreHint')}</p>
-                ) : (
-                  <span />
-                )}
-                <span className="text-xs text-muted ms-auto">
-                  {t('steps.wordCount', { count: words })}
-                </span>
-              </div>
-            </div>
-          )
-        }} />
+        <Controller name="dream_first_date" control={control} render={({ field }) => (
+          <div className="flex flex-col gap-1">
+            <Textarea label={t('steps.s5.firstDate')} placeholder={t('steps.s5.firstDatePlaceholder')}
+              rows={4} error={errors.dream_first_date?.message} required {...field} />
+            <WordCountHint value={field.value as string} />
+          </div>
+        )} />
         <Controller name="disclaimer_agreed" control={control} render={({ field }) => (
           <div className="flex flex-col gap-1.5">
             <button
