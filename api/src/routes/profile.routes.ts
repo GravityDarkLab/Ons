@@ -23,6 +23,7 @@ import {
   respond,
   withdraw,
   outcome,
+  matchSummary,
   deactivate,
   cancelDeletion,
   deleteNow,
@@ -91,6 +92,8 @@ profileRoutes.post(
 );
 
 profileRoutes.post("/matches/:id/withdraw", requireApplicant, withdraw);
+
+profileRoutes.get("/matches/:id/summary", requireApplicant, matchSummary);
 
 profileRoutes.post(
   "/matches/:id/outcome",

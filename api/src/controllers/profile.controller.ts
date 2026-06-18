@@ -16,6 +16,7 @@ import {
   cancelAccountDeletion,
   deleteMyAccountNow,
 } from "../services/profile.service.js";
+import { getOrGenerateMatchSummary } from "../services/match-summary.service.js";
 import {
   signApplicantToken,
   tryGetApplicantSession,
@@ -196,6 +197,19 @@ export async function deactivate(c: Context): Promise<Response> {
   await deactivateMyAccount(applicantId);
   deleteCookie(c, APPLICANT_COOKIE, { path: "/" });
   return c.json({ success: true });
+}
+
+export async function matchSummary(c: Context): Promise<Response> {
+  const applicantId = c.get("applicantId") as string;
+  const matchId     = c.req.param("id") as string;
+
+  try {
+    const summary = await getOrGenerateMatchSummary(matchId, applicantId);
+    if (!summary) return c.json({ success: false, error: "Not found" }, 404);
+    return c.json({ success: true, data: summary });
+  } catch (err: unknown) {
+    return errorResponse(c, err);
+  }
 }
 
 export async function cancelDeletion(c: Context): Promise<Response> {

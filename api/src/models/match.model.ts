@@ -1,5 +1,12 @@
 import { ObjectId } from "mongodb";
 
+export interface MatchSummary {
+  pros: string[];
+  cons: string[];
+  generatedAt: Date;
+  model: string;
+}
+
 export type MatchStatus =
   | "proposed"     // algorithm suggested; both see each other anonymously
   | "in_progress"  // initiator revealed partner's Instagram; partner notified
@@ -31,6 +38,7 @@ export interface MatchDoc {
    *  matches page has already been audit-logged — keeps repeat page loads
    *  from writing a new log entry every time. */
   identityViewLoggedFor?: string[];
+  summary?: MatchSummary;
   notes?: string;
   createdAt: Date;
   updatedAt: Date;
