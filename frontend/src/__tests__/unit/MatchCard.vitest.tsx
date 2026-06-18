@@ -4,6 +4,14 @@ import { vi } from 'vitest'
 import { MatchCard } from '../../pages/profile/MatchCard'
 import type { MatchView } from '../../api/profile.client'
 
+vi.mock('../../api/profile.client', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('../../api/profile.client')>()
+  return { ...actual, getMatchSummary: vi.fn() }
+})
+
+import * as profileClient from '../../api/profile.client'
+const mockGetMatchSummary = vi.mocked(profileClient.getMatchSummary)
+
 const base: MatchView = {
   matchId: 'm1',
   partnerAlias: 'Crescent River',
@@ -82,8 +90,8 @@ describe('MatchCard', () => {
     expect(screen.queryByRole('button')).not.toBeInTheDocument()
   })
 
-  // tested: contact opens a confirmation dialog showing the partner's Instagram
-  it('opens a confirm dialog with the Instagram handle after contact succeeds', async () => {
+  // tested: contact opens a confirmation dialog showing the partner's alias
+  it('opens a confirm dialog with the alias after contact succeeds', async () => {
     const onContactRequest = vi.fn().mockResolvedValue({
       targetInstagram: 'cresriver',
       iceBreakers: ['Q1'],
@@ -95,7 +103,7 @@ describe('MatchCard', () => {
 
     const dialog = await screen.findByRole('alertdialog')
     expect(dialog).toHaveTextContent(/portal\.matches\.confirmContactTitle/)
-    expect(dialog).toHaveTextContent(/cresriver/)
+    expect(dialog).toHaveTextContent(/Crescent River/)
   })
 
   it('confirming the dialog shows the waiting contact-status view', async () => {
@@ -304,14 +312,13 @@ describe('MatchCard partner profile', () => {
 
     expect(screen.getByText(/portal\.matches\.aboutPartner/)).toBeInTheDocument()
     expect(screen.getByText('Paris, France')).toBeInTheDocument()
-    expect(screen.getByText('27')).toBeInTheDocument()
-    // arrays joined with ", "
-    expect(screen.getByText('calm, curious')).toBeInTheDocument()
+    // vibe_words array rendered as individual chips
+    expect(screen.getByText('calm')).toBeInTheDocument()
+    expect(screen.getByText('curious')).toBeInTheDocument()
     // booleans rendered as yes/no labels
     expect(screen.getByText('common.yes')).toBeInTheDocument()
-    // question ids prettified
-    expect(screen.getByText('vibe words')).toBeInTheDocument()
-    expect(screen.getByText('open to long distance')).toBeInTheDocument()
+    // section labels use i18n keys
+    expect(screen.getByText('portal.matches.longDistance')).toBeInTheDocument()
   })
 
   it('renders profile and score breakdown together when both are present', async () => {
@@ -397,5 +404,122 @@ describe('MatchCard target reveal before accepting', () => {
     }
     render(<MatchCard match={match} />)
     expect(screen.getByText('@cres.river')).toBeInTheDocument()
+  })
+})
+
+// tested: AI match summary (Section E of PartnerProfileView) — lazy load, cache, error retry
+describe('MatchCard AI match summary (Section E)', () => {
+  const profileWithData = { location: 'Tunis, Tunisia', age: 27 }
+  const SUMMARY = {
+    pros: ['Aligned on long-term commitment.', 'Compatible lifestyles.'],
+    cons: ['Different religious backgrounds.'],
+    generatedAt: '2026-06-18T10:00:00Z',
+    model: 'gpt-4o-mini',
+  }
+
+  beforeEach(() => {
+    mockGetMatchSummary.mockReset()
+  })
+
+  async function expandCard() {
+    const match: MatchView = { ...base, partnerProfile: profileWithData }
+    render(<MatchCard match={match} />)
+    await userEvent.click(screen.getByRole('button', { name: /Crescent River/i }))
+  }
+
+  it('shows the "Why this match?" button after expanding the card', async () => {
+    await expandCard()
+    expect(screen.getByRole('button', { name: /portal\.matches\.whyThisMatch/i })).toBeInTheDocument()
+  })
+
+  it('clicking the button shows a spinner while the summary loads', async () => {
+    mockGetMatchSummary.mockImplementation(() => new Promise(() => {})) // never resolves
+    await expandCard()
+    await userEvent.click(screen.getByRole('button', { name: /portal\.matches\.whyThisMatch/i }))
+    expect(screen.getByText(/portal\.matches\.generatingSummary/)).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: /portal\.matches\.whyThisMatch/i })).not.toBeInTheDocument()
+  })
+
+  it('displays pros and cons after a successful summary load', async () => {
+    mockGetMatchSummary.mockResolvedValue(SUMMARY)
+    await expandCard()
+    await userEvent.click(screen.getByRole('button', { name: /portal\.matches\.whyThisMatch/i }))
+    expect(await screen.findByText('Aligned on long-term commitment.')).toBeInTheDocument()
+    expect(screen.getByText('Different religious backgrounds.')).toBeInTheDocument()
+    expect(screen.getByText(/portal\.matches\.strengths/)).toBeInTheDocument()
+    expect(screen.getByText(/portal\.matches\.keepInMind/)).toBeInTheDocument()
+  })
+
+  it('shows an error message and retry button on failure', async () => {
+    mockGetMatchSummary.mockRejectedValue(new Error('LLM timeout'))
+    await expandCard()
+    await userEvent.click(screen.getByRole('button', { name: /portal\.matches\.whyThisMatch/i }))
+    expect(await screen.findByText(/portal\.matches\.summaryError/)).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /portal\.matches\.summaryRetry/i })).toBeInTheDocument()
+  })
+
+  it('retry button clears the error and attempts another load', async () => {
+    mockGetMatchSummary
+      .mockRejectedValueOnce(new Error('LLM timeout'))
+      .mockResolvedValueOnce(SUMMARY)
+    await expandCard()
+    await userEvent.click(screen.getByRole('button', { name: /portal\.matches\.whyThisMatch/i }))
+    const retryBtn = await screen.findByRole('button', { name: /portal\.matches\.summaryRetry/i })
+    await userEvent.click(retryBtn)
+    expect(await screen.findByText('Aligned on long-term commitment.')).toBeInTheDocument()
+    expect(screen.queryByText(/portal\.matches\.summaryError/)).not.toBeInTheDocument()
+  })
+
+  it('does not call the API a second time if summary is already loaded', async () => {
+    mockGetMatchSummary.mockResolvedValue(SUMMARY)
+    await expandCard()
+    await userEvent.click(screen.getByRole('button', { name: /portal\.matches\.whyThisMatch/i }))
+    await screen.findByText('Aligned on long-term commitment.')
+    // Button should be gone once summary is loaded
+    expect(screen.queryByRole('button', { name: /portal\.matches\.whyThisMatch/i })).not.toBeInTheDocument()
+    expect(mockGetMatchSummary).toHaveBeenCalledTimes(1)
+  })
+})
+
+// tested: PartnerProfileView adversarial input — non-standard field types
+describe('PartnerProfileView adversarial field types', () => {
+  async function expandWith(partnerProfile: Record<string, unknown>) {
+    render(<MatchCard match={{ ...base, partnerProfile }} />)
+    await userEvent.click(screen.getByRole('button', { name: /Crescent River/i }))
+  }
+
+  it('handles vibe_words as an empty array without crashing', async () => {
+    await expandWith({ location: 'Paris', vibe_words: [] })
+    expect(screen.getByText('Paris')).toBeInTheDocument()
+  })
+
+  it('handles vibe_words as a number without crashing', async () => {
+    await expandWith({ location: 'Paris', vibe_words: 42 })
+    expect(screen.getByText('Paris')).toBeInTheDocument()
+  })
+
+  it('handles vibe_words as null without crashing', async () => {
+    await expandWith({ location: 'Paris', vibe_words: null })
+    expect(screen.getByText('Paris')).toBeInTheDocument()
+  })
+
+  it('handles all fields undefined/null without crashing', async () => {
+    await expandWith({ location: 'Only Location' })
+    expect(screen.getByText('Only Location')).toBeInTheDocument()
+  })
+
+  it('renders nothing for a completely empty partnerProfile (no toggle shown)', () => {
+    render(<MatchCard match={{ ...base, partnerProfile: {} }} />)
+    expect(screen.queryByRole('button', { name: /Crescent River/i })).not.toBeInTheDocument()
+  })
+
+  it('handles physical_affection_importance as a string without crashing', async () => {
+    await expandWith({ location: 'Berlin', physical_affection_importance: 'high' })
+    expect(screen.getByText('Berlin')).toBeInTheDocument()
+  })
+
+  it('handles open_to_long_distance as a string "yes" without crashing', async () => {
+    await expandWith({ location: 'Lyon', open_to_long_distance: 'yes' })
+    expect(screen.getByText('Lyon')).toBeInTheDocument()
   })
 })
