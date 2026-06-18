@@ -162,9 +162,10 @@ export async function getOrComputeEmbeddings(
       `(model: ${provider.model}, textVersion: ${CURRENT_TEXT_VERSION})...`
     );
 
-    const profileTexts     = stale.map((a) => buildTexts(a.answers).profile);
-    const preferenceTexts  = stale.map((a) => buildTexts(a.answers).preference);
-    const dealBreakerTexts = stale.map((a) => buildTexts(a.answers).dealBreakers);
+    const staleTexts = stale.map((a) => buildTexts(a.answers));
+    const profileTexts     = staleTexts.map((t) => t.profile);
+    const preferenceTexts  = staleTexts.map((t) => t.preference);
+    const dealBreakerTexts = staleTexts.map((t) => t.dealBreakers);
 
     const [profileEmbs, preferenceEmbs, dealBreakerEmbs] = await Promise.all([
       provider.embedBatch(profileTexts),
