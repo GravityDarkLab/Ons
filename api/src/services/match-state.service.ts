@@ -271,7 +271,7 @@ export async function recalcOrphanedStatuses(
   const matchCol = getMatchesCollection(db);
   const appCol   = getApplicantsCollection(db);
 
-  for (const id of affectedIds) {
+  await Promise.all(affectedIds.map(async (id) => {
     const matches = await matchCol
       .find({
         $or: [{ applicantAId: id }, { applicantBId: id }],
@@ -292,7 +292,7 @@ export async function recalcOrphanedStatuses(
       { _id: id },
       { $set: { status: newStatus, updatedAt: new Date() } }
     );
-  }
+  }));
 }
 
 /**
