@@ -22,7 +22,6 @@ import {
 import {
   resolveIdentityById,
   revealIdentityById,
-  identityExistsById,
 } from "../privacy/identity.service.js";
 import { hashMagicToken } from "../privacy/magic-token.js";
 import { writeAuditLog } from "../middleware/audit.middleware.js";

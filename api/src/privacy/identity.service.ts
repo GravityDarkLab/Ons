@@ -64,14 +64,6 @@ export async function resolveIdentityById(
   return decrypt(doc.encryptedInstagram, doc.encryptionIv, doc.encryptionTag);
 }
 
-/** Checks whether an identity exists without decrypting it (no audit log needed). */
-export async function identityExistsById(applicantId: ObjectId): Promise<boolean> {
-  const db = await getDb();
-  const identities = getIdentitiesCollection(db);
-  const doc = await identities.findOne({ applicantId }, { projection: { _id: 1 } });
-  return doc !== null;
-}
-
 export interface IdentityRevealAudit {
   /** Who triggered the decryption — an admin id or an applicant id. */
   actor: AuditContext;
