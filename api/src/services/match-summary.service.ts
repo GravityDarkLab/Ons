@@ -6,6 +6,8 @@ import { env } from "../config/env.js";
 import type { MatchSummary } from "../models/match.model.js";
 import type { ApplicantDoc } from "../models/applicant.model.js";
 
+const SUMMARY_MODEL = `${env.embeddingProvider}:${env.openaiChatModel}`;
+
 const FALLBACK_PROS = [
   "You share similar values and lifestyle expectations.",
   "Your communication styles appear compatible.",
@@ -35,7 +37,13 @@ export async function getOrGenerateMatchSummary(
   applicantId: string,
 ): Promise<MatchSummary | null> {
   let matchOid: ObjectId;
-  try { matchOid = new ObjectId(matchId); } catch { return null; }
+  let applicantOid: ObjectId;
+  try {
+    matchOid = new ObjectId(matchId);
+    applicantOid = new ObjectId(applicantId);
+  } catch {
+    return null;
+  }
 
   const db = await getDb();
   const matchCol = getMatchesCollection(db);
@@ -43,13 +51,12 @@ export async function getOrGenerateMatchSummary(
   if (!match) return null;
 
   // Only participants may request the summary
-  const applicantOid = new ObjectId(applicantId);
   if (!match.applicantAId.equals(applicantOid) && !match.applicantBId.equals(applicantOid)) {
     return null;
   }
 
-  // Cache hit — model unchanged
-  if (match.summary && match.summary.model === env.openaiChatModel) {
+  // Cache hit — provider+model unchanged
+  if (match.summary && match.summary.model === SUMMARY_MODEL) {
     return match.summary;
   }
 
@@ -88,12 +95,12 @@ Respond in this exact JSON format (no markdown, no extra text):
         Array.isArray(parsed.cons) && parsed.cons.length
           ? (parsed.cons as string[]).slice(0, 2)
           : FALLBACK_CONS;
-      summary = { pros, cons, generatedAt: new Date(), model: env.openaiChatModel };
+      summary = { pros, cons, generatedAt: new Date(), model: SUMMARY_MODEL };
     } catch {
-      summary = { pros: FALLBACK_PROS, cons: FALLBACK_CONS, generatedAt: new Date(), model: env.openaiChatModel };
+      summary = { pros: FALLBACK_PROS, cons: FALLBACK_CONS, generatedAt: new Date(), model: SUMMARY_MODEL };
     }
   } else {
-    summary = { pros: FALLBACK_PROS, cons: FALLBACK_CONS, generatedAt: new Date(), model: env.openaiChatModel };
+    summary = { pros: FALLBACK_PROS, cons: FALLBACK_CONS, generatedAt: new Date(), model: SUMMARY_MODEL };
   }
 
   await matchCol.updateOne(
