@@ -20,7 +20,7 @@ const mockGetMyProfile        = mock(async () => null as any);
 const mockGetMyAnswers        = mock(async () => null as any);
 const mockUpdateMyAnswers     = mock(async () => {});
 const mockGetMyMatches        = mock(async () => [] as any[]);
-const mockRequestContact      = mock(async () => ({ targetInstagram: "@partner", iceBreakers: [] as string[], dateIdeas: [] as string[] }));
+const mockRequestContact      = mock(async () => ({ iceBreakers: [] as string[], dateIdeas: [] as string[] }));
 const mockRespondToContact    = mock(async () => {});
 const mockWithdrawContact     = mock(async () => {});
 const mockReportOutcome       = mock(async () => {});
@@ -111,7 +111,7 @@ beforeEach(() => {
   mockLoginWithMagicToken.mockResolvedValue(null);
   mockSetPassword.mockResolvedValue(null);
   mockGetMyMatches.mockResolvedValue([]);
-  mockRequestContact.mockResolvedValue({ targetInstagram: "@partner", iceBreakers: ["Q1"], dateIdeas: ["D1"] });
+  mockRequestContact.mockResolvedValue({ iceBreakers: ["Q1"], dateIdeas: ["D1"] });
 });
 
 // ── POST /profile/login ───────────────────────────────────────────────────────
@@ -495,9 +495,8 @@ describe("POST /profile/matches/:id/contact", () => {
     expect(res.status).toBe(401);
   });
 
-  it("returns 200 with targetInstagram + iceBreakers + dateIdeas", async () => {
+  it("returns 200 with iceBreakers + dateIdeas (no Instagram — mutual reveal happens on accept)", async () => {
     mockRequestContact.mockResolvedValue({
-      targetInstagram: "@partner_handle",
       iceBreakers: ["What's your favourite place?"],
       dateIdeas: ["Coffee walk"],
     });
@@ -506,7 +505,7 @@ describe("POST /profile/matches/:id/contact", () => {
     expect(res.status).toBe(200);
     const body = await res.json() as any;
     expect(body.success).toBe(true);
-    expect(body.data.targetInstagram).toBe("@partner_handle");
+    expect(body.data.targetInstagram).toBeUndefined();
     expect(Array.isArray(body.data.iceBreakers)).toBe(true);
   });
 });

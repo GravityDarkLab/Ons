@@ -288,11 +288,6 @@ export interface ContactResult {
   dateIdeas: string[];
 }
 
-export interface AcceptResult {
-  actorInstagram: string;
-  targetInstagram: string;
-}
-
 export async function requestContact(
   applicantId: string,
   matchId: string,
@@ -423,7 +418,10 @@ export async function respondToContact(
         metadata: { actorType: "applicant", matchId, reason: "mutual_accept" },
       }),
       revealIdentityById(targetId, {
-        actor: { actorId: initiatorId.toHexString(), ipAddress: "system", userAgent: "system" },
+        // initiatorId is the one gaining access to this identity, but the
+        // actual request — and its real IP/UA — came from the target
+        // accepting just now, so log that, not a synthetic "system" actor.
+        actor: { actorId: initiatorId.toHexString(), ipAddress: audit.ipAddress, userAgent: audit.userAgent },
         action: "APPLICANT_REVEAL_IDENTITY",
         targetAlias: targetAlias,
         metadata: { actorType: "applicant", matchId, reason: "mutual_accept" },
@@ -604,9 +602,14 @@ export async function deleteMyAccountNow(
     )
     .toArray();
 
-  const partnerIds = activeMatches.map((m) =>
-    m.applicantAId.equals(oid) ? m.applicantBId : m.applicantAId,
+  // Dedupe — the same partner can appear across multiple active matches.
+  const partnerIdMap = new Map(
+    activeMatches.map((m) => {
+      const partnerId = m.applicantAId.equals(oid) ? m.applicantBId : m.applicantAId;
+      return [partnerId.toHexString(), partnerId] as const;
+    }),
   );
+  const partnerIds = [...partnerIdMap.values()];
 
   await Promise.all([
     appCol.deleteOne({ _id: oid }),
