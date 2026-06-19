@@ -3,7 +3,8 @@ import { useSearchParams } from 'react-router-dom'
 export function usePagedFilter(filterParamName: string) {
   const [searchParams, setSearchParams] = useSearchParams()
   const filterValue = searchParams.get(filterParamName) ?? ''
-  const page = parseInt(searchParams.get('page') ?? '1', 10)
+  const parsedPage = parseInt(searchParams.get('page') ?? '1', 10)
+  const page = Number.isFinite(parsedPage) && parsedPage > 0 ? parsedPage : 1
 
   function setFilter(value: string) {
     setSearchParams(value ? { [filterParamName]: value } : {})
