@@ -27,19 +27,18 @@ describe('MatchCard', () => {
     expect(screen.getByText('Crescent River')).toBeInTheDocument()
   })
 
-  it('renders Instagram handle and icebreakers for in_progress/initiator', () => {
+  it('renders icebreakers but withholds Instagram for in_progress/initiator (mutual reveal pending)', () => {
     const match: MatchView = {
       ...base,
       status: 'in_progress',
       perspective: 'initiator',
-      targetInstagram: '@cresriver',
       iceBreakers: ['Question 1'],
       dateIdeas: ['Coffee walk'],
     }
     render(<MatchCard match={match} />)
-    expect(screen.getByText(/@cresriver/i)).toBeInTheDocument()
     expect(screen.getByText('Question 1')).toBeInTheDocument()
     expect(screen.getByText('Coffee walk')).toBeInTheDocument()
+    expect(screen.queryByText(/cresriver/i)).not.toBeInTheDocument()
   })
 
   it('renders accept and decline buttons for in_progress/target', () => {
@@ -93,7 +92,6 @@ describe('MatchCard', () => {
   // tested: contact opens a confirmation dialog showing the partner's alias
   it('opens a confirm dialog with the alias after contact succeeds', async () => {
     const onContactRequest = vi.fn().mockResolvedValue({
-      targetInstagram: 'cresriver',
       iceBreakers: ['Q1'],
       dateIdeas: ['Coffee walk'],
     })
@@ -106,9 +104,8 @@ describe('MatchCard', () => {
     expect(dialog).toHaveTextContent(/Crescent River/)
   })
 
-  it('confirming the dialog shows the waiting contact-status view', async () => {
+  it('confirming the dialog shows the waiting contact-status view, with no Instagram yet', async () => {
     const onContactRequest = vi.fn().mockResolvedValue({
-      targetInstagram: 'cresriver',
       iceBreakers: ['Q1'],
       dateIdeas: ['Coffee walk'],
     })
@@ -118,14 +115,14 @@ describe('MatchCard', () => {
     await userEvent.click(await screen.findByRole('button', { name: /confirmContactYes/i }))
 
     expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument()
-    expect(screen.getByText(/@cresriver/)).toBeInTheDocument()
     expect(screen.getByText('Q1')).toBeInTheDocument()
     expect(screen.getByText(/portal\.matches\.waiting/)).toBeInTheDocument()
+    // Mutual reveal hasn't happened yet — only the target accepting reveals it
+    expect(screen.queryByText(/cresriver/i)).not.toBeInTheDocument()
   })
 
   it('passing in the dialog withdraws the contact', async () => {
     const onContactRequest = vi.fn().mockResolvedValue({
-      targetInstagram: 'cresriver',
       iceBreakers: [],
       dateIdeas: [],
     })
@@ -140,7 +137,6 @@ describe('MatchCard', () => {
 
   it('dismissing the dialog with Escape keeps the contact (no accidental withdraw)', async () => {
     const onContactRequest = vi.fn().mockResolvedValue({
-      targetInstagram: 'cresriver',
       iceBreakers: [],
       dateIdeas: [],
     })
@@ -154,7 +150,7 @@ describe('MatchCard', () => {
     expect(onWithdraw).not.toHaveBeenCalled()
     // Dismiss falls through to the waiting view — never a silent permanent decline
     expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument()
-    expect(screen.getByText(/@cresriver/)).toBeInTheDocument()
+    expect(screen.getByText(/portal\.matches\.waiting/)).toBeInTheDocument()
   })
 
   // tested: failed actions surface an inline error instead of being swallowed
@@ -349,19 +345,21 @@ describe('MatchCard partner profile', () => {
 })
 
 // tested: target sees who wants to meet them (handle, profile, breakdown) before accepting
-describe('MatchCard target reveal before accepting', () => {
+describe('MatchCard mutual identity reveal', () => {
   const targetMatch: MatchView = {
     ...base,
     status: 'in_progress',
     perspective: 'target',
+    // Even if a stale/unexpected partnerInstagram value were present while
+    // in_progress, the card must withhold it — reveal only happens at "dating".
     partnerInstagram: 'horizon.swift',
     breakdown: { numeric_compatibility: 0.9 },
     partnerProfile: { location: 'Paris, France', age: 27 },
   }
 
-  it('shows the initiator instagram handle on the target card', () => {
+  it('withholds the partner Instagram on the target card before accepting', () => {
     render(<MatchCard match={targetMatch} />)
-    expect(screen.getByText('@horizon.swift')).toBeInTheDocument()
+    expect(screen.queryByText(/horizon\.swift/i)).not.toBeInTheDocument()
     // accept/decline still available
     expect(screen.getByRole('button', { name: /portal\.matches\.accept/i })).toBeInTheDocument()
     expect(screen.getByRole('button', { name: /portal\.matches\.decline/i })).toBeInTheDocument()
@@ -384,7 +382,7 @@ describe('MatchCard target reveal before accepting', () => {
     expect(screen.getByText(/portal\.matches\.wantsToMeet/)).toBeInTheDocument()
   })
 
-  it('falls back to partnerInstagram on initiator cards after a reload', () => {
+  it('withholds partnerInstagram on initiator cards while still in_progress', () => {
     const match: MatchView = {
       ...base,
       status: 'in_progress',
@@ -392,7 +390,7 @@ describe('MatchCard target reveal before accepting', () => {
       partnerInstagram: 'cres.river',
     }
     render(<MatchCard match={match} />)
-    expect(screen.getByText('@cres.river')).toBeInTheDocument()
+    expect(screen.queryByText(/cres\.river/i)).not.toBeInTheDocument()
   })
 
   it('shows partnerInstagram on dating cards', () => {

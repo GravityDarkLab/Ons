@@ -18,9 +18,8 @@ export interface MatchView {
   contactRequestedAt?: string // ISO date string
   iceBreakers?: string[] // only for initiator in in_progress/dating
   dateIdeas?: string[] // only for initiator in in_progress/dating
-  targetInstagram?: string // revealed via /contact while the match is in_progress
   partnerProfile?: Record<string, unknown> // partner's public questionnaire answers
-  partnerInstagram?: string // partner's handle, only for in_progress/dating matches
+  partnerInstagram?: string // partner's handle — only ever set once status is "dating" (mutual reveal)
 }
 
 export interface ProfileView {
@@ -35,7 +34,6 @@ export interface ProfileView {
 export type LoginResult = { type: 'first_login' } | { type: 'password_required' } | { type: 'ok' }
 
 export interface ContactResult {
-  targetInstagram?: string
   iceBreakers: string[]
   dateIdeas: string[]
 }

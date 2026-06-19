@@ -202,9 +202,9 @@ export function MatchCard({ match, onContactRequest, onRespond, onWithdraw, onOu
   const hasProfile = !!partnerProfile && Object.keys(partnerProfile).length > 0
   const hasDetails = hasBreakdown || hasProfile
   const toggleExpanded = () => setExpanded(prev => !prev)
-  // targetInstagram arrives via the contact flow within this session;
-  // partnerInstagram comes from the API and survives page reloads
-  const partnerHandle = displayMatch.targetInstagram ?? partnerInstagram
+  // Mutual reveal: partnerInstagram is only ever populated once status is
+  // "dating" — never shown at in_progress, even defensively.
+  const partnerHandle = status === 'dating' ? partnerInstagram : undefined
 
   // Partner profile first (who they are), then the score breakdown (why this score)
   const detailsSection = expanded ? (
@@ -269,7 +269,6 @@ export function MatchCard({ match, onContactRequest, onRespond, onWithdraw, onOu
           }
           right={<ScoreBar score={score} />}
         />
-        {partnerHandle && <InstagramLink handle={partnerHandle} />}
         {contactRequestedAt && (
           <p className="text-sm text-muted mt-0.5">
             {t('portal.matches.requested', { time: timeAgo(new Date(contactRequestedAt).getTime()) })}
@@ -314,7 +313,6 @@ export function MatchCard({ match, onContactRequest, onRespond, onWithdraw, onOu
           left={<span className="text-base font-medium text-primary">{partnerAlias}</span>}
           right={<Badge tone="warning" size="sm">{t('portal.matches.waiting')}</Badge>}
         />
-        {partnerHandle && <InstagramLink handle={partnerHandle} />}
         <IceBreakersSection
           iceBreakers={displayMatch.iceBreakers}
           dateIdeas={displayMatch.dateIdeas}
@@ -413,7 +411,6 @@ export function MatchCard({ match, onContactRequest, onRespond, onWithdraw, onOu
       ...prev,
       status: 'in_progress',
       perspective: 'initiator',
-      targetInstagram: pendingContact.targetInstagram,
       iceBreakers: pendingContact.iceBreakers,
       dateIdeas: pendingContact.dateIdeas,
     }))

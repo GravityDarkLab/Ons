@@ -24,7 +24,6 @@ export default function MatchList({ matches, onMatchesChange }: Props) {
           ...m,
           status: 'in_progress' as const,
           perspective: 'initiator' as const,
-          targetInstagram: result.targetInstagram,
           iceBreakers: result.iceBreakers,
           dateIdeas: result.dateIdeas,
         })),
