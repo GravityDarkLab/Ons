@@ -1,5 +1,4 @@
 import { Context } from "hono";
-import { getConnInfo } from "hono/bun";
 import { ObjectId } from "mongodb";
 import { getDb } from "../db/connection.js";
 import { getAuditLogsCollection } from "../db/collections.js";
@@ -58,6 +57,6 @@ export function extractAuditContext(
   actorId: string,
   c: Context
 ): AuditContext {
-  const { ipAddress, userAgent } = getRequestMeta(c, getConnInfo(c).remote.address ?? "unknown");
+  const { ipAddress, userAgent } = getRequestMeta(c);
   return { actorId, ipAddress, userAgent };
 }
