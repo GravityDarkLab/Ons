@@ -357,7 +357,7 @@ export async function respondToContact(
   matchId: string,
   accept: boolean,
   audit: { ipAddress: string; userAgent: string } = { ipAddress: "unknown", userAgent: "unknown" },
-): Promise<void> {
+): Promise<{ partnerInstagram: string | null }> {
   const db       = await getDb();
   const matchCol = getMatchesCollection(db);
 
@@ -387,6 +387,7 @@ export async function respondToContact(
         status:             accept ? "dating" : "declined",
         contactRespondedAt: now,
         updatedAt:          now,
+        ...(accept ? { datingStartedAt: now } : {}),
       },
     },
     { returnDocument: "after" },
@@ -396,50 +397,54 @@ export async function respondToContact(
     throw new AppError("Match was already responded to", 409);
   }
 
-  if (accept) {
-    const ids = [match.applicantAId, match.applicantBId];
-    await applyMatchStatusSideEffects("dating", ids);
+  if (!accept) return { partnerInstagram: null };
 
-    // Mutual identity reveal — both parties consented.
-    // Reveal initiator's Instagram to the target, and target's Instagram to initiator.
-    // Audit-log both. Subsequent page loads use resolveIdentityById (no double-log).
-    const initiatorAlias = match.applicantAId.equals(initiatorId)
-      ? match.applicantAAlias
-      : match.applicantBAlias;
-    const targetAlias = match.applicantAId.equals(targetId)
-      ? match.applicantAAlias
-      : match.applicantBAlias;
+  const ids = [match.applicantAId, match.applicantBId];
+  await applyMatchStatusSideEffects("dating", ids);
 
-    await Promise.all([
-      revealIdentityById(initiatorId, {
-        actor: { actorId: applicantId, ipAddress: audit.ipAddress, userAgent: audit.userAgent },
-        action: "APPLICANT_REVEAL_IDENTITY",
-        targetAlias: initiatorAlias,
-        metadata: { actorType: "applicant", matchId, reason: "mutual_accept" },
-      }),
-      revealIdentityById(targetId, {
-        // initiatorId is the one gaining access to this identity, but the
-        // actual request — and its real IP/UA — came from the target
-        // accepting just now, so log that, not a synthetic "system" actor.
-        actor: { actorId: initiatorId.toHexString(), ipAddress: audit.ipAddress, userAgent: audit.userAgent },
-        action: "APPLICANT_REVEAL_IDENTITY",
-        targetAlias: targetAlias,
-        metadata: { actorType: "applicant", matchId, reason: "mutual_accept" },
-      }),
-    ]);
+  // Mutual identity reveal — both parties consented.
+  // Reveal initiator's Instagram to the target, and target's Instagram to initiator.
+  // Audit-log both. Subsequent page loads use resolveIdentityById (no double-log).
+  const initiatorAlias = match.applicantAId.equals(initiatorId)
+    ? match.applicantAAlias
+    : match.applicantBAlias;
+  const targetAlias = match.applicantAId.equals(targetId)
+    ? match.applicantAAlias
+    : match.applicantBAlias;
 
-    // Mark both as having had their identity view logged for this match
-    await matchCol.updateOne(
-      { _id: matchOid },
-      {
-        $addToSet: {
-          identityViewLoggedFor: {
-            $each: [initiatorId.toHexString(), applicantId],
-          },
+  // initiatorHandle is what the responding applicant (target) now sees —
+  // it's the response payload that lets the UI reveal it without a reload.
+  const [initiatorHandle] = await Promise.all([
+    revealIdentityById(initiatorId, {
+      actor: { actorId: applicantId, ipAddress: audit.ipAddress, userAgent: audit.userAgent },
+      action: "APPLICANT_REVEAL_IDENTITY",
+      targetAlias: initiatorAlias,
+      metadata: { actorType: "applicant", matchId, reason: "mutual_accept" },
+    }),
+    revealIdentityById(targetId, {
+      // initiatorId is the one gaining access to this identity, but the
+      // actual request — and its real IP/UA — came from the target
+      // accepting just now, so log that, not a synthetic "system" actor.
+      actor: { actorId: initiatorId.toHexString(), ipAddress: audit.ipAddress, userAgent: audit.userAgent },
+      action: "APPLICANT_REVEAL_IDENTITY",
+      targetAlias: targetAlias,
+      metadata: { actorType: "applicant", matchId, reason: "mutual_accept" },
+    }),
+  ]);
+
+  // Mark both as having had their identity view logged for this match
+  await matchCol.updateOne(
+    { _id: matchOid },
+    {
+      $addToSet: {
+        identityViewLoggedFor: {
+          $each: [initiatorId.toHexString(), applicantId],
         },
-      }
-    );
-  }
+      },
+    }
+  );
+
+  return { partnerInstagram: initiatorHandle };
 }
 
 /**
