@@ -5,6 +5,7 @@ import { getMyProfile, getMyMatches } from '../../api/profile.client'
 import MatchList from './MatchList'
 import { useTranslation } from 'react-i18next'
 import EditProfileForm from './EditProfileForm'
+import DistanceNudgeCard from './DistanceNudgeCard'
 import ProfileSettingsDrawer from './ProfileSettingsDrawer'
 import DeletionCountdown from './DeletionCountdown'
 import Badge from '../../components/ui/Badge'
@@ -163,6 +164,15 @@ export default function ProfileDashboard() {
 
       {/* Status-aware content */}
       <main>
+        {profile?.distanceNudge && profile.status !== 'inactive' && (
+          <div className="max-w-2xl mx-auto px-6 pt-6">
+            <DistanceNudgeCard
+              matchId={profile.distanceNudge.matchId}
+              onDismissed={() => void load()}
+            />
+          </div>
+        )}
+
         {/* Matches | My profile tabs — inactive accounts keep the dormant screen */}
         {profile && profile.status !== 'inactive' && (
           <div className="max-w-2xl mx-auto px-6 pt-6">
