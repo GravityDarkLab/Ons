@@ -75,6 +75,10 @@
     "s1": {
       "title": "من أنت؟",
       "subtitle": "الأساسيات فقط — سنتعرف عليك بشكل أعمق في الخطوات التالية.",
+      "firstName": "الاسم الأول",
+      "firstNamePlaceholder": "اسمك الأول",
+      "lastName": "اسم العائلة",
+      "lastNamePlaceholder": "اسم عائلتك",
       "instagram": "حساب إنستغرام",
       "location": "موقعك الحالي",
       "locationPlaceholder": "المدينة، الدولة",

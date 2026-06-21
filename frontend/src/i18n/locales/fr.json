@@ -63,6 +63,10 @@
     "s1": {
       "title": "Qui êtes-vous ?",
       "subtitle": "Juste les bases — nous apprendrons à vous connaître dans les prochaines étapes.",
+      "firstName": "Prénom",
+      "firstNamePlaceholder": "Votre prénom",
+      "lastName": "Nom de famille",
+      "lastNamePlaceholder": "Votre nom de famille",
       "instagram": "Pseudo Instagram",
       "location": "Lieu de résidence",
       "locationPlaceholder": "Ville, Pays",

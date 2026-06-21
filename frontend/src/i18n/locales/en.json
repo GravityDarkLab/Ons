@@ -63,6 +63,10 @@
     "s1": {
       "title": "Who are you?",
       "subtitle": "Just the basics — we'll get to know you better in the next steps.",
+      "firstName": "First name",
+      "firstNamePlaceholder": "Your first name",
+      "lastName": "Last name",
+      "lastNamePlaceholder": "Your last name",
       "instagram": "Instagram handle",
       "location": "Current location",
       "locationPlaceholder": "City, Country",

@@ -4,6 +4,14 @@ import { ageFromBirthDate, BIRTH_DATE_PATTERN } from '../lib/age'
 // ── Step schemas ──────────────────────────────────────────────────────────────
 
 export const step1Schema = z.object({
+  first_name: z
+    .string()
+    .min(1, 'First name is required')
+    .regex(/^[\p{L}\p{M}'\- ]+$/u, 'Only letters, spaces, hyphens and apostrophes'),
+  last_name: z
+    .string()
+    .min(1, 'Last name is required')
+    .regex(/^[\p{L}\p{M}'\- ]+$/u, 'Only letters, spaces, hyphens and apostrophes'),
   instagram_handle: z
     .string()
     .min(1, 'Instagram handle is required')
@@ -79,8 +87,10 @@ export type FormValues = z.infer<typeof formSchema>
 // ── Payload sent to backend ───────────────────────────────────────────────────
 
 export interface FormPayload {
-  questionnaireVersion: '1.1.0'
+  questionnaireVersion: '1.2.0'
   answers: {
+    first_name: string
+    last_name: string
     instagram_handle: string
     location: string
     birth_date: string
