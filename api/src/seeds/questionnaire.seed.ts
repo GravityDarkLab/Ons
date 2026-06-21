@@ -16,7 +16,7 @@ import type { QuestionnaireDoc } from "../models/questionnaire.model.js";
 const CLEAN = process.argv.includes("--clean");
 
 const questionnaire: Omit<QuestionnaireDoc, "_id" | "createdAt" | "updatedAt"> = {
-  version: "1.1.0",
+  version: "1.2.0",
   name: "Matching Form v1",
   isActive: true,
   sections: [
@@ -26,12 +26,30 @@ const questionnaire: Omit<QuestionnaireDoc, "_id" | "createdAt" | "updatedAt"> =
       order: 1,
       questions: [
         {
+          id: "first_name",
+          label: "First name",
+          type: "text",
+          sensitive: true,
+          required: true,
+          order: 1,
+          placeholder: "Your first name",
+        },
+        {
+          id: "last_name",
+          label: "Last name",
+          type: "text",
+          sensitive: true,
+          required: true,
+          order: 2,
+          placeholder: "Your last name",
+        },
+        {
           id: "instagram_handle",
           label: "Instagram Handle",
           type: "text",
           sensitive: true,
           required: true,
-          order: 1,
+          order: 3,
           placeholder: "@yourhandle",
         },
       ],

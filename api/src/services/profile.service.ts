@@ -205,7 +205,12 @@ export async function acknowledgeDistanceNudge(
 // Never sent to the applicant editor: instagram_handle is defense in depth
 // (identities live in a separate, encrypted collection), disclaimer_agreed
 // is a one-time consent with no display value.
-const HIDDEN_ANSWER_KEYS = new Set(["instagram_handle", "disclaimer_agreed"]);
+const HIDDEN_ANSWER_KEYS = new Set([
+  "instagram_handle",
+  "first_name",
+  "last_name",
+  "disclaimer_agreed",
+]);
 
 // Shown to the applicant (read-only) but never overwritten by them:
 // birth_date and gender_identity are identity facts only admins may change.

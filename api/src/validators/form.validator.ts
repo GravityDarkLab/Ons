@@ -18,6 +18,16 @@ export const formSubmissionSchema = z.object({
   answers: z
     .object({
       // Identity (sensitive)
+      first_name: z
+        .string()
+        .min(1, "first_name is required")
+        .max(50)
+        .regex(/^[\p{L}\p{M}'\- ]+$/u, "first_name contains invalid characters"),
+      last_name: z
+        .string()
+        .min(1, "last_name is required")
+        .max(50)
+        .regex(/^[\p{L}\p{M}'\- ]+$/u, "last_name contains invalid characters"),
       instagram_handle: z
         .string()
         .min(1, "instagram_handle is required")
@@ -79,7 +89,7 @@ export const formSubmissionSchema = z.object({
         error: "You must agree to the disclaimer",
       }),
     })
-    .passthrough(), // allow extra fields — they'll be filtered against questionnaire
+    .loose(), // allow extra fields — they'll be filtered against questionnaire
 });
 
 export type FormSubmissionInput = z.infer<typeof formSubmissionSchema>;

@@ -83,6 +83,8 @@ export const updateAnswersSchema = z.object({
   answers: formSubmissionSchema.shape.answers
     .omit({
       instagram_handle: true,
+      first_name: true,
+      last_name: true,
       disclaimer_agreed: true,
       birth_date: true,
       gender_identity: true,

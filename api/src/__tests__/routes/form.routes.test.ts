@@ -58,6 +58,8 @@ function validBody() {
   return {
     questionnaireVersion: "1.0.0",
     answers: {
+      first_name: "Test",
+      last_name: "User",
       instagram_handle: "@test_user",
       location: "Tunis",
       birth_date: "2000-05-15",
