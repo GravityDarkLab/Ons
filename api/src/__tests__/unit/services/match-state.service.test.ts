@@ -514,6 +514,28 @@ describe("toMatchView – partner instagram", () => {
   });
 });
 
+describe("toMatchView – datingStartedAt", () => {
+  it("exposes datingStartedAt when status is dating", () => {
+    const datingStartedAt = new Date("2026-01-01T00:00:00Z");
+    const match = makeMatch({ status: "dating", datingStartedAt });
+    const view = toMatchView(match, match.applicantAId);
+    expect(view.datingStartedAt).toEqual(datingStartedAt);
+  });
+
+  it("falls back to contactRespondedAt when datingStartedAt is missing", () => {
+    const contactRespondedAt = new Date("2026-01-01T00:00:00Z");
+    const match = makeMatch({ status: "dating", contactRespondedAt });
+    const view = toMatchView(match, match.applicantAId);
+    expect(view.datingStartedAt).toEqual(contactRespondedAt);
+  });
+
+  it("omits datingStartedAt for non-dating statuses", () => {
+    const match = makeMatch({ status: "in_progress", contactRequestedAt: new Date() });
+    const view = toMatchView(match, match.applicantAId);
+    expect(view.datingStartedAt).toBeUndefined();
+  });
+});
+
 describe("toMatchView – privacy", () => {
   it("never contains an instagramHandle field", () => {
     const match = makeMatch({ status: "in_progress" });

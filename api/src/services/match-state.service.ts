@@ -31,6 +31,8 @@ export interface ApplicantMatchView {
   dateIdeas?: string[];
   partnerProfile?: Record<string, unknown>; // partner's public questionnaire answers
   partnerInstagram?: string; // only for in_progress/dating — see toMatchView
+  partnerFullName?: string;
+  datingStartedAt?: Date;
 }
 
 // Keys never shown to a partner: consent checkboxes carry no information,
@@ -55,7 +57,8 @@ export function toMatchView(
   doc: MatchDoc,
   actorId: ObjectId,
   partnerAnswers?: Record<string, unknown>,
-  partnerInstagram?: string
+  partnerInstagram?: string,
+  partnerFullName?: string | null
 ): ApplicantMatchView {
   const isA       = doc.applicantAId.equals(actorId);
   const partnerAlias = isA ? doc.applicantBAlias : doc.applicantAAlias;
@@ -90,6 +93,12 @@ export function toMatchView(
   // Never attached while the match is proposed or in_progress.
   if (partnerInstagram && doc.status === "dating") {
     view.partnerInstagram = partnerInstagram;
+    if (partnerFullName) view.partnerFullName = partnerFullName;
+  }
+
+  if (doc.status === "dating") {
+    const anchor = getDatingAnchor(doc);
+    if (anchor) view.datingStartedAt = anchor;
   }
 
   if (doc.status === "in_progress") {
