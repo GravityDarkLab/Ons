@@ -20,6 +20,8 @@ export interface MatchView {
   dateIdeas?: string[] // only for initiator in in_progress/dating
   partnerProfile?: Record<string, unknown> // partner's public questionnaire answers
   partnerInstagram?: string // partner's handle — only ever set once status is "dating" (mutual reveal)
+  partnerFullName?: string
+  datingStartedAt?: string
 }
 
 export interface ProfileView {
@@ -29,6 +31,7 @@ export interface ProfileView {
   scoreThreshold: number
   createdAt: string
   deletionScheduledAt: string | null
+  distanceNudge: { matchId: string } | null
 }
 
 export type LoginResult = { type: 'first_login' } | { type: 'password_required' } | { type: 'ok' }
@@ -157,11 +160,15 @@ export async function requestContact(matchId: string): Promise<ContactResult> {
   return body.data
 }
 
-export async function respondToContact(matchId: string, accept: boolean): Promise<void> {
-  await profileRequest<unknown>(
+export async function respondToContact(
+  matchId: string,
+  accept: boolean,
+): Promise<{ partnerInstagram: string | null; partnerFullName: string | null }> {
+  const body = await profileRequest<{ data: { partnerInstagram: string | null; partnerFullName: string | null } }>(
     `/profile/matches/${matchId}/respond`,
     { method: 'POST', body: JSON.stringify({ accept }) },
   )
+  return body.data
 }
 
 /** Initiator backs out after the reveal — match is declined permanently. */
@@ -172,13 +179,26 @@ export async function withdrawContact(matchId: string): Promise<void> {
   )
 }
 
+export interface OutcomeFeedback {
+  tags: string[]
+  note?: string
+}
+
 export async function reportOutcome(
   matchId: string,
   outcome: 'success' | 'failed',
+  options?: { feedback?: OutcomeFeedback; continuation?: 'continue' | 'break' },
 ): Promise<void> {
   await profileRequest<unknown>(
     `/profile/matches/${matchId}/outcome`,
-    { method: 'POST', body: JSON.stringify({ outcome }) },
+    {
+      method: 'POST',
+      body: JSON.stringify({
+        outcome,
+        outcomeFeedback: options?.feedback,
+        continuation: options?.continuation,
+      }),
+    },
   )
 }
 
@@ -197,6 +217,13 @@ export async function deactivateAccount(): Promise<void> {
 /** Cancels a pending deletion and restores the account to the matching pool. */
 export async function cancelAccountDeletion(): Promise<void> {
   await profileRequest<unknown>('/profile/cancel-deletion', { method: 'POST' })
+}
+
+export async function acknowledgeDistanceNudge(matchId: string, openUp: boolean): Promise<void> {
+  await profileRequest<unknown>(
+    `/profile/matches/${matchId}/nudge-ack`,
+    { method: 'POST', body: JSON.stringify({ openUp }) },
+  )
 }
 
 /** Immediately and irreversibly deletes the account, bypassing the grace period. */

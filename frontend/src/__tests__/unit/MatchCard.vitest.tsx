@@ -72,6 +72,7 @@ describe('MatchCard', () => {
       ...base,
       status: 'dating',
       perspective: 'none',
+      datingStartedAt: new Date(Date.now() - 8 * 24 * 60 * 60 * 1000).toISOString(),
     }
     render(<MatchCard match={match} />)
     expect(screen.getByRole('button', { name: /portal\.matches\.workedOut/i })).toBeInTheDocument()
@@ -187,6 +188,7 @@ describe('MatchCard', () => {
       ...base,
       status: 'dating',
       perspective: 'none',
+      datingStartedAt: new Date(Date.now() - 8 * 24 * 60 * 60 * 1000).toISOString(),
     }
     render(<MatchCard match={match} onOutcome={onOutcome} />)
 
@@ -273,6 +275,7 @@ describe('MatchCard score breakdown', () => {
       status: 'dating',
       perspective: 'none',
       breakdown: { numeric_compatibility: 0.7 },
+      datingStartedAt: new Date(Date.now() - 8 * 24 * 60 * 60 * 1000).toISOString(),
     }
     render(<MatchCard match={match} />)
 
@@ -337,6 +340,7 @@ describe('MatchCard partner profile', () => {
       status: 'dating',
       perspective: 'none',
       partnerProfile: profile,
+      datingStartedAt: new Date(Date.now() - 8 * 24 * 60 * 60 * 1000).toISOString(),
     }
     render(<MatchCard match={match} />)
     await userEvent.click(screen.getByRole('button', { name: /portal\.matches\.dating/i }))
@@ -399,8 +403,85 @@ describe('MatchCard mutual identity reveal', () => {
       status: 'dating',
       perspective: 'none',
       partnerInstagram: 'cres.river',
+      datingStartedAt: new Date(Date.now() - 8 * 24 * 60 * 60 * 1000).toISOString(),
     }
     render(<MatchCard match={match} />)
+    expect(screen.getByText('@cres.river')).toBeInTheDocument()
+  })
+})
+
+describe('MatchCard dating-phase gating', () => {
+  function datingMatch(daysAgo: number): MatchView {
+    return {
+      ...base,
+      status: 'dating',
+      perspective: 'none',
+      datingStartedAt: new Date(Date.now() - daysAgo * 24 * 60 * 60 * 1000).toISOString(),
+    }
+  }
+
+  it('shows a check-in message and no action buttons before day 3', () => {
+    render(<MatchCard match={datingMatch(1)} />)
+    expect(screen.queryByRole('button', { name: /portal\.matches\.workedOut/i })).not.toBeInTheDocument()
+    expect(screen.queryByText(/portal\.matches\.outcome\.notWorkingOutLink/)).not.toBeInTheDocument()
+    expect(screen.getByText(/portal\.matches\.checkIn\.message/)).toBeInTheDocument()
+  })
+
+  it('shows the quiet cancel link (but not full outcome buttons) between day 3 and day 7', () => {
+    render(<MatchCard match={datingMatch(4)} />)
+    expect(screen.queryByRole('button', { name: /portal\.matches\.workedOut/i })).not.toBeInTheDocument()
+    expect(screen.getByText(/portal\.matches\.outcome\.notWorkingOutLink/)).toBeInTheDocument()
+  })
+
+  it('shows full outcome buttons at day 7+', () => {
+    render(<MatchCard match={datingMatch(7)} />)
+    expect(screen.getByRole('button', { name: /portal\.matches\.workedOut/i })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /portal\.matches\.didntWork/i })).toBeInTheDocument()
+  })
+
+  it('clicking "didn\'t work" shows the optional feedback tags before submitting', async () => {
+    render(<MatchCard match={datingMatch(7)} />)
+    await userEvent.click(screen.getByRole('button', { name: /portal\.matches\.didntWork/i }))
+    expect(screen.getByText(/portal\.matches\.outcome\.feedbackPrompt/)).toBeInTheDocument()
+    expect(screen.getByText(/portal\.matches\.outcome\.feedbackTags\.too_far/)).toBeInTheDocument()
+  })
+
+  it('continuing past feedback shows the keep-looking/take-a-break choice, and submits on click', async () => {
+    const onOutcome = vi.fn().mockResolvedValue(undefined)
+    render(<MatchCard match={datingMatch(7)} onOutcome={onOutcome} />)
+
+    await userEvent.click(screen.getByRole('button', { name: /portal\.matches\.didntWork/i }))
+    await userEvent.click(screen.getByRole('button', { name: /portal\.matches\.outcome\.feedbackContinue/i }))
+
+    expect(screen.getByRole('button', { name: /portal\.matches\.outcome\.keepLooking/i })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /portal\.matches\.outcome\.takeABreak/i })).toBeInTheDocument()
+
+    await userEvent.click(screen.getByRole('button', { name: /portal\.matches\.outcome\.takeABreak/i }))
+
+    expect(onOutcome).toHaveBeenCalledWith('m1', 'failed', {
+      feedback: undefined,
+      continuation: 'break',
+    })
+  })
+
+  it('clicking "it worked" submits immediately with no feedback step', async () => {
+    const onOutcome = vi.fn().mockResolvedValue(undefined)
+    render(<MatchCard match={datingMatch(7)} onOutcome={onOutcome} />)
+
+    await userEvent.click(screen.getByRole('button', { name: /portal\.matches\.workedOut/i }))
+
+    expect(onOutcome).toHaveBeenCalledWith('m1', 'success', undefined)
+    expect(screen.getByText(/portal\.matches\.outcome\.successTitle/)).toBeInTheDocument()
+  })
+
+  it('shows the full name above the Instagram handle when revealed', () => {
+    const match: MatchView = {
+      ...datingMatch(7),
+      partnerInstagram: 'cres.river',
+      partnerFullName: 'Crescent River',
+    }
+    render(<MatchCard match={match} />)
+    expect(screen.getByText('Crescent River')).toBeInTheDocument()
     expect(screen.getByText('@cres.river')).toBeInTheDocument()
   })
 })

@@ -8,6 +8,14 @@ import { useTimeAgo } from '../../lib/timeAgo'
 import { getBreakdownEntry } from './matchBreakdownLabels'
 import { PartnerProfileView } from './PartnerProfileView'
 import type { MatchView, ContactResult } from '../../api/profile.client'
+import {
+  daysSince,
+  CANCEL_ELIGIBLE_DAYS,
+  OUTCOME_ELIGIBLE_DAYS,
+  CHECK_IN_MESSAGE_KEYS,
+  OUTCOME_FEEDBACK_TAGS,
+  type OutcomeFeedbackTag,
+} from './datingTimeline'
 
 // ── Props ─────────────────────────────────────────────────────────────────────
 
@@ -16,7 +24,11 @@ interface MatchCardProps {
   onContactRequest?: (matchId: string) => Promise<ContactResult>
   onRespond?: (matchId: string, accept: boolean) => Promise<void>
   onWithdraw?: (matchId: string) => Promise<void>
-  onOutcome?: (matchId: string, outcome: 'success' | 'failed') => Promise<void>
+  onOutcome?: (
+    matchId: string,
+    outcome: 'success' | 'failed',
+    options?: { feedback?: { tags: string[]; note?: string }; continuation?: 'continue' | 'break' },
+  ) => Promise<void>
 }
 
 // ── Sub-components ────────────────────────────────────────────────────────────
@@ -188,10 +200,17 @@ export function MatchCard({ match, onContactRequest, onRespond, onWithdraw, onOu
   const [withdrawing, setWithdrawing] = useState(false)
   const [loadingAccept, setLoadingAccept] = useState(false)
   const [loadingDecline, setLoadingDecline] = useState(false)
-  const [loadingSuccess, setLoadingSuccess] = useState(false)
-  const [loadingFailed, setLoadingFailed] = useState(false)
   const [actionError, setActionError] = useState('')
   const [expanded, setExpanded] = useState(false)
+  const [outcomePhase, setOutcomePhase] = useState<'idle' | 'feedback' | 'choice' | 'done'>('idle')
+  const [pendingOutcome, setPendingOutcome] = useState<'success' | 'failed' | null>(null)
+  const [selectedTags, setSelectedTags] = useState<OutcomeFeedbackTag[]>([])
+  const [feedbackNote, setFeedbackNote] = useState('')
+  const [submittingOutcome, setSubmittingOutcome] = useState(false)
+  // Re-rolled once per mount (i.e. per page load), stable for the rest of the session
+  const [checkInMessageKey] = useState(
+    () => CHECK_IN_MESSAGE_KEYS[Math.floor(Math.random() * CHECK_IN_MESSAGE_KEYS.length)],
+  )
 
   function failAction(err: unknown) {
     setActionError(err instanceof Error ? err.message : t('portal.matches.genericError'))
@@ -324,65 +343,191 @@ export function MatchCard({ match, onContactRequest, onRespond, onWithdraw, onOu
 
   // ── Case 4: dating ────────────────────────────────────────────────────────
   if (status === 'dating') {
-    const handleOutcome = async (outcome: 'success' | 'failed') => {
+    const elapsedDays = displayMatch.datingStartedAt ? daysSince(displayMatch.datingStartedAt) : 0
+    const cancelUnlocked = elapsedDays >= CANCEL_ELIGIBLE_DAYS
+    const outcomeUnlocked = elapsedDays >= OUTCOME_ELIGIBLE_DAYS
+
+    function toggleTag(tag: OutcomeFeedbackTag) {
+      setSelectedTags(prev => (prev.includes(tag) ? prev.filter(t2 => t2 !== tag) : [...prev, tag]))
+    }
+
+    function buildFeedback(): { tags: string[]; note?: string } | undefined {
+      if (selectedTags.length === 0 && !feedbackNote.trim()) return undefined
+      return { tags: selectedTags, note: feedbackNote.trim() || undefined }
+    }
+
+    async function submitOutcome(outcome: 'success' | 'failed', continuation?: 'continue' | 'break') {
       if (!onOutcome) return
-      if (outcome === 'success') setLoadingSuccess(true)
-      else setLoadingFailed(true)
       setActionError('')
+      setSubmittingOutcome(true)
       try {
-        await onOutcome(matchId, outcome)
-        setDisplayMatch(prev => ({ ...prev, status: outcome }))
+        await onOutcome(
+          matchId,
+          outcome,
+          outcome === 'failed' ? { feedback: buildFeedback(), continuation } : undefined,
+        )
+        setOutcomePhase('done')
       } catch (err) {
         failAction(err)
       } finally {
-        if (outcome === 'success') setLoadingSuccess(false)
-        else setLoadingFailed(false)
+        setSubmittingOutcome(false)
       }
+    }
+
+    const header = (
+      <ExpandableHeader
+        expanded={expanded}
+        onToggle={toggleExpanded}
+        hasDetails={hasDetails}
+        left={
+          <span className="text-base font-medium text-primary">
+            {t('portal.matches.dating', { alias: partnerAlias })}
+          </span>
+        }
+        right={<span className="text-sm text-muted">{t('portal.matches.matchScore', { percent: Math.round(score * 100) })}</span>}
+      />
+    )
+
+    const sharedSections = (
+      <>
+        {displayMatch.partnerFullName && (
+          <p className="text-base font-medium text-primary mt-1">{displayMatch.partnerFullName}</p>
+        )}
+        {partnerHandle && <InstagramLink handle={partnerHandle} />}
+        {detailsSection}
+        {perspective === 'initiator' && (
+          <IceBreakersSection iceBreakers={displayMatch.iceBreakers} dateIdeas={displayMatch.dateIdeas} />
+        )}
+      </>
+    )
+
+    if (outcomePhase === 'done' && pendingOutcome === 'success') {
+      return (
+        <div className="bg-surface border border-border rounded-2xl p-5 shadow-card hover-card transition-card">
+          {header}
+          {sharedSections}
+          <div className="mt-5 text-center animate-confetti-drift">
+            <p className="text-2xl">🎉💛</p>
+            <p className="text-base font-medium text-primary mt-2">{t('portal.matches.outcome.successTitle')}</p>
+            <p className="text-sm text-muted mt-1">{t('portal.matches.outcome.successBody', { alias: partnerAlias })}</p>
+          </div>
+        </div>
+      )
+    }
+
+    if (outcomePhase === 'choice' || (outcomePhase === 'done' && pendingOutcome === 'failed')) {
+      return (
+        <div className="bg-surface border border-border rounded-2xl p-5 shadow-card hover-card transition-card">
+          {header}
+          {sharedSections}
+          <div className="mt-5 text-center animate-heart-pulse">
+            <p className="text-2xl">🤍</p>
+            <p className="text-base font-medium text-primary mt-2">{t('portal.matches.outcome.failedTitle')}</p>
+            <p className="text-sm text-muted mt-1">{t('portal.matches.outcome.failedBody')}</p>
+          </div>
+          {outcomePhase === 'choice' && (
+            <div className="flex gap-3 mt-4">
+              <button
+                onClick={() => void submitOutcome('failed', 'continue')}
+                disabled={submittingOutcome}
+                className="flex-1 inline-flex items-center justify-center gap-2 bg-accent text-bg rounded-full px-4 py-2.5 text-sm font-medium transition-all duration-200 hover:opacity-90 disabled:opacity-50"
+              >
+                {submittingOutcome ? <Spinner /> : null}
+                {t('portal.matches.outcome.keepLooking')}
+              </button>
+              <button
+                onClick={() => void submitOutcome('failed', 'break')}
+                disabled={submittingOutcome}
+                className="flex-1 inline-flex items-center justify-center gap-2 bg-surface border border-border text-muted rounded-xl px-4 py-2.5 text-sm font-medium transition-all duration-200 hover:bg-bg disabled:opacity-50"
+              >
+                {submittingOutcome ? <Spinner /> : null}
+                {t('portal.matches.outcome.takeABreak')}
+              </button>
+            </div>
+          )}
+          {actionError && <p role="alert" className="text-sm text-error mt-3">{actionError}</p>}
+        </div>
+      )
+    }
+
+    if (outcomePhase === 'feedback') {
+      return (
+        <div className="bg-surface border border-border rounded-2xl p-5 shadow-card hover-card transition-card">
+          {header}
+          {sharedSections}
+          <div className="mt-4 space-y-3">
+            <p className="text-sm text-muted">{t('portal.matches.outcome.feedbackPrompt')}</p>
+            <div className="space-y-2">
+              {OUTCOME_FEEDBACK_TAGS.map(tag => (
+                <label key={tag} className="flex items-center gap-2 text-sm text-primary">
+                  <input
+                    type="checkbox"
+                    checked={selectedTags.includes(tag)}
+                    onChange={() => toggleTag(tag)}
+                    className="rounded border-border"
+                  />
+                  {t(`portal.matches.outcome.feedbackTags.${tag}`)}
+                </label>
+              ))}
+            </div>
+            <textarea
+              value={feedbackNote}
+              onChange={e => setFeedbackNote(e.target.value)}
+              placeholder={t('portal.matches.outcome.feedbackNotePlaceholder')}
+              maxLength={500}
+              rows={2}
+              className="w-full rounded-xl border border-border bg-bg px-3 py-2 text-sm text-primary placeholder:text-muted"
+            />
+            <button
+              onClick={() => setOutcomePhase('choice')}
+              className="inline-flex items-center justify-center gap-2 bg-accent text-bg rounded-full px-5 py-2.5 text-sm font-medium transition-all duration-200 hover:opacity-90"
+            >
+              {t('portal.matches.outcome.feedbackContinue')}
+            </button>
+          </div>
+        </div>
+      )
     }
 
     return (
       <div className="bg-surface border border-border rounded-2xl p-5 shadow-card hover-card transition-card">
-        <ExpandableHeader
-          expanded={expanded}
-          onToggle={toggleExpanded}
-          hasDetails={hasDetails}
-          left={
-            <span className="text-base font-medium text-primary">
-              {t('portal.matches.dating', { alias: partnerAlias })}
-            </span>
-          }
-          right={<span className="text-sm text-muted">{t('portal.matches.matchScore', { percent: Math.round(score * 100) })}</span>}
-        />
-        {partnerHandle && <InstagramLink handle={partnerHandle} />}
-        {detailsSection}
-        {perspective === 'initiator' && (
-          <IceBreakersSection
-            iceBreakers={displayMatch.iceBreakers}
-            dateIdeas={displayMatch.dateIdeas}
-          />
-        )}
-        <div className="mt-4">
-          <p className="text-sm text-muted mb-3">{t('portal.matches.howDidItGo')}</p>
-          <div className="flex gap-3">
-            <button
-              onClick={() => handleOutcome('success')}
-              disabled={loadingSuccess || loadingFailed}
-              className="flex-1 inline-flex items-center justify-center gap-2 bg-success text-bg rounded-full px-4 py-2.5 text-sm font-medium transition-all duration-200 hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              {loadingSuccess ? <Spinner /> : null}
-              {t('portal.matches.workedOut')}
-            </button>
-            <button
-              onClick={() => handleOutcome('failed')}
-              disabled={loadingSuccess || loadingFailed}
-              className="flex-1 inline-flex items-center justify-center gap-2 bg-surface border border-border text-muted rounded-xl px-4 py-2.5 text-sm font-medium transition-all duration-200 hover:bg-bg disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              {loadingFailed ? <Spinner /> : null}
-              {t('portal.matches.didntWork')}
-            </button>
+        {header}
+        {sharedSections}
+        {outcomeUnlocked ? (
+          <div className="mt-4">
+            <p className="text-sm text-muted mb-3">{t('portal.matches.howDidItGo')}</p>
+            <div className="flex gap-3">
+              <button
+                onClick={() => { setPendingOutcome('success'); void submitOutcome('success') }}
+                disabled={submittingOutcome}
+                className="flex-1 inline-flex items-center justify-center gap-2 bg-success text-bg rounded-full px-4 py-2.5 text-sm font-medium transition-all duration-200 hover:opacity-90 disabled:opacity-50"
+              >
+                {submittingOutcome ? <Spinner /> : null}
+                {t('portal.matches.workedOut')}
+              </button>
+              <button
+                onClick={() => { setPendingOutcome('failed'); setOutcomePhase('feedback') }}
+                disabled={submittingOutcome}
+                className="flex-1 inline-flex items-center justify-center gap-2 bg-surface border border-border text-muted rounded-xl px-4 py-2.5 text-sm font-medium transition-all duration-200 hover:bg-bg disabled:opacity-50"
+              >
+                {t('portal.matches.didntWork')}
+              </button>
+            </div>
+            {actionError && <p role="alert" className="text-sm text-error mt-3">{actionError}</p>}
           </div>
-          {actionError && <p role="alert" className="text-sm text-error mt-3">{actionError}</p>}
-        </div>
+        ) : (
+          <div className="mt-4 bg-accent-light border border-accent/20 rounded-xl p-4">
+            <p className="text-sm text-primary">{t(checkInMessageKey, { alias: partnerAlias })}</p>
+            {cancelUnlocked && (
+              <button
+                onClick={() => { setPendingOutcome('failed'); setOutcomePhase('feedback') }}
+                className="text-xs text-muted underline mt-2 hover:text-primary"
+              >
+                {t('portal.matches.outcome.notWorkingOutLink')}
+              </button>
+            )}
+          </div>
+        )}
       </div>
     )
   }

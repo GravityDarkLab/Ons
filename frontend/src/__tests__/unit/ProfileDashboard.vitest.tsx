@@ -54,6 +54,7 @@ describe('ProfileDashboard', () => {
       scoreThreshold: 0.8,
       createdAt: '2026-01-01',
       deletionScheduledAt: null,
+      distanceNudge: null,
     })
 
     renderDashboard()
@@ -72,6 +73,7 @@ describe('ProfileDashboard', () => {
       scoreThreshold: 0.8,
       createdAt: '2026-01-01',
       deletionScheduledAt: null,
+      distanceNudge: null,
     })
     mockGetMyMatches.mockResolvedValue([
       { matchId: 'm1', partnerAlias: 'High Score', score: 0.86, status: 'proposed', perspective: 'none' },
@@ -106,6 +108,7 @@ describe('ProfileDashboard', () => {
       scoreThreshold: 0.8,
       createdAt: '2026-01-01',
       deletionScheduledAt: null,
+      distanceNudge: null,
     })
     mockGetMyMatches.mockResolvedValue([])
 
@@ -126,6 +129,7 @@ describe('ProfileDashboard', () => {
       scoreThreshold: 0.8,
       createdAt: '2026-01-01',
       deletionScheduledAt: null,
+      distanceNudge: null,
     })
 
     renderDashboard()
@@ -143,6 +147,7 @@ describe('ProfileDashboard', () => {
       scoreThreshold: 0.8,
       createdAt: '2026-01-01',
       deletionScheduledAt: new Date(Date.now() + 5 * 24 * 60 * 60 * 1000).toISOString(),
+      distanceNudge: null,
     })
 
     renderDashboard()
@@ -163,6 +168,7 @@ describe('ProfileDashboard', () => {
         scoreThreshold: 0.8,
         createdAt: '2026-01-01',
         deletionScheduledAt: new Date(Date.now() + 5 * 24 * 60 * 60 * 1000).toISOString(),
+        distanceNudge: null,
       })
       .mockResolvedValueOnce({
         applicantId: '5',
@@ -171,6 +177,7 @@ describe('ProfileDashboard', () => {
         scoreThreshold: 0.8,
         createdAt: '2026-01-01',
         deletionScheduledAt: null,
+        distanceNudge: null,
       })
     vi.mocked(profileClient.cancelAccountDeletion).mockResolvedValue(undefined)
 
@@ -199,6 +206,7 @@ describe('ProfileDashboard', () => {
       scoreThreshold: 0.8,
       createdAt: '2026-01-01',
       deletionScheduledAt: new Date(Date.now() + 5 * 24 * 60 * 60 * 1000).toISOString(),
+      distanceNudge: null,
     })
     vi.mocked(profileClient.deleteAccountNow).mockResolvedValue(undefined)
 
