@@ -374,15 +374,15 @@
       "noneAtThresholdTitle": "Aucun match à ce score",
       "noneAtThresholdBody": "Baissez le curseur pour voir plus de matchs.",
       "deletion": {
-        "title": "Temps avant suppression",
-        "body": "Ton compte et tes données seront définitivement supprimés lorsque ce compteur atteindra zéro.",
+        "title": "Une pause, le temps qu'il faudra",
+        "body": "On est là quand vous serez prêt(e) à revenir — rien ne presse. Si on n'a pas de nouvelles, on supprimera vos données à la fin de ce compte à rebours, simplement pour garder les choses en ordre.",
         "days": "Jours",
         "hours": "Heures",
         "minutes": "Min",
         "seconds": "Sec",
         "cancelButton": "Garder mon compte",
-        "cancelTitle": "Garder mon compte",
-        "cancelConfirm": "Cela annule la suppression programmée et restaure ton compte dans le bassin de matching.",
+        "cancelTitle": "Bon retour",
+        "cancelConfirm": "On remet votre profil dans le bassin de rencontres dès que vous êtes prêt(e) — sans aucune pression.",
         "cancelYes": "Oui, garder mon compte",
         "cancelFailed": "Échec de l'annulation de la suppression.",
         "deleteNowButton": "Supprimer mon compte maintenant",
@@ -390,6 +390,12 @@
         "deleteNowConfirm": "Cela supprime immédiatement et définitivement ton compte et toutes les données associées. Cette action est irréversible.",
         "deleteNowYes": "Oui, supprimer maintenant",
         "deleteNowFailed": "Échec de la suppression du compte."
+      },
+      "distanceNudge": {
+        "title": "La distance est revenue la dernière fois",
+        "body": "Voulez-vous vous ouvrir aux rencontres à distance à l'avenir ?",
+        "yes": "Oui, ouvrez-moi à ça",
+        "no": "Non, laissez comme c'est"
       }
     },
     "matches": {
@@ -405,6 +411,32 @@
       "howDidItGo": "Comment ça s'est passé ?",
       "workedOut": "Ça a marché ✓",
       "didntWork": "Pas cette fois",
+      "checkIn": {
+        "message1": "Hé, comment ça se passe avec {{alias}} ? Avez-vous fini par prendre ce café qu'on vous a suggéré ?",
+        "message2": "Aucune pression — on prend juste des nouvelles. Comment ça va avec {{alias}} jusqu'à présent ?",
+        "message3": "Un petit mot de notre part : comment s'est passé votre premier rendez-vous avec {{alias}} ?",
+        "message4": "Prenez le temps de connaître {{alias}}. On vous encourage discrètement depuis les coulisses.",
+        "message5": "Curieux de savoir comment ça avance avec {{alias}} ? Rien ne presse pour nous le dire.",
+        "message6": "On espère que vous prenez plaisir à connaître {{alias}}. On revient vous voir dans quelques jours."
+      },
+      "outcome": {
+        "notWorkingOutLink": "Ça ne fonctionne pas ?",
+        "feedbackPrompt": "Pas de souci — voulez-vous nous en dire un peu plus ? (facultatif)",
+        "feedbackTags": {
+          "too_far": "On vit trop loin l'un de l'autre",
+          "different_values": "Modes de vie / valeurs différents",
+          "no_spark": "Pas d'étincelle amoureuse",
+          "something_else": "Autre chose"
+        },
+        "feedbackNotePlaceholder": "Autre chose à ajouter ? (facultatif)",
+        "feedbackContinue": "Continuer",
+        "failedTitle": "Ce n'est pas grave — ce n'était pas la bonne personne, cette fois",
+        "failedBody": "Merci d'avoir vraiment essayé. Trouver la bonne personne prend du temps, et on est content(e) que vous soyez encore là.",
+        "keepLooking": "Continuer à chercher maintenant",
+        "takeABreak": "Faire une pause pour un moment",
+        "successTitle": "C'est une merveilleuse nouvelle !",
+        "successBody": "On est tellement content(e) que ça ait fonctionné avec {{alias}}. On se met en retrait pour vous laisser profiter de ce moment — mais on est toujours là si vous avez besoin de nous à nouveau."
+      },
       "iceBreakers": "Brise-glace",
       "dateIdeas": "Idées de rendez-vous",
       "aboutPartner": "À propos de {{alias}}",
