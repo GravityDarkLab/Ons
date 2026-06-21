@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { acknowledgeDistanceNudge } from '../../api/profile.client'
+import { useToast } from '../../components/ui/Toast'
 
 interface Props {
   matchId: string
@@ -9,15 +10,18 @@ interface Props {
 
 export default function DistanceNudgeCard({ matchId, onDismissed }: Props) {
   const { t } = useTranslation()
+  const { error: toastError } = useToast()
   const [loading, setLoading] = useState(false)
 
   async function respond(openUp: boolean) {
     setLoading(true)
     try {
       await acknowledgeDistanceNudge(matchId, openUp)
+      onDismissed()
+    } catch (err) {
+      toastError(err instanceof Error ? err.message : t('portal.dashboard.distanceNudge.ackFailed'))
     } finally {
       setLoading(false)
-      onDismissed()
     }
   }
 

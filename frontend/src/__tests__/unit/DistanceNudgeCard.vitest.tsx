@@ -9,8 +9,16 @@ vi.mock('../../api/profile.client', () => ({
 import * as profileClient from '../../api/profile.client'
 const mockAck = vi.mocked(profileClient.acknowledgeDistanceNudge)
 
+const mockToastError = vi.fn()
+vi.mock('../../components/ui/Toast', () => ({
+  useToast: () => ({ success: vi.fn(), error: mockToastError, toast: vi.fn() }),
+}))
+
 describe('DistanceNudgeCard', () => {
-  beforeEach(() => mockAck.mockReset())
+  beforeEach(() => {
+    mockAck.mockReset()
+    mockToastError.mockReset()
+  })
 
   it('renders the prompt and both choices', () => {
     render(<DistanceNudgeCard matchId="m1" onDismissed={vi.fn()} />)
@@ -39,5 +47,17 @@ describe('DistanceNudgeCard', () => {
 
     expect(mockAck).toHaveBeenCalledWith('m1', false)
     expect(onDismissed).toHaveBeenCalled()
+  })
+
+  it('shows an error toast and does not dismiss when acknowledging fails', async () => {
+    mockAck.mockRejectedValue(new Error('network error'))
+    const onDismissed = vi.fn()
+    render(<DistanceNudgeCard matchId="m1" onDismissed={onDismissed} />)
+
+    await userEvent.click(screen.getByRole('button', { name: /portal\.dashboard\.distanceNudge\.yes/i }))
+
+    expect(mockAck).toHaveBeenCalledWith('m1', true)
+    expect(onDismissed).not.toHaveBeenCalled()
+    expect(mockToastError).toHaveBeenCalledWith('network error')
   })
 })

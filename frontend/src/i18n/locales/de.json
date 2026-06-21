@@ -395,7 +395,8 @@
         "title": "Entfernung war letztes Mal ein Thema",
         "body": "Möchtest du dich künftig für Fernbeziehungen öffnen?",
         "yes": "Ja, öffne mich dafür",
-        "no": "Nein, so lassen"
+        "no": "Nein, so lassen",
+        "ackFailed": "Deine Wahl konnte nicht gespeichert werden. Bitte versuche es erneut."
       }
     },
     "matches": {

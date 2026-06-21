@@ -395,7 +395,8 @@
         "title": "La distance est revenue la dernière fois",
         "body": "Voulez-vous vous ouvrir aux rencontres à distance à l'avenir ?",
         "yes": "Oui, ouvrez-moi à ça",
-        "no": "Non, laissez comme c'est"
+        "no": "Non, laissez comme c'est",
+        "ackFailed": "Impossible d'enregistrer votre choix. Veuillez réessayer."
       }
     },
     "matches": {

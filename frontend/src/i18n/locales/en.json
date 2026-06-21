@@ -395,7 +395,8 @@
         "title": "Distance came up last time",
         "body": "Want to open yourself up to long-distance matches going forward?",
         "yes": "Yes, open me up",
-        "no": "No, keep as is"
+        "no": "No, keep as is",
+        "ackFailed": "Couldn't save your choice. Please try again."
       }
     },
     "matches": {
