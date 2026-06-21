@@ -212,9 +212,9 @@ export async function expireConflictingMatches(
 export const PORTAL_MIN_SCORE = 0.6;
 
 /** Day count after which a "didn't work" outcome can be reported. */
-export const CANCEL_ELIGIBLE_DAYS = 3;
+export const CANCEL_ELIGIBLE_DAYS: number = 3;
 /** Day count after which an "it worked" outcome can be reported. */
-export const OUTCOME_ELIGIBLE_DAYS = 7;
+export const OUTCOME_ELIGIBLE_DAYS: number = 7;
 
 /** Whole days elapsed since `date`, floored. */
 export function daysSince(date: Date): number {
