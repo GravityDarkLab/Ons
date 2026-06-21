@@ -566,9 +566,11 @@ export async function reportOutcome(
   // explicitly chose to take a break — see the warm-dating-experience design
   // doc for why this stays a single shared choice rather than per-applicant.
   if (options?.continuation === "break") {
-    const deletionScheduledAt = new Date(Date.now() + DELETION_GRACE_MS);
-    await transitionApplicantStatus(ids, "inactive", { deletionScheduledAt });
-    await expireConflictingMatches(ids);
+    // Same applicant-side effect as a "success" outcome (deactivate +
+    // expire conflicting matches) — only the match's own status differs
+    // ("failed", already set above), reusing the kernel avoids duplicating
+    // the deletionScheduledAt/expiry logic in two places.
+    await applyMatchStatusSideEffects("success", ids);
   } else {
     await applyMatchStatusSideEffects("failed", ids);
   }
