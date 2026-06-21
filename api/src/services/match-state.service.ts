@@ -202,6 +202,44 @@ export async function expireConflictingMatches(
 /** Portal slider floor — matches below this score are never shown to applicants. */
 export const PORTAL_MIN_SCORE = 0.6;
 
+/** Day count after which a "didn't work" outcome can be reported. */
+export const CANCEL_ELIGIBLE_DAYS = 3;
+/** Day count after which an "it worked" outcome can be reported. */
+export const OUTCOME_ELIGIBLE_DAYS = 7;
+
+/** Whole days elapsed since `date`, floored. */
+export function daysSince(date: Date): number {
+  return Math.floor((Date.now() - date.getTime()) / (24 * 60 * 60 * 1000));
+}
+
+/** The stable anchor for dating-outcome gating — see MatchDoc.datingStartedAt. */
+export function getDatingAnchor(match: MatchDoc): Date | undefined {
+  return match.datingStartedAt ?? match.contactRespondedAt;
+}
+
+/**
+ * Throws if `outcome` can't be reported yet for `match`. Only enforced once
+ * dating has actually started (status "dating" with a known anchor) —
+ * reporting from "in_progress" (e.g. the initiator bailing before the
+ * partner even responds) is untouched by this gate.
+ */
+export function assertOutcomeEligible(
+  match: MatchDoc,
+  outcome: "success" | "failed"
+): void {
+  if (match.status !== "dating") return;
+  const anchor = getDatingAnchor(match);
+  if (!anchor) return;
+
+  const requiredDays = outcome === "success" ? OUTCOME_ELIGIBLE_DAYS : CANCEL_ELIGIBLE_DAYS;
+  if (daysSince(anchor) < requiredDays) {
+    throw new AppError(
+      `Too early to report this outcome — available ${requiredDays} day${requiredDays === 1 ? "" : "s"} after you started dating`,
+      403
+    );
+  }
+}
+
 /** Grace period before personal data of inactive accounts is purged. Configurable via DELETION_GRACE_DAYS. */
 export const DELETION_GRACE_MS = env.deletionGraceDays * 24 * 60 * 60 * 1000;
 
