@@ -113,6 +113,7 @@ export interface ApplicantProfileView {
   scoreThreshold: number;
   createdAt: Date;
   deletionScheduledAt: Date | null;
+  distanceNudge: { matchId: string } | null;
 }
 
 export async function getMyProfile(applicantId: string): Promise<ApplicantProfileView | null> {
@@ -129,7 +130,74 @@ export async function getMyProfile(applicantId: string): Promise<ApplicantProfil
     scoreThreshold: doc.scoreThreshold ?? 0.8,
     createdAt:      doc.createdAt,
     deletionScheduledAt: doc.deletionScheduledAt ?? null,
+    distanceNudge: await getDistanceNudge(applicantId),
   };
+}
+
+/**
+ * Surfaces a one-time, dismissible suggestion when the applicant's most
+ * recent failed match was tagged "too_far" and they're not already open to
+ * long-distance matches. Returns null once acknowledged (see
+ * acknowledgeDistanceNudge) or when no qualifying match exists.
+ */
+export async function getDistanceNudge(applicantId: string): Promise<{ matchId: string } | null> {
+  const db       = await getDb();
+  const appCol   = getApplicantsCollection(db);
+  const matchCol = getMatchesCollection(db);
+  const oid      = new ObjectId(applicantId);
+
+  const applicant = await appCol.findOne({ _id: oid }, { projection: { answers: 1 } });
+  if (!applicant || applicant.answers?.["open_to_long_distance"] !== false) return null;
+
+  const match = await matchCol.findOne(
+    {
+      $or: [{ applicantAId: oid }, { applicantBId: oid }],
+      status: "failed",
+      "outcomeFeedback.tags": "too_far",
+      "outcomeFeedback.nudgeAcknowledged": { $ne: true },
+    },
+    { sort: { updatedAt: -1 }, projection: { _id: 1 } },
+  );
+
+  return match ? { matchId: match._id.toHexString() } : null;
+}
+
+/**
+ * Marks the distance nudge as acknowledged for a match (shown at most once),
+ * and — only if the applicant opted in — opens them up to long-distance
+ * matches. Declining still acknowledges the nudge so it doesn't reappear.
+ */
+export async function acknowledgeDistanceNudge(
+  applicantId: string,
+  matchId: string,
+  openUp: boolean,
+): Promise<void> {
+  const db       = await getDb();
+  const matchCol = getMatchesCollection(db);
+  const appCol   = getApplicantsCollection(db);
+  const oid      = new ObjectId(applicantId);
+
+  let matchOid: ObjectId;
+  try { matchOid = new ObjectId(matchId); } catch {
+    throw new AppError("Match not found", 404);
+  }
+
+  const result = await matchCol.updateOne(
+    {
+      _id: matchOid,
+      $or: [{ applicantAId: oid }, { applicantBId: oid }],
+      "outcomeFeedback.tags": "too_far",
+    },
+    { $set: { "outcomeFeedback.nudgeAcknowledged": true } },
+  );
+  if (result.matchedCount === 0) throw new AppError("Match not found", 404);
+
+  if (openUp) {
+    await appCol.updateOne(
+      { _id: oid },
+      { $set: { "answers.open_to_long_distance": true, updatedAt: new Date() } },
+    );
+  }
 }
 
 // ── Answers (self-service questionnaire edits) ───────────────────────────────

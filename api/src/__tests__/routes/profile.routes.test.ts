@@ -28,6 +28,8 @@ const mockDeactivateMyAccount = mock(async () => {});
 const mockCancelAccountDeletion = mock(async () => {});
 const mockDeleteMyAccountNow  = mock(async () => {});
 const mockGetOrGenerateMatchSummary = mock(async () => null as any);
+const mockGetDistanceNudge        = mock(async () => null as { matchId: string } | null);
+const mockAcknowledgeDistanceNudge = mock(async () => {});
 
 mock.module("../../services/match-summary.service.js", () => ({
   getOrGenerateMatchSummary: mockGetOrGenerateMatchSummary,
@@ -48,6 +50,8 @@ mock.module("../../services/profile.service.js", () => ({
   deactivateMyAccount: mockDeactivateMyAccount,
   cancelAccountDeletion: mockCancelAccountDeletion,
   deleteMyAccountNow:    mockDeleteMyAccountNow,
+  getDistanceNudge:         mockGetDistanceNudge,
+  acknowledgeDistanceNudge: mockAcknowledgeDistanceNudge,
 }));
 
 mock.module("../../middleware/audit.middleware.js", () => ({
@@ -106,6 +110,9 @@ beforeEach(() => {
   mockCancelAccountDeletion.mockReset();
   mockDeleteMyAccountNow.mockReset();
   mockGetOrGenerateMatchSummary.mockReset();
+  mockGetDistanceNudge.mockReset();
+  mockAcknowledgeDistanceNudge.mockReset();
+  mockGetDistanceNudge.mockResolvedValue(null);
 
   // Restore defaults
   mockLoginWithMagicToken.mockResolvedValue(null);
@@ -649,6 +656,28 @@ describe("POST /profile/matches/:id/outcome", () => {
     const token = await applicantToken();
     const res = await post("/profile/matches/abc123/outcome", { outcome: "failed" }, token);
     expect(res.status).toBe(403);
+  });
+});
+
+// ── POST /profile/matches/:id/nudge-ack ──────────────────────────────────────
+
+describe("POST /profile/matches/:id/nudge-ack", () => {
+  it("returns 401 without token", async () => {
+    const res = await post("/profile/matches/abc123/nudge-ack", { openUp: true });
+    expect(res.status).toBe(401);
+  });
+
+  it("returns 200 and forwards openUp", async () => {
+    const token = await applicantToken();
+    const res = await post("/profile/matches/abc123/nudge-ack", { openUp: true }, token);
+    expect(res.status).toBe(200);
+    expect(mockAcknowledgeDistanceNudge).toHaveBeenCalledWith(VALID_APPLICANT_ID, "abc123", true);
+  });
+
+  it("returns 422 when openUp is missing", async () => {
+    const token = await applicantToken();
+    const res = await post("/profile/matches/abc123/nudge-ack", {}, token);
+    expect(res.status).toBe(422);
   });
 });
 

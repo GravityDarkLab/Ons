@@ -9,6 +9,7 @@ import {
   respondSchema,
   outcomeSchema,
   updateAnswersSchema,
+  nudgeAckSchema,
 } from "../validators/profile.validator.js";
 import {
   login,
@@ -23,6 +24,7 @@ import {
   respond,
   withdraw,
   outcome,
+  nudgeAck,
   matchSummary,
   deactivate,
   cancelDeletion,
@@ -100,6 +102,13 @@ profileRoutes.post(
   requireApplicant,
   zValidator("json", outcomeSchema, validationHook),
   outcome
+);
+
+profileRoutes.post(
+  "/matches/:id/nudge-ack",
+  requireApplicant,
+  zValidator("json", nudgeAckSchema, validationHook),
+  nudgeAck
 );
 
 profileRoutes.post(

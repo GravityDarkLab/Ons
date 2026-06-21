@@ -15,6 +15,7 @@ import {
   deactivateMyAccount,
   cancelAccountDeletion,
   deleteMyAccountNow,
+  acknowledgeDistanceNudge,
 } from "../services/profile.service.js";
 import { getOrGenerateMatchSummary } from "../services/match-summary.service.js";
 import {
@@ -35,6 +36,7 @@ import type {
   MatchQueryInput,
   RespondInput,
   OutcomeInput,
+  NudgeAckInput,
 } from "../validators/profile.validator.js";
 import { env } from "../config/env.js";
 
@@ -184,6 +186,19 @@ export async function outcome(c: ValidatedContext<{ json: OutcomeInput }>): Prom
       { feedback: outcomeFeedback, continuation },
       getRequestMeta(c),
     );
+    return c.json({ success: true });
+  } catch (err: unknown) {
+    return errorResponse(c, err);
+  }
+}
+
+export async function nudgeAck(c: ValidatedContext<{ json: NudgeAckInput }>): Promise<Response> {
+  const applicantId = c.get("applicantId") as string;
+  const matchId     = c.req.param("id") as string;
+  const { openUp }  = c.req.valid("json");
+
+  try {
+    await acknowledgeDistanceNudge(applicantId, matchId, openUp);
     return c.json({ success: true });
   } catch (err: unknown) {
     return errorResponse(c, err);
