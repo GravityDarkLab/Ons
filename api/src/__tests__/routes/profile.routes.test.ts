@@ -21,7 +21,7 @@ const mockGetMyAnswers        = mock(async () => null as any);
 const mockUpdateMyAnswers     = mock(async () => {});
 const mockGetMyMatches        = mock(async () => [] as any[]);
 const mockRequestContact      = mock(async () => ({ iceBreakers: [] as string[], dateIdeas: [] as string[] }));
-const mockRespondToContact    = mock(async () => {});
+const mockRespondToContact    = mock(async () => ({ partnerInstagram: null as string | null }));
 const mockWithdrawContact     = mock(async () => {});
 const mockReportOutcome       = mock(async () => {});
 const mockDeactivateMyAccount = mock(async () => {});
@@ -112,6 +112,7 @@ beforeEach(() => {
   mockSetPassword.mockResolvedValue(null);
   mockGetMyMatches.mockResolvedValue([]);
   mockRequestContact.mockResolvedValue({ iceBreakers: ["Q1"], dateIdeas: ["D1"] });
+  mockRespondToContact.mockResolvedValue({ partnerInstagram: null });
 });
 
 // ── POST /profile/login ───────────────────────────────────────────────────────
@@ -231,13 +232,13 @@ describe("POST /profile/set-password", () => {
 // ── GET /profile/suggest-password ─────────────────────────────────────────────
 
 describe("GET /profile/suggest-password", () => {
-  it("returns a 4-word passphrase without auth", async () => {
+  it("returns a 6-word passphrase without auth", async () => {
     const res = await get("/profile/suggest-password");
     expect(res.status).toBe(200);
     const body = await res.json() as any;
     expect(body.success).toBe(true);
     expect(typeof body.suggestion).toBe("string");
-    expect(body.suggestion.split("-")).toHaveLength(4);
+    expect(body.suggestion.split("-")).toHaveLength(6);
   });
 });
 
@@ -597,6 +598,57 @@ describe("POST /profile/matches/:id/outcome", () => {
     const token = await applicantToken();
     const res = await post("/profile/matches/abc123/outcome", { outcome: "start_over" }, token);
     expect(res.status).toBe(422);
+  });
+
+  it("accepts optional outcomeFeedback tags and note", async () => {
+    const token = await applicantToken();
+    const res = await post(
+      "/profile/matches/abc123/outcome",
+      { outcome: "failed", outcomeFeedback: { tags: ["too_far", "no_spark"], note: "We tried" } },
+      token,
+    );
+    expect(res.status).toBe(200);
+    expect(mockReportOutcome).toHaveBeenCalledWith(
+      VALID_APPLICANT_ID,
+      "abc123",
+      "failed",
+      { feedback: { tags: ["too_far", "no_spark"], note: "We tried" }, continuation: undefined },
+      expect.anything(),
+    );
+  });
+
+  it("accepts an optional continuation choice", async () => {
+    const token = await applicantToken();
+    const res = await post(
+      "/profile/matches/abc123/outcome",
+      { outcome: "failed", continuation: "break" },
+      token,
+    );
+    expect(res.status).toBe(200);
+    expect(mockReportOutcome).toHaveBeenCalledWith(
+      VALID_APPLICANT_ID,
+      "abc123",
+      "failed",
+      { feedback: undefined, continuation: "break" },
+      expect.anything(),
+    );
+  });
+
+  it("returns 422 for an unknown feedback tag", async () => {
+    const token = await applicantToken();
+    const res = await post(
+      "/profile/matches/abc123/outcome",
+      { outcome: "failed", outcomeFeedback: { tags: ["made_up_tag"] } },
+      token,
+    );
+    expect(res.status).toBe(422);
+  });
+
+  it("returns 403 when reportOutcome rejects as too early", async () => {
+    mockReportOutcome.mockRejectedValue(new AppError("Too early to report this outcome — available 3 days after you started dating", 403));
+    const token = await applicantToken();
+    const res = await post("/profile/matches/abc123/outcome", { outcome: "failed" }, token);
+    expect(res.status).toBe(403);
   });
 });
 

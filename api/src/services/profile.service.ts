@@ -12,6 +12,7 @@ import type { MatchDoc } from "../models/match.model.js";
 import {
   toMatchView,
   assertMatchTransition,
+  assertOutcomeEligible,
   expireConflictingMatches,
   transitionApplicantStatus,
   applyMatchStatusSideEffects,
@@ -492,10 +493,17 @@ export async function withdrawContact(
   }
 }
 
+export interface ReportOutcomeOptions {
+  feedback?: { tags: string[]; note?: string };
+  continuation?: "continue" | "break";
+}
+
 export async function reportOutcome(
   applicantId: string,
   matchId: string,
-  outcome: "success" | "failed"
+  outcome: "success" | "failed",
+  options?: ReportOutcomeOptions,
+  audit: { ipAddress: string; userAgent: string } = { ipAddress: "unknown", userAgent: "unknown" },
 ): Promise<void> {
   const db       = await getDb();
   const matchCol = getMatchesCollection(db);
@@ -511,15 +519,27 @@ export async function reportOutcome(
   if (!match) throw new AppError("Match not found", 404);
 
   assertMatchTransition(match, "outcome", actorId);
+  assertOutcomeEligible(match, outcome);
 
   const now = new Date();
-  const ids  = [match.applicantAId, match.applicantBId];
+  const ids = [match.applicantAId, match.applicantBId];
+
+  const setFields: Record<string, unknown> = {
+    status: outcome === "success" ? "success" : "failed",
+    updatedAt: now,
+  };
+  if (outcome === "failed" && options?.feedback) {
+    setFields.outcomeFeedback = {
+      tags: options.feedback.tags,
+      ...(options.feedback.note ? { note: options.feedback.note } : {}),
+    };
+  }
 
   // Atomic claim — only one partner's outcome report wins; a concurrent
   // conflicting report gets 409 instead of silently overwriting state
   const claimed = await matchCol.findOneAndUpdate(
     { _id: matchOid, status: { $in: ["dating", "in_progress"] } },
-    { $set: { status: outcome === "success" ? "success" : "failed", updatedAt: now } },
+    { $set: setFields },
     { returnDocument: "after" },
   );
 
@@ -527,9 +547,31 @@ export async function reportOutcome(
     throw new AppError("Outcome was already reported for this match", 409);
   }
 
-  // Mirror deactivateMyAccount: a partner heading toward deletion shouldn't
-  // leave other proposed/in_progress matches around for someone else to contact.
-  await applyMatchStatusSideEffects(outcome, ids);
+  if (outcome === "failed" && options?.feedback) {
+    await writeAuditLog(
+      { actorId: applicantId, ipAddress: audit.ipAddress, userAgent: audit.userAgent },
+      "APPLICANT_REPORT_OUTCOME",
+      { targetApplicantId: actorId, metadata: { matchId, tags: options.feedback.tags } },
+    );
+  }
+
+  if (outcome === "success") {
+    // Mirror deactivateMyAccount: a partner heading toward deletion shouldn't
+    // leave other proposed/in_progress matches around for someone else to contact.
+    await applyMatchStatusSideEffects("success", ids);
+    return;
+  }
+
+  // "failed": default to "continue" (today's behavior) unless the reporter
+  // explicitly chose to take a break — see the warm-dating-experience design
+  // doc for why this stays a single shared choice rather than per-applicant.
+  if (options?.continuation === "break") {
+    const deletionScheduledAt = new Date(Date.now() + DELETION_GRACE_MS);
+    await transitionApplicantStatus(ids, "inactive", { deletionScheduledAt });
+    await expireConflictingMatches(ids);
+  } else {
+    await applyMatchStatusSideEffects("failed", ids);
+  }
 }
 
 export async function deactivateMyAccount(applicantId: string): Promise<void> {
