@@ -315,13 +315,13 @@ export async function getMyMatches(
   // Reveal partner identities for mutually-accepted matches (dating only) —
   // both parties consented when the target accepted the contact request.
   // The decryption is audit-logged once per applicant per match, not on every page load.
-  const instagramByMatchId = new Map<string, string>();
+  const identityByMatchId = new Map<string, { instagram: string; fullName: string | null }>();
   for (const d of docs) {
     if (d.status !== "dating") continue;
     const partnerId = d.applicantAId.equals(oid) ? d.applicantBId : d.applicantAId;
     const alreadyLogged = d.identityViewLoggedFor?.includes(applicantId) ?? false;
 
-    const handle = alreadyLogged
+    const identity = alreadyLogged
       ? await resolveIdentityById(partnerId)
       : await revealIdentityById(partnerId, {
           actor: { actorId: applicantId, ipAddress: audit.ipAddress, userAgent: audit.userAgent },
@@ -333,8 +333,8 @@ export async function getMyMatches(
             reason: "match_view",
           },
         });
-    if (!handle) continue;
-    instagramByMatchId.set(d._id.toHexString(), handle);
+    if (!identity) continue;
+    identityByMatchId.set(d._id.toHexString(), identity);
 
     if (!alreadyLogged) {
       await matchCol.updateOne(
@@ -346,11 +346,13 @@ export async function getMyMatches(
 
   return docs.map((d) => {
     const partnerId = d.applicantAId.equals(oid) ? d.applicantBId : d.applicantAId;
+    const identity = identityByMatchId.get(d._id.toHexString());
     return toMatchView(
       d,
       oid,
       answersById.get(partnerId.toHexString()),
-      instagramByMatchId.get(d._id.toHexString())
+      identity?.instagram,
+      identity?.fullName
     );
   });
 }
@@ -431,7 +433,7 @@ export async function respondToContact(
   matchId: string,
   accept: boolean,
   audit: { ipAddress: string; userAgent: string } = { ipAddress: "unknown", userAgent: "unknown" },
-): Promise<{ partnerInstagram: string | null }> {
+): Promise<{ partnerInstagram: string | null; partnerFullName: string | null }> {
   const db       = await getDb();
   const matchCol = getMatchesCollection(db);
 
@@ -471,7 +473,7 @@ export async function respondToContact(
     throw new AppError("Match was already responded to", 409);
   }
 
-  if (!accept) return { partnerInstagram: null };
+  if (!accept) return { partnerInstagram: null, partnerFullName: null };
 
   const ids = [match.applicantAId, match.applicantBId];
   await applyMatchStatusSideEffects("dating", ids);
@@ -486,9 +488,9 @@ export async function respondToContact(
     ? match.applicantAAlias
     : match.applicantBAlias;
 
-  // initiatorHandle is what the responding applicant (target) now sees —
+  // initiatorIdentity is what the responding applicant (target) now sees —
   // it's the response payload that lets the UI reveal it without a reload.
-  const [initiatorHandle] = await Promise.all([
+  const [initiatorIdentity] = await Promise.all([
     revealIdentityById(initiatorId, {
       actor: { actorId: applicantId, ipAddress: audit.ipAddress, userAgent: audit.userAgent },
       action: "APPLICANT_REVEAL_IDENTITY",
@@ -518,7 +520,10 @@ export async function respondToContact(
     }
   );
 
-  return { partnerInstagram: initiatorHandle };
+  return {
+    partnerInstagram: initiatorIdentity?.instagram ?? null,
+    partnerFullName: initiatorIdentity?.fullName ?? null,
+  };
 }
 
 /**

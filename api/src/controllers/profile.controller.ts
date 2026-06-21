@@ -154,8 +154,8 @@ export async function respond(c: ValidatedContext<{ json: RespondInput }>): Prom
   const { accept }  = c.req.valid("json");
 
   try {
-    const { partnerInstagram } = await respondToContact(applicantId, matchId, accept, getRequestMeta(c));
-    return c.json({ success: true, data: { partnerInstagram } });
+    const { partnerInstagram, partnerFullName } = await respondToContact(applicantId, matchId, accept, getRequestMeta(c));
+    return c.json({ success: true, data: { partnerInstagram, partnerFullName } });
   } catch (err: unknown) {
     return errorResponse(c, err);
   }
