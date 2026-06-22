@@ -41,7 +41,7 @@ const COUNT = countArg ? parseInt(countArg.split("=")[1], 10) : 50;
 const CLEAR = args.includes("--clear");
 
 // ─── Data pools ───────────────────────────────────────────────────────────────
-const QUESTIONNAIRE_VERSION = "1.1.0";
+const QUESTIONNAIRE_VERSION = "1.2.0";
 
 const LOCATIONS = [
   "Paris, France",
@@ -232,6 +232,16 @@ const FIRST_NAMES = [
   "julia", "max", "anna", "tom", "nina", "alex", "zara",
 ];
 
+const LAST_NAMES = [
+  "Ben Ali", "Trabelsi", "Haddad", "Khelifi", "Mansour", "Saidi",
+  "Martin", "Bernard", "Dubois", "Schmidt", "Weber", "Fischer",
+  "Smith", "Johnson", "Garcia", "Lopez", "Hernandez", "Khan",
+];
+
+function capitalize(name: string): string {
+  return name.charAt(0).toUpperCase() + name.slice(1);
+}
+
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
 function randomFloat(): number {
@@ -335,6 +345,8 @@ async function seed() {
     } while (usedHashes.has(instagramHash) && attempts < 20);
     usedHashes.add(instagramHash);
 
+    const fullName = `${capitalize(pick(FIRST_NAMES))} ${pick(LAST_NAMES)}`;
+
     const answers: Record<string, unknown> = {
       location: pick(LOCATIONS),
       birth_date: randomBirthDate(21, 38),
@@ -380,6 +392,8 @@ async function seed() {
       });
 
       const { encrypted, iv, tag } = encrypt(normalizeInstagram(handle));
+      // Fresh IV for the name ciphertext too — never reuse the handle's.
+      const { encrypted: encName, iv: ivName, tag: tagName } = encrypt(fullName);
       await identities.insertOne({
         _id: new ObjectId(),
         applicantId,
@@ -388,6 +402,9 @@ async function seed() {
         encryptionIv: iv,
         encryptionTag: tag,
         instagramHash,
+        encryptedFullName: encName,
+        fullNameIv: ivName,
+        fullNameTag: tagName,
         createdAt,
       });
 

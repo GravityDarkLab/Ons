@@ -50,6 +50,7 @@ describe('ProfileDashboard', () => {
     mockGetMyProfile.mockResolvedValue({
       applicantId: '1',
       alias: 'Test User',
+      fullName: null,
       status: 'applied',
       scoreThreshold: 0.8,
       createdAt: '2026-01-01',
@@ -69,6 +70,7 @@ describe('ProfileDashboard', () => {
     mockGetMyProfile.mockResolvedValue({
       applicantId: '2',
       alias: 'River Moon',
+      fullName: null,
       status: 'matched',
       scoreThreshold: 0.8,
       createdAt: '2026-01-01',
@@ -104,6 +106,7 @@ describe('ProfileDashboard', () => {
     mockGetMyProfile.mockResolvedValue({
       applicantId: '2',
       alias: 'River Moon',
+      fullName: null,
       status: 'matched',
       scoreThreshold: 0.8,
       createdAt: '2026-01-01',
@@ -125,6 +128,7 @@ describe('ProfileDashboard', () => {
     mockGetMyProfile.mockResolvedValue({
       applicantId: '3',
       alias: 'Still Waters',
+      fullName: null,
       status: 'inactive',
       scoreThreshold: 0.8,
       createdAt: '2026-01-01',
@@ -143,6 +147,7 @@ describe('ProfileDashboard', () => {
     mockGetMyProfile.mockResolvedValue({
       applicantId: '4',
       alias: 'Quiet Harbor',
+      fullName: null,
       status: 'inactive',
       scoreThreshold: 0.8,
       createdAt: '2026-01-01',
@@ -164,6 +169,7 @@ describe('ProfileDashboard', () => {
       .mockResolvedValueOnce({
         applicantId: '5',
         alias: 'Quiet Harbor',
+        fullName: null,
         status: 'inactive',
         scoreThreshold: 0.8,
         createdAt: '2026-01-01',
@@ -173,6 +179,7 @@ describe('ProfileDashboard', () => {
       .mockResolvedValueOnce({
         applicantId: '5',
         alias: 'Quiet Harbor',
+        fullName: null,
         status: 'applied',
         scoreThreshold: 0.8,
         createdAt: '2026-01-01',
@@ -202,6 +209,7 @@ describe('ProfileDashboard', () => {
     mockGetMyProfile.mockResolvedValue({
       applicantId: '6',
       alias: 'Quiet Harbor',
+      fullName: null,
       status: 'inactive',
       scoreThreshold: 0.8,
       createdAt: '2026-01-01',

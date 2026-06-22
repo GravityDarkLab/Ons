@@ -109,6 +109,7 @@ export async function changePassword(
 export interface ApplicantProfileView {
   applicantId: string;
   alias: string;
+  fullName: string | null;
   status: ApplicantDoc["status"];
   scoreThreshold: number;
   createdAt: Date;
@@ -119,13 +120,19 @@ export interface ApplicantProfileView {
 export async function getMyProfile(applicantId: string): Promise<ApplicantProfileView | null> {
   const db  = await getDb();
   const col = getApplicantsCollection(db);
+  const oid = new ObjectId(applicantId);
 
-  const doc = await col.findOne({ _id: new ObjectId(applicantId) });
+  const doc = await col.findOne({ _id: oid });
   if (!doc) return null;
+
+  // Own identity, not a partner reveal — no audit log (mirrors getMyAnswers
+  // returning the applicant's own data without logging).
+  const identity = await resolveIdentityById(oid);
 
   return {
     applicantId: doc._id.toHexString(),
     alias:          doc.alias,
+    fullName:       identity?.fullName ?? null,
     status:         doc.status,
     scoreThreshold: doc.scoreThreshold ?? 0.8,
     createdAt:      doc.createdAt,

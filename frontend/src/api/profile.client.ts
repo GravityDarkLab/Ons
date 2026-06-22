@@ -27,6 +27,7 @@ export interface MatchView {
 export interface ProfileView {
   applicantId: string
   alias: string
+  fullName: string | null
   status: ApplicantStatus
   scoreThreshold: number
   createdAt: string
