@@ -43,7 +43,8 @@ cp api/.env.example api/.env
 | `PORT` | `3001` | Server port |
 | `NODE_ENV` | `development` | Environment |
 | `ALLOWED_ORIGINS` | `http://localhost:3000,http://localhost:5173` | CORS origins |
-| `JWT_EXPIRY` | `8h` | JWT token lifetime |
+| `ADMIN_JWT_EXPIRY` | `8h` | Admin session JWT lifetime |
+| `APPLICANT_JWT_EXPIRY` | `30d` | Applicant portal session JWT lifetime |
 | `PUBLIC_URL` | _(empty)_ | Base URL for startup logs |
 | `OPENAI_API_KEY` | _(empty)_ | Required when `EMBEDDING_PROVIDER=openai` |
 

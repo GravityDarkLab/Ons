@@ -15,7 +15,7 @@ function optional(name: string, defaultValue: string): string {
   return process.env[name] ?? defaultValue;
 }
 
-function validateEmbeddingProvider(value: string): "openai" | "local" {
+export function validateEmbeddingProvider(value: string): "openai" | "local" {
   if (value !== "openai" && value !== "local") {
     throw new Error(`EMBEDDING_PROVIDER must be "openai" or "local", got "${value}"`);
   }
@@ -29,7 +29,7 @@ function validateEmbeddingProvider(value: string): "openai" | "local" {
   return value;
 }
 
-function validateEncryptionKey(key: string): string {
+export function validateEncryptionKey(key: string): string {
   if (!/^[0-9a-fA-F]{64}$/.test(key)) {
     throw new Error(
       "ENCRYPTION_KEY must be exactly 64 hex characters (32 bytes)"
@@ -38,7 +38,7 @@ function validateEncryptionKey(key: string): string {
   return key;
 }
 
-function validatePositiveInt(name: string, value: string): number {
+export function validatePositiveInt(name: string, value: string): number {
   const parsed = parseInt(value, 10);
   if (!Number.isInteger(parsed) || parsed <= 0) {
     throw new Error(`${name} must be a positive integer, got "${value}"`);
@@ -58,7 +58,10 @@ export const env = {
   mongodbDbName: optional("MONGODB_DB_NAME", "ons"),
   encryptionKey: validateEncryptionKey(required("ENCRYPTION_KEY")),
   jwtSecret: required("JWT_SECRET"),
-  jwtExpiry: optional("JWT_EXPIRY", "8h"),
+  adminJwtExpiry: optional("ADMIN_JWT_EXPIRY", "8h"),
+  // Applicant portal session length — separate from the admin session above
+  // since the two audiences have very different re-login tolerance.
+  applicantJwtExpiry: optional("APPLICANT_JWT_EXPIRY", "30d"),
   allowedOrigins: parseAllowedOrigins(
     optional("ALLOWED_ORIGINS", "http://localhost:3000")
   ),
