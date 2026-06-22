@@ -5,11 +5,13 @@ info:
   description: |
     Privacy-oriented couple matching backend for the Ons (أنس) platform.
 
-    **Privacy model:** Instagram handles are never stored in the applicant profile.
-    They are AES-256-GCM encrypted in a separate `identities` collection and
-    resolvable only by authorized admin roles (every access is audit-logged).
-    Applicants are identified throughout the system by a human-friendly alias
-    such as "Blue Falcon" or "Silent River".
+    **Privacy model:** Instagram handles and first/last names are never stored in
+    the applicant profile. They are AES-256-GCM encrypted in a separate
+    `identities` collection (each field with its own fresh IV) and resolvable
+    only by authorized admin roles, or mutually between two applicants once a
+    match reaches `dating` — every access is audit-logged. Applicants are
+    identified throughout the system by a human-friendly alias such as
+    "Blue Falcon" or "Silent River".
 
     **Authentication:**
     - Admin endpoints are protected by a session cookie (`admin_token`) set by
@@ -27,7 +29,7 @@ info:
     - Admin endpoints: 200 requests per minute per IP
     - Profile login: 10 requests per minute per IP
     - Profile endpoints: 100 requests per minute per IP
-  version: 1.1.0
+  version: 1.2.0
   contact:
     name: Admin
 
@@ -164,6 +166,8 @@ components:
     FormAnswers:
       type: object
       required:
+        - first_name
+        - last_name
         - instagram_handle
         - location
         - birth_date
@@ -184,6 +188,20 @@ components:
         - dream_first_date
         - disclaimer_agreed
       properties:
+        first_name:
+          type: string
+          minLength: 1
+          maxLength: 50
+          pattern: "^[\\p{L}\\p{M}'\\- ]+$"
+          example: "Jane"
+          description: "Sensitive — stored encrypted alongside the Instagram handle, never appears in matching profile."
+        last_name:
+          type: string
+          minLength: 1
+          maxLength: 50
+          pattern: "^[\\p{L}\\p{M}'\\- ]+$"
+          example: "Doe"
+          description: "Sensitive — stored encrypted alongside the Instagram handle, never appears in matching profile."
         instagram_handle:
           type: string
           pattern: '^@?[\w.]+$'
@@ -341,7 +359,7 @@ components:
           properties:
             version:
               type: string
-              example: "1.1.0"
+              example: "1.2.0"
             name:
               type: string
               example: "Matching Form v1"
@@ -503,7 +521,7 @@ components:
 
     ApplicantProfileView:
       type: object
-      required: [applicantId, alias, status, scoreThreshold, createdAt, deletionScheduledAt]
+      required: [applicantId, alias, fullName, status, scoreThreshold, createdAt, deletionScheduledAt, distanceNudge]
       properties:
         applicantId:
           type: string
@@ -511,6 +529,15 @@ components:
         alias:
           type: string
           example: "Blue Falcon"
+        fullName:
+          type: string
+          nullable: true
+          example: "Jane Doe"
+          description: |
+            The applicant's own decrypted first + last name. Unlike a partner
+            reveal, this is not audit-logged — viewing your own data isn't a
+            privacy-sensitive event. `null` for identities created before this
+            field existed.
         status:
           $ref: '#/components/schemas/ApplicantStatus'
         scoreThreshold:
@@ -533,6 +560,20 @@ components:
             and its data will be permanently deleted. `null` when no deletion
             is scheduled. Use `POST /api/v1/profile/cancel-deletion` to clear it,
             or `POST /api/v1/profile/delete-now` to delete immediately.
+        distanceNudge:
+          type: object
+          nullable: true
+          required: [matchId]
+          properties:
+            matchId:
+              type: string
+              example: "64f1a2b3c4d5e6f7a8b9c0d5"
+          description: |
+            Present once when the applicant's most recent `failed` match was
+            tagged `too_far` in its outcome feedback and they aren't already
+            open to long-distance matches. `null` once acknowledged (see
+            `POST /api/v1/profile/matches/{id}/nudge-ack`) or when no
+            qualifying match exists.
 
     MatchStatus:
       type: string
@@ -616,6 +657,24 @@ components:
             present in `proposed` or `in_progress` state. Each decryption is
             audit-logged as `APPLICANT_REVEAL_IDENTITY`.
           example: "@horizon.swift"
+        partnerFullName:
+          type: string
+          description: |
+            Partner's first + last name. Same reveal gate and audit-logging as
+            `partnerInstagram` — only present once `dating`, and only if the
+            partner's identity record has a name on file (pre-existing records
+            created before name capture was added have none).
+          example: "Alex Rivera"
+        datingStartedAt:
+          type: string
+          format: date-time
+          description: |
+            When the match became `dating` — the anchor for the day-3/day-7
+            outcome gating (see `POST /profile/matches/{id}/outcome`). Only
+            present once `status = dating`. Falls back to the moment the
+            target responded for matches that reached `dating` before this
+            field existed.
+          example: "2026-06-15T18:00:00.000Z"
 
     ContactResult:
       type: object
@@ -743,10 +802,10 @@ components:
           example: "Blue Falcon"
         questionnaireVersion:
           type: string
-          example: "1.1.0"
+          example: "1.2.0"
         answers:
           type: object
-          description: "All non-sensitive answers. instagram_handle is never present."
+          description: "All non-sensitive answers. instagram_handle, first_name, and last_name are never present — they live encrypted in the identities collection."
           additionalProperties: true
           example:
             location: "Paris, France"
@@ -814,7 +873,7 @@ components:
           enum: [true]
         data:
           type: object
-          required: [alias, instagramHandle, applicantId]
+          required: [alias, instagramHandle, applicantId, fullName]
           properties:
             alias:
               type: string
@@ -823,6 +882,11 @@ components:
               type: string
               example: "@example_user"
               description: "Decrypted Instagram handle. This response is audit-logged."
+            fullName:
+              type: string
+              nullable: true
+              example: "Jane Doe"
+              description: "Decrypted first + last name, same audit-logged reveal as instagramHandle. `null` for identities created before this field existed."
             applicantId:
               type: string
               example: "64f1a2b3c4d5e6f7a8b9c0d1"
@@ -1182,8 +1246,10 @@ paths:
             schema:
               $ref: '#/components/schemas/FormSubmissionRequest'
             example:
-              questionnaireVersion: "1.1.0"
+              questionnaireVersion: "1.2.0"
               answers:
+                first_name: "Jane"
+                last_name: "Doe"
                 instagram_handle: "@example_user"
                 location: "Paris, France"
                 birth_date: "1997-06-15"
@@ -1502,13 +1568,13 @@ paths:
   /api/v1/admin/applicants/{id}/identity:
     get:
       tags: [Admin – Applicants]
-      summary: Resolve applicant identity (decrypt Instagram handle)
+      summary: Resolve applicant identity (decrypt Instagram handle + name)
       operationId: resolveIdentity
       security:
         - CookieAuth: []
         - BearerAuth: []
       description: |
-        Decrypts and returns the real Instagram handle for an applicant.
+        Decrypts and returns the real Instagram handle and full name for an applicant.
 
         🔒 **Requires `super_admin` role.** Regular `admin` and `viewer` roles receive 403.
 
@@ -1534,6 +1600,7 @@ paths:
                 data:
                   alias: "Blue Falcon"
                   instagramHandle: "@example_user"
+                  fullName: "Jane Doe"
                   applicantId: "64f1a2b3c4d5e6f7a8b9c0d1"
         '401':
           $ref: '#/components/responses/Unauthorized'
@@ -2466,14 +2533,18 @@ paths:
         Called by the **target** of a contact request (the non-initiator) to accept or decline.
 
         **Accept (`accept: true`):**
-        - Match → `dating`
+        - Match → `dating`, with `datingStartedAt` set to now — the anchor for
+          the day-3/day-7 outcome gating on `POST /profile/matches/{id}/outcome`
         - Both applicants → `dating`
         - All other `proposed`/`in_progress` matches for both applicants → `expired`
-        - **Mutual identity reveal:** both parties' Instagram handles are decrypted
-          simultaneously and stored as accessible for this match. Each reveal is
-          audit-logged independently as `APPLICANT_REVEAL_IDENTITY` with
-          `reason: "mutual_accept"`. On the next `GET /profile/matches` call, both
-          parties will see `partnerInstagram` in the match object.
+        - **Mutual identity reveal:** both parties' Instagram handles (and full
+          names, if on record) are decrypted simultaneously and stored as
+          accessible for this match. Each reveal is audit-logged independently
+          as `APPLICANT_REVEAL_IDENTITY` with `reason: "mutual_accept"`. The
+          response immediately returns the initiator's handle/name to the
+          responding applicant (the target) so the UI can show it without
+          waiting for the next `GET /profile/matches` call; both parties will
+          also see `partnerInstagram`/`partnerFullName` on every subsequent call.
 
         **Decline (`accept: false`):**
         - Match → `declined`
@@ -2506,12 +2577,30 @@ paths:
             application/json:
               schema:
                 type: object
+                required: [success, data]
                 properties:
                   success:
                     type: boolean
                     enum: [true]
+                  data:
+                    type: object
+                    required: [partnerInstagram, partnerFullName]
+                    properties:
+                      partnerInstagram:
+                        type: string
+                        nullable: true
+                        description: "The initiator's Instagram handle, revealed to the responding applicant on accept. `null` on decline."
+                        example: "@horizon.swift"
+                      partnerFullName:
+                        type: string
+                        nullable: true
+                        description: "The initiator's full name, revealed alongside the handle. `null` on decline or if no name is on record."
+                        example: "Alex Rivera"
               example:
                 success: true
+                data:
+                  partnerInstagram: "@horizon.swift"
+                  partnerFullName: "Alex Rivera"
         '401':
           $ref: '#/components/responses/Unauthorized'
         '403':
@@ -2604,13 +2693,26 @@ paths:
         - ApplicantBearerAuth: []
       description: |
         Either applicant in a `dating` or `in_progress` match can self-report the outcome.
+        Time-gated once the match is `dating` (no gating while still `in_progress` —
+        e.g. the initiator bailing before the partner even responds): `failed` unlocks
+        3 days after `datingStartedAt`, `success` unlocks after 7 days. Returns 403 if
+        called before the applicable threshold.
 
         **`success`:** match → `success`; both applicants → `inactive` (deletion in 180 days)
 
-        **`failed`:** match → `failed`; both applicants → `applied` (re-enters matching pool)
+        **`failed`:** match → `failed`. Applicant status depends on `continuation`:
+        - omitted or `"continue"` (default): both applicants → `applied` (re-enters matching pool)
+        - `"break"`: both applicants → `inactive` (deletion in 180 days), same as a `success` outcome
 
-        Returns 403 if the applicant is not part of this match or the match is not in
-        an appropriate state (`dating` or `in_progress`).
+        Optional `outcomeFeedback` (only meaningful for `failed`) is stored on the
+        match document and audit-logged as `APPLICANT_REPORT_OUTCOME`. If `tags`
+        includes `"too_far"` and the reporting applicant isn't already open to
+        long-distance matches, a one-time suggestion later appears via
+        `ApplicantProfileView.distanceNudge` (see `POST /matches/{id}/nudge-ack`).
+
+        Returns 403 if the applicant is not part of this match, the match is not in
+        an appropriate state (`dating` or `in_progress`), or it's too early for the
+        requested outcome.
       parameters:
         - name: id
           in: path
@@ -2630,6 +2732,27 @@ paths:
                   type: string
                   enum: [success, failed]
                   example: "failed"
+                outcomeFeedback:
+                  type: object
+                  required: [tags]
+                  properties:
+                    tags:
+                      type: array
+                      maxItems: 4
+                      items:
+                        type: string
+                        enum: [too_far, different_values, no_spark, something_else]
+                      example: ["too_far", "no_spark"]
+                    note:
+                      type: string
+                      maxLength: 500
+                      example: "We tried, but the distance made it really hard."
+                  description: "Optional, only applied when `outcome = failed`."
+                continuation:
+                  type: string
+                  enum: [continue, break]
+                  description: "Only meaningful when `outcome = failed`. Defaults to `continue` if omitted."
+                  example: "continue"
       responses:
         '200':
           description: Outcome recorded
@@ -2646,19 +2769,89 @@ paths:
         '401':
           $ref: '#/components/responses/Unauthorized'
         '403':
-          description: Not a participant, or match not in a reportable state
+          description: Not a participant, match not in a reportable state, or too early for this outcome
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
+              example:
+                success: false
+                error: "Too early to report this outcome — available 3 days after you started dating"
         '404':
           description: Match not found
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
+        '409':
+          description: Outcome was already reported for this match
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
         '422':
-          description: Validation error (invalid outcome value)
+          description: Validation error (invalid outcome/tag/continuation value)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ValidationErrorResponse'
+
+  /api/v1/profile/matches/{id}/nudge-ack:
+    post:
+      tags: [Profile]
+      summary: Acknowledge the distance-preference nudge
+      operationId: acknowledgeDistanceNudge
+      security:
+        - ApplicantCookieAuth: []
+        - ApplicantBearerAuth: []
+      description: |
+        Dismisses the one-time distance-preference suggestion surfaced via
+        `ApplicantProfileView.distanceNudge` after a `failed` outcome tagged
+        `too_far`. If `openUp` is `true`, also flips the applicant's
+        `open_to_long_distance` answer to `true`. The nudge is acknowledged
+        either way so it doesn't reappear on the next dashboard load.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+          description: The `matchId` from `ApplicantProfileView.distanceNudge`.
+          example: "64f1a2b3c4d5e6f7a8b9c0d5"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [openUp]
+              properties:
+                openUp:
+                  type: boolean
+                  example: true
+      responses:
+        '200':
+          description: Nudge acknowledged
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    enum: [true]
+              example:
+                success: true
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          description: Match not found, not owned by this applicant, or never tagged `too_far`
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '422':
+          description: Validation error (`openUp` field missing or not boolean)
           content:
             application/json:
               schema:
