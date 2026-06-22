@@ -87,14 +87,12 @@ Respond in this exact JSON format (no markdown, no extra text):
   if (raw) {
     try {
       const parsed = JSON.parse(raw) as { pros?: unknown; cons?: unknown };
-      const pros =
-        Array.isArray(parsed.pros) && parsed.pros.length
-          ? (parsed.pros as string[]).slice(0, 3)
-          : FALLBACK_PROS;
-      const cons =
-        Array.isArray(parsed.cons) && parsed.cons.length
-          ? (parsed.cons as string[]).slice(0, 2)
-          : FALLBACK_CONS;
+      const cleanStrings = (arr: unknown): string[] =>
+        Array.isArray(arr) ? arr.filter((v): v is string => typeof v === "string" && v.trim().length > 0) : [];
+      const cleanPros = cleanStrings(parsed.pros);
+      const cleanCons = cleanStrings(parsed.cons);
+      const pros = cleanPros.length ? cleanPros.slice(0, 3) : FALLBACK_PROS;
+      const cons = cleanCons.length ? cleanCons.slice(0, 2) : FALLBACK_CONS;
       summary = { pros, cons, generatedAt: new Date(), model: SUMMARY_MODEL };
     } catch {
       summary = { pros: FALLBACK_PROS, cons: FALLBACK_CONS, generatedAt: new Date(), model: SUMMARY_MODEL };

@@ -20,11 +20,13 @@ export const formSubmissionSchema = z.object({
       // Identity (sensitive)
       first_name: z
         .string()
+        .trim()
         .min(1, "first_name is required")
         .max(50)
         .regex(/^[\p{L}\p{M}'\- ]+$/u, "first_name contains invalid characters"),
       last_name: z
         .string()
+        .trim()
         .min(1, "last_name is required")
         .max(50)
         .regex(/^[\p{L}\p{M}'\- ]+$/u, "last_name contains invalid characters"),

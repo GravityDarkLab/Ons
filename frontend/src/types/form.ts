@@ -6,10 +6,12 @@ import { ageFromBirthDate, BIRTH_DATE_PATTERN } from '../lib/age'
 export const step1Schema = z.object({
   first_name: z
     .string()
+    .trim()
     .min(1, 'First name is required')
     .regex(/^[\p{L}\p{M}'\- ]+$/u, 'Only letters, spaces, hyphens and apostrophes'),
   last_name: z
     .string()
+    .trim()
     .min(1, 'Last name is required')
     .regex(/^[\p{L}\p{M}'\- ]+$/u, 'Only letters, spaces, hyphens and apostrophes'),
   instagram_handle: z

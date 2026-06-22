@@ -63,7 +63,8 @@ export default function Step4Preferences({ control, errors }: Props) {
                 value={field.value ?? ''}
                 onChange={e => {
                   const raw = e.target.value
-                  field.onChange(raw === '' ? null : parseInt(raw, 10))
+                  const parsed = parseInt(raw, 10)
+                  field.onChange(raw === '' || Number.isNaN(parsed) ? null : parsed)
                 }}
                 onBlur={field.onBlur}
               />
