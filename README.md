@@ -115,7 +115,7 @@ ons/
 │   │   ├── controllers/            ← Request handlers
 │   │   ├── routes/                 ← Hono route definitions
 │   │   ├── middleware/             ← Auth, rate limiting, audit logging
-│   │   └── __tests__/             ← Full test suite (359 tests)
+│   │   └── __tests__/             ← Full test suite (515 tests)
 │   ├── docs/openapi.yaml           ← Full OpenAPI 3.1 spec
 │   ├── Dockerfile
 │   └── README.md                   ← API setup & reference
@@ -138,11 +138,12 @@ ons/
 ## How it works
 
 1. **Applicant fills the form** — the frontend fetches the active questionnaire, gates access with an invite key, and POSTs answers to the API.
-2. **PII is isolated at submission** — the Instagram handle is AES-256-GCM encrypted and stored in a separate `identities` collection, never in the applicant profile.
+2. **PII is isolated at submission** — the first/last name and Instagram handle are each AES-256-GCM encrypted (own fresh IV per field) and stored in a separate `identities` collection, never in the applicant profile.
 3. **Admin runs matching** — `POST /api/v1/matching/run` scores all active applicants pairwise and returns ranked candidates per person.
-4. **Admin resolves identities** — every access to an encrypted identity is audit-logged.
+4. **Admin resolves identities** — every access to someone else's encrypted identity is audit-logged. (Applicants can always see their own name on their own profile — that's not a "reveal", just their own data.)
 5. **Applicant uses their portal** — a magic link from the admin grants access to `/profile`, where the applicant reviews their matches and can edit their questionnaire answers.
-6. **Matched applicants connect** — either side can initiate contact; the target receives ice-breaker prompts and date ideas to decide. Only when the target **accepts** are both Instagrams decrypted simultaneously, audit-logged, and revealed to both parties. A declined or withdrawn request leaves identities sealed.
+6. **Matched applicants connect** — either side can initiate contact; the target receives ice-breaker prompts and date ideas to decide. Only when the target **accepts** are both parties' Instagram handles and names decrypted simultaneously, audit-logged, and revealed to each other. A declined or withdrawn request leaves identities sealed.
+7. **Dating, the warm way** — once mutual, outcome reporting is time-gated rather than available immediately: a friendly rotating check-in message shows for the first 3 days, a quiet "things aren't working out?" option unlocks at day 3, and full "it worked / it didn't" reporting unlocks at day 7. A failed outcome can optionally tag why (e.g. "too far apart") and choose to keep looking or take a break — tagging distance later surfaces a one-time, dismissible suggestion to open up to long-distance matches.
 
 ---
 
@@ -175,11 +176,11 @@ See [`api/src/matching/README.md`](./api/src/matching/README.md) for the full pi
 | Data | Collection | Who can access |
 |---|---|---|
 | Questionnaire answers | `applicants` | Admin, and the applicant themselves via `/profile` |
-| Instagram handle | `identities` (AES-256-GCM encrypted) | Admin (audit-logged), or both matched applicants simultaneously after mutual acceptance of a contact request (both audit-logged in one transaction) |
+| Instagram handle + first/last name | `identities` (AES-256-GCM encrypted, each field its own IV) | The applicant themselves (their own name, not audit-logged); admin (audit-logged); or both matched applicants simultaneously after mutual acceptance of a contact request (each audit-logged independently) |
 | Text embeddings | `embeddings` | Matching engine |
 | Admin actions | `audit_logs` | Admin |
 
-The Instagram handle never touches the `applicants` collection. It is encrypted with a fresh random IV on every write and stored separately. Decryption requires the `ENCRYPTION_KEY` secret and is always written to `audit_logs` before the plaintext is returned — whether the reader is an admin or a matched applicant who completed a mutual identity reveal.
+The Instagram handle and name never touch the `applicants` collection. Each is encrypted with its own fresh random IV on every write and stored separately — even within the same `identities` document, no two fields ever share an IV. Decryption requires the `ENCRYPTION_KEY` secret. Decrypting *someone else's* identity (an admin lookup, or a matched applicant's mutual reveal) is always written to `audit_logs` before the plaintext is returned; an applicant viewing their own name on their own profile is not, since that's not a privacy-sensitive reveal.
 
 ---
 
@@ -332,5 +333,5 @@ Inject secrets via ECS task-definition environment variables or AWS Secrets Mana
 | `bun run seed` | Interactive seed runner — choose questionnaire, applicants, or both; prompts for environment |
 | `bun run build` | Build all workspaces |
 | `bun run typecheck` | Type-check all workspaces |
-| `bun run test` | Run API + frontend test suites in parallel (API: 359 tests, no DB required) |
+| `bun run test` | Run API + frontend test suites in parallel (API: 515 tests, no DB required) |
 | `bun run test:smoke` | Run smoke tests against a live server + DB (requires env vars — see `tests/smoke/`) |
