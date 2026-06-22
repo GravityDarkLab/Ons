@@ -62,4 +62,26 @@ describe("isLongDistanceCompatible", () => {
     const b = makeApplicant("Paris, France", false);
     expect(isLongDistanceCompatible(a, b)).toBe(true);
   });
+
+  // The city option list relabeled Jerusalem/Tel Aviv/Haifa from "Israel" to
+  // "Palestine" after some applicants had already submitted with the old
+  // string — without aliasing, those pairs would wrongly look like different
+  // cities and trip the long-distance hard filter.
+  it("treats the old and new Jerusalem labels as the same city", () => {
+    const a = makeApplicant("Jerusalem, Israel", false);
+    const b = makeApplicant("Jerusalem, Palestine", false);
+    expect(isLongDistanceCompatible(a, b)).toBe(true);
+  });
+
+  it("treats the old and new Tel Aviv labels as the same city", () => {
+    const a = makeApplicant("Tel Aviv, Israel", false);
+    const b = makeApplicant("Tel Aviv, Palestine", false);
+    expect(isLongDistanceCompatible(a, b)).toBe(true);
+  });
+
+  it("treats the old and new Haifa labels as the same city", () => {
+    const a = makeApplicant("Haifa, Israel", false);
+    const b = makeApplicant("Haifa, Palestine", false);
+    expect(isLongDistanceCompatible(a, b)).toBe(true);
+  });
 });
