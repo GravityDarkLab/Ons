@@ -2920,8 +2920,8 @@ paths:
       summary: Get a suggested passphrase
       operationId: suggestPassword
       description: |
-        Returns a randomly generated 4-word passphrase from a curated word pool.
-        No authentication required.
+        Returns a randomly generated 6-word passphrase drawn from the EFF short
+        wordlist (~62 bits of entropy). No authentication required.
 
         Intended as a convenience option in set-password and change-password forms.
         The suggestion is never stored — call again for a fresh one.

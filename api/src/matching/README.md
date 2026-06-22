@@ -10,11 +10,17 @@ This directory contains the full matching pipeline: the engine that orchestrates
 matching/
 ├── engine.ts                  ← Orchestrator — loads applicants, runs filters, calls prepare() + score()
 ├── scorer.ts                  ← Embedding-cosine scorer (prepare + score)
+├── proposals.ts                ← Derives unique couple proposals from a matching pass
 ├── scoring/
 │   └── weights.ts             ← Single source of truth for all scoring weights
+├── scorers/
+│   └── numeric.scorer.ts      ← Numeric-vector encoding + cosine similarity, shared by scorer.ts
 ├── filters/
 │   ├── orientation.filter.ts  ← Hard orientation-compatibility filter
-│   └── age.filter.ts          ← Hard age-preference filter + soft modifier
+│   ├── age.filter.ts          ← Hard age-preference filter + soft modifier
+│   ├── religion.filter.ts     ← Hard religion deal-breaker filter
+│   ├── location.filter.ts     ← Hard long-distance deal-breaker filter
+│   └── answer.util.ts         ← Shared case-insensitive answer normalization
 └── embeddings/
     └── provider.ts            ← EmbeddingProvider interface + OpenAI-compatible factory
 ```
@@ -30,9 +36,11 @@ Every matching request — single candidate lookup or full pairwise pass — goe
 
 2. FILTER    Remove incompatible pairs before any scoring.
              Hard pass/fail — not scored, not ranked low.
-             Two filters run in sequence:
+             Four filters run in sequence:
                a) Orientation compatibility (see below)
                b) Age preferences (see below)
+               c) Religion deal-breaker (see below)
+               d) Long-distance deal-breaker (see below)
 
 3. PREPARE   Batch-embeds all applicants once before pairwise scoring
              begins (O(N) API calls, not O(N²)).
