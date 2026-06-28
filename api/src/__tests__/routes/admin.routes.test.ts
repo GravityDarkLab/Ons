@@ -264,6 +264,7 @@ describe("GET /admin/applicants/:id/identity", () => {
     mockGetApplicantIdent.mockResolvedValue({
       alias: "Blue Falcon",
       instagramHandle: "@real_handle",
+      fullName: "Jane Doe",
     });
     const token = await superAdminToken();
     const res = await get("/admin/applicants/64b1234567890abcdef01234/identity", token);
@@ -272,6 +273,7 @@ describe("GET /admin/applicants/:id/identity", () => {
     expect(body.success).toBe(true);
     expect(body.data.instagramHandle).toBe("@real_handle");
     expect(body.data.alias).toBe("Blue Falcon");
+    expect(body.data.fullName).toBe("Jane Doe");
   });
 
   it("returns 404 when identity is not found (super_admin)", async () => {

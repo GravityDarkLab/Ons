@@ -1,15 +1,19 @@
-import { Controller } from 'react-hook-form'
+import { Controller, useWatch } from 'react-hook-form'
 import { useTranslation } from 'react-i18next'
 import type { Control, FieldErrors } from 'react-hook-form'
 import type { FormValues } from '../types/form'
 import Textarea from '../components/ui/Textarea'
 import RadioCardGroup from '../components/ui/RadioCard'
 import Toggle from '../components/ui/Toggle'
+import Input from '../components/ui/Input'
+import WordCountHint from '../components/ui/WordCountHint'
 
 interface Props { control: Control<FormValues>; errors: FieldErrors<FormValues> }
 export const FIELDS: (keyof FormValues)[] = [
-  'relationship_type', 'open_to_long_distance', 'preferred_physical_traits',
-  'preferred_character_traits', 'deal_breakers', 'okay_with_opposite_gender_friends', 'religion_deal_breaker',
+  'relationship_type', 'open_to_long_distance',
+  'max_age_gap', 'open_to_older', 'open_to_younger',
+  'preferred_physical_traits', 'preferred_character_traits',
+  'deal_breakers', 'okay_with_opposite_gender_friends', 'religion_deal_breaker',
 ]
 
 // Values stay in English — stored in DB and used by matching engine
@@ -23,6 +27,9 @@ const relationshipOptions = [
 
 export default function Step4Preferences({ control, errors }: Props) {
   const { t } = useTranslation()
+  const maxAgeGap = useWatch({ control, name: 'max_age_gap' })
+  const showDirectional = typeof maxAgeGap === 'number' && maxAgeGap > 0
+
   return (
     <div className="flex flex-col gap-6">
       <div className="flex flex-col gap-1">
@@ -39,17 +46,70 @@ export default function Step4Preferences({ control, errors }: Props) {
           <Toggle label={t('steps.s4.longDistance')} hint={t('steps.s4.longDistanceHint')}
             value={field.value ?? false} onChange={field.onChange} />
         )} />
+
+        {/* Age preferences */}
+        <div className="flex flex-col gap-3">
+          <Controller
+            name="max_age_gap"
+            control={control}
+            render={({ field }) => (
+              <Input
+                label={t('steps.s4.maxAgeGap')}
+                type="number"
+                min={0}
+                max={40}
+                placeholder={t('steps.s4.maxAgeGapPlaceholder')}
+                error={errors.max_age_gap?.message}
+                value={field.value ?? ''}
+                onChange={e => {
+                  const raw = e.target.value
+                  const parsed = parseInt(raw, 10)
+                  field.onChange(raw === '' || Number.isNaN(parsed) ? null : parsed)
+                }}
+                onBlur={field.onBlur}
+              />
+            )}
+          />
+          {showDirectional && (
+            <div className="flex flex-col gap-2 ps-1">
+              <Controller name="open_to_older" control={control} render={({ field }) => (
+                <Toggle
+                  label={t('steps.s4.openToOlder')}
+                  value={field.value ?? false}
+                  onChange={field.onChange}
+                />
+              )} />
+              <Controller name="open_to_younger" control={control} render={({ field }) => (
+                <Toggle
+                  label={t('steps.s4.openToYounger')}
+                  value={field.value ?? false}
+                  onChange={field.onChange}
+                />
+              )} />
+            </div>
+          )}
+        </div>
+
         <Controller name="preferred_physical_traits" control={control} render={({ field }) => (
-          <Textarea label={t('steps.s4.physicalTraits')} placeholder={t('steps.s4.physicalTraitsPlaceholder')}
-            rows={3} error={errors.preferred_physical_traits?.message} required {...field} />
+          <div className="flex flex-col gap-1">
+            <Textarea label={t('steps.s4.physicalTraits')} placeholder={t('steps.s4.physicalTraitsPlaceholder')}
+              rows={3} error={errors.preferred_physical_traits?.message} required {...field} />
+            <WordCountHint value={field.value as string} />
+          </div>
         )} />
         <Controller name="preferred_character_traits" control={control} render={({ field }) => (
-          <Textarea label={t('steps.s4.characterTraits')} placeholder={t('steps.s4.characterTraitsPlaceholder')}
-            rows={3} error={errors.preferred_character_traits?.message} required {...field} />
+          <div className="flex flex-col gap-1">
+            <Textarea label={t('steps.s4.characterTraits')} placeholder={t('steps.s4.characterTraitsPlaceholder')}
+              rows={3} error={errors.preferred_character_traits?.message} required {...field} />
+            <WordCountHint value={field.value as string} />
+          </div>
         )} />
         <Controller name="deal_breakers" control={control} render={({ field }) => (
-          <Textarea label={t('steps.s4.dealBreakers')} placeholder={t('steps.s4.dealBreakersPlaceholder')}
-            rows={3} error={errors.deal_breakers?.message} required {...field} />
+          <div className="flex flex-col gap-1">
+            <Textarea label={t('steps.s4.dealBreakers')} placeholder={t('steps.s4.dealBreakersPlaceholder')}
+              rows={3} error={errors.deal_breakers?.message} required {...field} />
+            <WordCountHint value={field.value as string} />
+          </div>
         )} />
         <div className="flex flex-col gap-2">
           <Controller name="okay_with_opposite_gender_friends" control={control} render={({ field }) => (

@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
-import { Link, useSearchParams } from 'react-router-dom'
+import { Link } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { fetchMatches, updateMatch, removeMatch } from '../api/client'
 import Button from '../../components/ui/Button'
@@ -10,6 +10,8 @@ import Skeleton from '../../components/ui/Skeleton'
 import { useToast } from '../../components/ui/Toast'
 import { matchStatusTone } from '../../components/ui/statusTones'
 import { useStatusLabels } from '../hooks/useStatusLabels'
+import { usePagedFilter } from '../hooks/usePagedFilter'
+import { useDebouncedValue } from '../hooks/useDebouncedValue'
 import { Th, PageButton, TrashIcon } from '../components/Table'
 import type { Match, MatchStatus } from '../types'
 
@@ -39,9 +41,7 @@ function ChevronDownIcon() {
 export function Matches() {
   const { t } = useTranslation()
   const { success, error: toastError } = useToast()
-  const [searchParams, setSearchParams] = useSearchParams()
-  const status = searchParams.get('status') ?? ''
-  const page   = parseInt(searchParams.get('page') ?? '1', 10)
+  const { page, filterValue: status, setFilter: setStatusFilter, setPage } = usePagedFilter('status')
 
   const [matches, setMatches]       = useState<Match[]>([])
   const [total, setTotal]           = useState(0)
@@ -51,7 +51,7 @@ export function Matches() {
   const [notesMap, setNotesMap]     = useState<Record<string, string>>({})
   const [savingId, setSavingId]     = useState<string | null>(null)
   const [search, setSearch]         = useState('')
-  const [debouncedSearch, setDebouncedSearch] = useState('')
+  const debouncedSearch = useDebouncedValue(search)
   const [pendingDelete, setPendingDelete] = useState<Match | null>(null)
   const [deleteLoading, setDeleteLoading] = useState(false)
 
@@ -66,12 +66,6 @@ export function Matches() {
     { value: 'expired',     label: t('admin.matches.expired') },
   ]
 
-  // Debounce search input
-  useEffect(() => {
-    const id = setTimeout(() => setDebouncedSearch(search), 300)
-    return () => clearTimeout(id)
-  }, [search])
-
   function load() {
     setLoading(true)
     fetchMatches(page, LIMIT, status || undefined, undefined, debouncedSearch || undefined)
@@ -85,10 +79,7 @@ export function Matches() {
 
   useEffect(load, [page, status, debouncedSearch])
 
-  function setFilter(s: string) { setSearchParams(s ? { status: s } : {}); setSearch('') }
-  function setPage(p: number) {
-    setSearchParams(prev => { const n = new URLSearchParams(prev); n.set('page', String(p)); return n })
-  }
+  function setFilter(s: string) { setStatusFilter(s); setSearch('') }
 
   async function handleStatusChange(id: string, nextStatus: MatchStatus) {
     setSavingId(id)
