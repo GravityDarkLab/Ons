@@ -52,7 +52,7 @@ Target: ${buildProfileSnippet(target)}
 Candidates:
 ${candidateLines}
 
-Respond with a ranking entry for every candidate listed above, using their exact id.`;
+Respond with a ranking entry for every candidate listed above, using their exact id. Output the JSON object directly — no reasoning, no chain-of-thought, no preamble, no explanation outside the JSON fields themselves.`;
 }
 
 /**
@@ -120,6 +120,8 @@ export async function rerankCandidates(
 
   const raw = await generateChatCompletion(prompt, {
     temperature: 0.3, // grounded judgment, not creative writing
+    maxTokens: 4000, // headroom for a 15-candidate prompt on a reasoning model — see ChatCompletionOptions.maxTokens
+    reasoningEffort: "low", // minimize chain-of-thought token spend on models that support it (e.g. gpt-oss)
     responseSchema: {
       name: "match_rerank",
       schema: {

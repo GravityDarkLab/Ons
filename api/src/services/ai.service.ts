@@ -44,12 +44,29 @@ export interface ChatCompletionOptions {
    * harmless no-op there, falls back to the free-text-JSON path below.
    */
   responseSchema?: JsonSchemaResponseFormat;
+  /**
+   * Overrides OUTPUT_SAFETY_CEILING for this call. Reasoning models (e.g.
+   * gpt-oss) spend real output tokens on internal chain-of-thought before
+   * their final answer — a prompt that scores many candidates at once needs
+   * more headroom than the 800-token default or the response gets cut off
+   * before it ever reaches valid JSON (finish_reason: "length").
+   */
+  maxTokens?: number;
+  /**
+   * Recognized by OpenAI's reasoning-model family (including gpt-oss) to cap
+   * how much the model reasons before answering — "low" minimizes
+   * chain-of-thought token spend. Sent regardless of provider/model; ignored
+   * (harmless no-op) by anything that doesn't recognize the field, same as
+   * responseSchema above.
+   */
+  reasoningEffort?: "low" | "medium" | "high";
 }
 
 // Output length is steered through the prompt itself (ask for short, capped
 // sentences), not by truncating tokens mid-generation — a hard max_tokens cap
 // can cut a response off mid-JSON and produce something unparseable. This is
-// just a generous safety ceiling against a runaway response.
+// just a generous safety ceiling against a runaway response. Override via
+// ChatCompletionOptions.maxTokens for prompts that need more (see above).
 const OUTPUT_SAFETY_CEILING = 800;
 
 /**
@@ -66,7 +83,7 @@ export async function generateChatCompletion(
     model: DEFAULT_CHAT_MODEL,
     messages: [{ role: "user", content: prompt }],
     temperature: options.temperature ?? 0.8,
-    max_tokens: OUTPUT_SAFETY_CEILING,
+    max_tokens: options.maxTokens ?? OUTPUT_SAFETY_CEILING,
   };
 
   if (options.responseSchema) {
@@ -78,6 +95,10 @@ export async function generateChatCompletion(
         schema: options.responseSchema.schema,
       },
     };
+  }
+
+  if (options.reasoningEffort) {
+    body.reasoning_effort = options.reasoningEffort;
   }
 
   try {

@@ -10,17 +10,24 @@
  * Usage (from repo root):
  *   bun run eval:rerank
  *   bun run eval:rerank --csv=eval-out.csv   → also write every candidate row to CSV
+ *   bun run eval:rerank --clear-cache        → wipe match_reranks first, forcing a real LLM
+ *                                               call for every applicant instead of reusing
+ *                                               cached results (e.g. after switching models —
+ *                                               otherwise a cache hit short-circuits before the
+ *                                               LLM is ever called, by design)
  *
  * Requires an existing applicant pool (bun run seed applicants) and a
  * configured EMBEDDING_PROVIDER + OPENAI_CHAT_MODEL in api/.env.<env> — this
  * makes real embedding + LLM calls, it is not a mock.
  */
 
-import { closeDb } from "../db/connection.js";
+import { getDb, closeDb } from "../db/connection.js";
+import { getMatchReranksCollection } from "../db/collections.js";
 import { runFullMatchingPass } from "../matching/engine.js";
 
-const args   = process.argv.slice(2);
-const csvArg = args.find((a) => a.startsWith("--csv="))?.split("=")[1];
+const args        = process.argv.slice(2);
+const csvArg      = args.find((a) => a.startsWith("--csv="))?.split("=")[1];
+const clearCache  = args.includes("--clear-cache");
 
 interface Row {
   applicantId: string;
@@ -49,6 +56,12 @@ function summarize(label: string, values: number[]): void {
 }
 
 async function main(): Promise<void> {
+  if (clearCache) {
+    const db = await getDb();
+    const { deletedCount } = await getMatchReranksCollection(db).deleteMany({});
+    console.log(`[eval-rerank] Cleared ${deletedCount} cached rerank result(s).`);
+  }
+
   console.log("[eval-rerank] Running a full matching pass (real embedding + LLM calls)...");
   const results = await runFullMatchingPass();
 
