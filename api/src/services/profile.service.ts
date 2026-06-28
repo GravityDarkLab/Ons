@@ -27,7 +27,7 @@ import {
 import { hashMagicToken } from "../privacy/magic-token.js";
 import { writeAuditLog } from "../middleware/audit.middleware.js";
 import { generateIceBreakers } from "./icebreaker.service.js";
-import { embedApplicant } from "./embedding.service.js";
+import { embedApplicant, buildTexts } from "./embedding.service.js";
 
 // ── Auth ──────────────────────────────────────────────────────────────────────
 
@@ -269,10 +269,21 @@ export async function updateMyAnswers(
   await col.updateOne({ _id: oid }, { $set: { answers: merged, updatedAt: new Date() } });
 
   // Refresh embeddings in the background (same as submission) so the next
-  // matching run scores against the updated text
-  embedApplicant(oid, merged).catch((err) =>
-    console.error(`[profile] Background embedding refresh failed for ${doc.alias}:`, err)
-  );
+  // matching run scores against the updated text — but only if the edit
+  // actually touched an embedding-relevant field. Most edits (location, age
+  // preferences, etc.) don't, and re-embedding unchanged text wastes API calls.
+  const oldTexts = buildTexts(doc.answers ?? {});
+  const newTexts = buildTexts(merged);
+  const textChanged =
+    oldTexts.profile !== newTexts.profile ||
+    oldTexts.preference !== newTexts.preference ||
+    oldTexts.dealBreakers !== newTexts.dealBreakers;
+
+  if (textChanged) {
+    embedApplicant(oid, merged).catch((err) =>
+      console.error(`[profile] Background embedding refresh failed for ${doc.alias}:`, err)
+    );
+  }
 }
 
 // ── Matches ───────────────────────────────────────────────────────────────────

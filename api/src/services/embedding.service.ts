@@ -44,7 +44,7 @@ function str(answers: Record<string, unknown>, key: string): string {
   return typeof v === "string" ? v.trim() : "";
 }
 
-function buildTexts(answers: Record<string, unknown>): {
+export function buildTexts(answers: Record<string, unknown>): {
   profile: string;
   preference: string;
   dealBreakers: string;
