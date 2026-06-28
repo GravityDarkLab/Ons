@@ -65,6 +65,14 @@ export interface ChatCompletionOptions {
    * responseSchema above.
    */
   reasoningEffort?: "low" | "medium" | "high";
+  /**
+   * Overrides DEFAULT_TIMEOUT_MS. A reasoning model doing real chain-of-
+   * thought across a large prompt (e.g. a 15-candidate listwise rerank) can
+   * genuinely take longer than a quick pairwise prompt — raise this for
+   * calls with a lot of content to get through, rather than raising the
+   * global default and making every call wait longer than it needs to.
+   */
+  timeoutMs?: number;
 }
 
 // Output length is steered through the prompt itself (ask for short, capped
@@ -73,6 +81,10 @@ export interface ChatCompletionOptions {
 // just a generous safety ceiling against a runaway response. Override via
 // ChatCompletionOptions.maxTokens for prompts that need more (see above).
 const OUTPUT_SAFETY_CEILING = 800;
+
+// Sized for a quick pairwise prompt on a real (non-quantized) model.
+// Override via ChatCompletionOptions.timeoutMs for heavier prompts.
+const DEFAULT_TIMEOUT_MS = 30000;
 
 /**
  * Sends a single prompt and returns the assistant's reply.
@@ -129,7 +141,7 @@ export async function generateChatCompletion(
         Authorization:  `Bearer ${apiKey}`,
       },
       body:   JSON.stringify(body),
-      signal: AbortSignal.timeout(15000),
+      signal: AbortSignal.timeout(options.timeoutMs ?? DEFAULT_TIMEOUT_MS),
     });
 
     if (!res.ok) {

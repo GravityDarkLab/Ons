@@ -121,6 +121,7 @@ export async function rerankCandidates(
   const raw = await generateChatCompletion(prompt, {
     temperature: 0.3, // grounded judgment, not creative writing
     maxTokens: 4000, // headroom for a 15-candidate prompt on a reasoning model — see ChatCompletionOptions.maxTokens
+    timeoutMs: 45000, // full reasoning across up to 15 candidates takes longer than a quick pairwise prompt
     reasoningEffort: "low", // minimize chain-of-thought token spend on models that support it (e.g. gpt-oss)
     responseSchema: {
       name: "match_rerank",
