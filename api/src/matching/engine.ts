@@ -169,6 +169,12 @@ export async function getCandidates(
   return applyRerank(target, embeddingRanked, docsById, topN);
 }
 
+// Caps concurrent in-flight rerank calls during a full pass. Without this,
+// N applicants means N simultaneous LLM requests; with it, worst case
+// (15s timeout each, from ai.service.ts) is ceil(N / 5) × 15s instead of
+// N × 15s — e.g. ~7.5 min instead of ~37.5 min for 150 applicants.
+const RERANK_CONCURRENCY = 5;
+
 /**
  * Runs a full pairwise matching pass over all active applicants.
  * Returns a map of applicantId → ranked candidates.
@@ -198,24 +204,29 @@ export async function runFullMatchingPass(): Promise<Record<string, RankedCandid
 
   const results: Record<string, RankedCandidate[]> = {};
 
-  for (const applicant of eligible) {
-    const others = eligible.filter((o) => !o._id.equals(applicant._id));
-    const compatible = applyFilters(applicant, others);
+  for (let i = 0; i < eligible.length; i += RERANK_CONCURRENCY) {
+    const batch = eligible.slice(i, i + RERANK_CONCURRENCY);
+    await Promise.all(
+      batch.map(async (applicant) => {
+        const others = eligible.filter((o) => !o._id.equals(applicant._id));
+        const compatible = applyFilters(applicant, others);
 
-    const embeddingRanked: EmbeddingRanked[] = compatible
-      .map((other) => {
-        const result = score(applicant, other, questionnaire);
-        return {
-          alias:       other.alias,
-          applicantId: other._id.toHexString(),
-          score:       result.score,
-          breakdown:   result.breakdown,
-        };
-      })
-      .sort((a, b) => b.score - a.score);
+        const embeddingRanked: EmbeddingRanked[] = compatible
+          .map((other) => {
+            const result = score(applicant, other, questionnaire);
+            return {
+              alias:       other.alias,
+              applicantId: other._id.toHexString(),
+              score:       result.score,
+              breakdown:   result.breakdown,
+            };
+          })
+          .sort((a, b) => b.score - a.score);
 
-    const docsById = new Map(compatible.map((d) => [d._id.toHexString(), d]));
-    results[applicant._id.toHexString()] = await applyRerank(applicant, embeddingRanked, docsById, 10);
+        const docsById = new Map(compatible.map((d) => [d._id.toHexString(), d]));
+        results[applicant._id.toHexString()] = await applyRerank(applicant, embeddingRanked, docsById, 10);
+      }),
+    );
   }
 
   return results;
