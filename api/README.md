@@ -125,7 +125,7 @@ curl -X POST http://localhost:3001/api/v1/admin/login \
 | `GET` | `/api/v1/matching/last-run` | Summary of the most recent matching pass |
 | `POST` | `/api/v1/matching/run` | Full pairwise pass over all active applicants |
 
-Both endpoints use the `embedding-cosine` algorithm (semantic text embeddings + age filter). No `algorithm` parameter is accepted.  
+Candidates are shortlisted with the `embedding-cosine` algorithm (semantic text embeddings + age filter), then the shortlist is rescored by an LLM listwise rerank call — that's the score actually returned and displayed. No `algorithm` parameter is accepted.  
 See [`src/matching/README.md`](./src/matching/README.md) for pipeline details.
 
 ### Applicant portal (session cookie)

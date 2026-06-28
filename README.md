@@ -139,7 +139,7 @@ ons/
 
 1. **Applicant fills the form** — the frontend fetches the active questionnaire, gates access with an invite key, and POSTs answers to the API.
 2. **PII is isolated at submission** — the first/last name and Instagram handle are each AES-256-GCM encrypted (own fresh IV per field) and stored in a separate `identities` collection, never in the applicant profile.
-3. **Admin runs matching** — `POST /api/v1/matching/run` scores all active applicants pairwise and returns ranked candidates per person.
+3. **Admin runs matching** — `POST /api/v1/matching/run` shortlists all active applicants pairwise with text embeddings, then an LLM rerank call (one per applicant, covering its whole shortlist) judges the shortlist and produces the score that's actually returned — the embedding step alone is structurally incapable of scoring a great pair above ~80%, see [`api/src/matching/README.md`](./api/src/matching/README.md#llm-rerank-servicesmatch-rerankservicets).
 4. **Admin resolves identities** — every access to someone else's encrypted identity is audit-logged. (Applicants can always see their own name on their own profile — that's not a "reveal", just their own data.)
 5. **Applicant uses their portal** — a magic link from the admin grants access to `/profile`, where the applicant reviews their matches and can edit their questionnaire answers.
 6. **Matched applicants connect** — either side can initiate contact; the target receives ice-breaker prompts and date ideas to decide. Only when the target **accepts** are both parties' Instagram handles and names decrypted simultaneously, audit-logged, and revealed to each other. A declined or withdrawn request leaves identities sealed.
@@ -158,13 +158,14 @@ browser ──► frontend (React + Vite)
            │form│ admin │ profile │ match │
            └──┬─┴───────┴────┬────┴───┬───┘
               │               │        │
-          MongoDB         Matching engine
-        ┌────┴──────┐    (baseline / cosine /
-        │ applicants│     (embedding-cosine
-        │ identities│      + age filter)
-        │ embeddings│
-        │ audit_logs│
-        └───────────┘
+          MongoDB              Matching engine
+        ┌───────┴───────┐     (embedding-cosine shortlist
+        │ applicants    │      + age filter, then an
+        │ identities    │      LLM listwise rerank for
+        │ embeddings    │      the displayed score)
+        │ match_reranks │
+        │ audit_logs    │
+        └───────────────┘
 ```
 
 See [`api/src/matching/README.md`](./api/src/matching/README.md) for the full pipeline breakdown — weights, age filter math, embedding batching, and how to extend the system.

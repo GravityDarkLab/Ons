@@ -1,6 +1,6 @@
 # Matching System
 
-This directory contains the full matching pipeline: the engine that orchestrates scoring, hard pre-filters, the embedding-based scorer, and shared weights.
+This directory contains the full matching pipeline: the engine that orchestrates scoring, hard pre-filters, the embedding-based scorer, and shared weights. The score this scorer produces is an internal ranking signal only — the score actually shown to users comes from an LLM rerank stage in [`services/match-rerank.service.ts`](../services/match-rerank.service.ts) (see [Stage 6](#llm-rerank-servicesmatch-rerankservicets) below).
 
 ---
 
@@ -23,6 +23,10 @@ matching/
 │   └── answer.util.ts         ← Shared case-insensitive answer normalization
 └── embeddings/
     └── provider.ts            ← EmbeddingProvider interface + OpenAI-compatible factory
+
+../services/
+├── match-rerank.service.ts    ← LLM listwise rerank — produces the score actually shown (see below)
+└── profile-snippet.util.ts    ← Shared free-text profile summary used to build LLM prompts
 ```
 
 ---
@@ -49,7 +53,12 @@ Every matching request — single candidate lookup or full pairwise pass — goe
 4. SCORE     Call score(a, b) for every compatible pair.
              Returns a composite score in [0, 1] + a named breakdown.
 
-5. RANK      Sort descending by score, slice to top N.
+5. SHORTLIST Sort descending by embedding score, take max(topN, 15).
+             This is the cheap, broad ranking signal — internal only.
+
+6. RERANK    One LLM call per applicant, covering its whole shortlist at
+             once. Produces the score and reasoning actually displayed.
+             Falls back to the embedding score on any failure. See below.
 ```
 
 ---
@@ -205,6 +214,29 @@ Current `textVersion = 2` (added `work` to profile, `dream_first_date` to prefer
 
 ---
 
+## LLM rerank (`../services/match-rerank.service.ts`)
+
+The embedding scorer above is structurally incapable of producing a score near 100%, even for a genuinely great pair — embedding anisotropy and the inverted deal-breaker term (`1 - cosine(...)`) both push every cosine term toward a high floor, capping the realistic ceiling around ~0.85. Full diagnosis with citations: [`docs/superpowers/specs/2026-06-28-llm-listwise-rerank-matching-design.md`](../../../docs/superpowers/specs/2026-06-28-llm-listwise-rerank-matching-design.md).
+
+The fix keeps the embedding scorer exactly as documented above for cheap O(N) shortlisting, then replaces what's *displayed* with an LLM judgment:
+
+- **One LLM call per applicant**, covering that applicant's entire shortlist at once (listwise, not pairwise/pointwise — RankGPT/Pairwise-Ranking-Prompting-style). Listwise framing gives the model real comparison points instead of guessing against an abstract 0–100 scale, which avoids the central-tendency bias LLMs show when scoring in isolation.
+- Scored against an explicit **anchored rubric** (90-100 / 70-89 / 50-69 / 30-49 / 0-29 with a one-line description each) via OpenAI Structured Outputs (`responseSchema` in [`ai.service.ts`](../services/ai.service.ts)), at low temperature (~0.3) — a grounded judgment call, not creative writing.
+- **Cached** per applicant in the `match_reranks` collection, keyed by a hash of the shortlist's composition (candidate IDs + their embedding scores) plus the chat model — invalidates automatically if the pool or ranking shifts, mirrors the staleness pattern in `embedding.service.ts`.
+- **Never blocks the pipeline.** On any failure (empty/malformed LLM response, a candidate missing from the response, an invalid score, cache read/write errors) it falls back to that candidate's embedding score individually — a partial LLM response degrades only the affected candidates, not the whole shortlist.
+
+```typescript
+// services/match-rerank.service.ts
+function rerankCandidates(
+  target: ApplicantDoc,
+  candidates: { doc: ApplicantDoc; embeddingScore: number }[],
+): Promise<{ applicantId: string; score: number; reasoning: string }[]>
+```
+
+`engine.ts`'s `applyRerank()` wires this in: shortlist the embedding-ranked list to `max(topN, 15)`, call `rerankCandidates`, re-sort by the result, slice to `topN`. `runFullMatchingPass()` batches this at a concurrency of 5 (not fully sequential — see the `RERANK_CONCURRENCY` comment in `engine.ts`) so a full pass over N applicants doesn't take N × 15s in the worst case.
+
+---
+
 ## Embedding providers (`embeddings/provider.ts`)
 
 ```typescript
@@ -231,6 +263,8 @@ Recommended local models: `nomic-embed-text`, `mxbai-embed-large`, `all-minilm`.
 
 ## Score output
 
+`scorer.ts`'s raw output (internal, pre-rerank):
+
 ```typescript
 interface MatchScore {
   score: number;                     // composite weighted score in [0, 1]
@@ -239,6 +273,22 @@ interface MatchScore {
 ```
 
 Breakdown keys: `numeric_compatibility`, `lifestyle_similarity`, `character_cross_match`, `character_a_wants_b`, `character_b_wants_a`, `deal_breaker_penalty`, `age_modifier`. All values are rounded to two decimal places.
+
+`engine.ts`'s `getCandidates()`/`runFullMatchingPass()` return the post-rerank shape — `breakdown` here is still the embedding-stage breakdown above (kept for debugging), but `score` is now the LLM-derived number:
+
+```typescript
+interface RankedCandidate {
+  alias: string;
+  applicantId: string;
+  score: number;            // displayed score (0-1) — from the LLM rerank stage,
+                             // or the embedding score unchanged if reranking failed
+  breakdown: Record<string, number>;
+  embeddingScore: number;   // the pre-rerank embedding-cosine score — debug/transparency only
+  llmReasoning: string;     // short grounded explanation from the rerank stage; "" if unavailable
+}
+```
+
+This `score` field is what flows unchanged through `proposals.ts` → `match.service.ts` → `MatchDoc.score` → the frontend — only what computes it changed when the rerank stage was added.
 
 ---
 
