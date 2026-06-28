@@ -10,6 +10,7 @@ import { isAgeCompatible } from "./filters/age.filter.js";
 import { isReligionCompatible } from "./filters/religion.filter.js";
 import { isLongDistanceCompatible } from "./filters/location.filter.js";
 import { prepare, score } from "./scorer.js";
+import { rerankCandidates } from "../services/match-rerank.service.js";
 
 export interface MatchScore {
   score: number;
@@ -19,8 +20,14 @@ export interface MatchScore {
 export interface RankedCandidate {
   alias: string;
   applicantId: string;
+  /** The displayed score (0-1) — from the LLM rerank stage, or the embedding
+   *  score unchanged if reranking failed/was skipped. */
   score: number;
   breakdown: Record<string, number>;
+  /** The pre-rerank embedding-cosine score (0-1) — kept for debugging/transparency. */
+  embeddingScore: number;
+  /** Short grounded explanation from the LLM rerank stage; "" if unavailable. */
+  llmReasoning: string;
 }
 
 /**
@@ -52,6 +59,57 @@ function applyFilters(target: ApplicantDoc, candidates: ApplicantDoc[]): Applica
       isReligionCompatible(target, c) &&
       isLongDistanceCompatible(target, c),
   );
+}
+
+const SHORTLIST_SIZE = 15;
+
+interface EmbeddingRanked {
+  alias: string;
+  applicantId: string;
+  score: number;
+  breakdown: Record<string, number>;
+}
+
+/**
+ * Takes the embedding-ranked list (already sorted desc), shortlists it,
+ * reranks the shortlist with the LLM, and returns the final topN sorted by
+ * the (now LLM-derived) displayed score. Never throws — falls back to the
+ * embedding order/score if the rerank call itself errors.
+ */
+async function applyRerank(
+  target: ApplicantDoc,
+  embeddingRanked: EmbeddingRanked[],
+  docsById: Map<string, ApplicantDoc>,
+  topN: number,
+): Promise<RankedCandidate[]> {
+  const shortlist = embeddingRanked.slice(0, Math.max(topN, SHORTLIST_SIZE));
+  if (shortlist.length === 0) return [];
+
+  let results: { applicantId: string; score: number; reasoning: string }[];
+  try {
+    results = await rerankCandidates(
+      target,
+      shortlist.map((c) => ({ doc: docsById.get(c.applicantId)!, embeddingScore: c.score })),
+    );
+  } catch (err) {
+    console.error("[engine] Rerank failed, falling back to embedding order:", err);
+    results = [];
+  }
+  const byId = new Map(results.map((r) => [r.applicantId, r]));
+
+  const reranked: RankedCandidate[] = shortlist.map((c) => {
+    const r = byId.get(c.applicantId);
+    return {
+      alias:          c.alias,
+      applicantId:    c.applicantId,
+      breakdown:      c.breakdown,
+      embeddingScore: c.score,
+      score:          r ? r.score : c.score,
+      llmReasoning:   r ? r.reasoning : "",
+    };
+  });
+
+  return reranked.sort((a, b) => b.score - a.score).slice(0, topN);
 }
 
 /**
@@ -95,17 +153,20 @@ export async function getCandidates(
 
   await prepare([target, ...compatible], questionnaire);
 
-  const scored: RankedCandidate[] = compatible.map((other) => {
-    const result = score(target, other, questionnaire);
-    return {
-      alias:       other.alias,
-      applicantId: other._id.toHexString(),
-      score:       result.score,
-      breakdown:   result.breakdown,
-    };
-  });
+  const embeddingRanked: EmbeddingRanked[] = compatible
+    .map((other) => {
+      const result = score(target, other, questionnaire);
+      return {
+        alias:       other.alias,
+        applicantId: other._id.toHexString(),
+        score:       result.score,
+        breakdown:   result.breakdown,
+      };
+    })
+    .sort((a, b) => b.score - a.score);
 
-  return scored.sort((a, b) => b.score - a.score).slice(0, topN);
+  const docsById = new Map(compatible.map((d) => [d._id.toHexString(), d]));
+  return applyRerank(target, embeddingRanked, docsById, topN);
 }
 
 /**
@@ -141,19 +202,20 @@ export async function runFullMatchingPass(): Promise<Record<string, RankedCandid
     const others = eligible.filter((o) => !o._id.equals(applicant._id));
     const compatible = applyFilters(applicant, others);
 
-    const scored: RankedCandidate[] = compatible.map((other) => {
-      const result = score(applicant, other, questionnaire);
-      return {
-        alias:       other.alias,
-        applicantId: other._id.toHexString(),
-        score:       result.score,
-        breakdown:   result.breakdown,
-      };
-    });
+    const embeddingRanked: EmbeddingRanked[] = compatible
+      .map((other) => {
+        const result = score(applicant, other, questionnaire);
+        return {
+          alias:       other.alias,
+          applicantId: other._id.toHexString(),
+          score:       result.score,
+          breakdown:   result.breakdown,
+        };
+      })
+      .sort((a, b) => b.score - a.score);
 
-    results[applicant._id.toHexString()] = scored
-      .sort((a, b) => b.score - a.score)
-      .slice(0, 10);
+    const docsById = new Map(compatible.map((d) => [d._id.toHexString(), d]));
+    results[applicant._id.toHexString()] = await applyRerank(applicant, embeddingRanked, docsById, 10);
   }
 
   return results;
