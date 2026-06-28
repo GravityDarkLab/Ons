@@ -7,6 +7,7 @@ import type { EmbeddingDoc } from "../models/embedding.model.js";
 import type { AdminDoc } from "../models/admin.model.js";
 import type { MatchDoc } from "../models/match.model.js";
 import type { AppConfigDoc } from "../models/appConfig.model.js";
+import type { MatchRerankDoc } from "../models/match-rerank.model.js";
 
 export const COLLECTION_NAMES = {
   questionnaires: "questionnaires",
@@ -17,6 +18,7 @@ export const COLLECTION_NAMES = {
   admins:         "admins",
   matches:        "matches",
   appConfig:      "app_config",
+  matchReranks:   "match_reranks",
 } as const;
 
 export function getQuestionnairesCollection(
@@ -51,6 +53,10 @@ export function getMatchesCollection(db: Db): Collection<MatchDoc> {
 
 export function getAppConfigCollection(db: Db): Collection<AppConfigDoc> {
   return db.collection<AppConfigDoc>(COLLECTION_NAMES.appConfig);
+}
+
+export function getMatchReranksCollection(db: Db): Collection<MatchRerankDoc> {
+  return db.collection<MatchRerankDoc>(COLLECTION_NAMES.matchReranks);
 }
 
 /**
@@ -92,6 +98,9 @@ export async function ensureIndexes(db: Db): Promise<void> {
   await _createIndexIfNotExists(matches, { applicantAId: 1 });
   await _createIndexIfNotExists(matches, { applicantBId: 1 });
   await _createIndexIfNotExists(matches, { initiatorId: 1 }, { sparse: true });
+
+  const matchReranks = getMatchReranksCollection(db);
+  await _createIndexIfNotExists(matchReranks, { applicantId: 1 }, { unique: true });
 
   console.info("[DB] Indexes verification done");
 
