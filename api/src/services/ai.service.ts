@@ -87,7 +87,8 @@ export async function generateChatCompletion(
         "Content-Type": "application/json",
         Authorization:  `Bearer ${apiKey}`,
       },
-      body: JSON.stringify(body),
+      body:   JSON.stringify(body),
+      signal: AbortSignal.timeout(15000),
     });
 
     if (!res.ok) return "";
