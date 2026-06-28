@@ -5,7 +5,7 @@
 A privacy-first couple matching platform. Applicants fill out a form, an admin reviews and runs the matching engine, and compatible pairs are surfaced — no Instagram handles or personal details ever leave the encrypted identity store.
 
 **Stack:** Bun · Hono · MongoDB · React · Vite · Tailwind  
-**Docs:** [`api/README.md`](./api/README.md) · [`frontend/README.md`](./frontend/README.md) · [`api/src/matching/README.md`](./api/src/matching/README.md)
+**Docs:** [`api/README.md`](./api/README.md) · [`frontend/README.md`](./frontend/README.md) · [`api/src/matching/README.md`](./api/src/matching/README.md) · [LLM listwise-rerank matching score — design & literature](./docs/llm-listwise-rerank-matching-score.md)
 
 ---
 
