@@ -177,6 +177,16 @@ export async function rerankCandidates(
         reasoning,
       };
     });
+
+    const fellBack = rankings.filter((r) => r.reasoning === "");
+    if (fellBack.length > 0) {
+      console.warn(
+        `[match-rerank] ${fellBack.length}/${candidates.length} candidates missing or invalid in the ` +
+        `LLM response (model returned ${parsed.rankings.length} entries for this shortlist). ` +
+        `Missing/invalid ids: ${fellBack.map((r) => r.applicantId).join(", ")}. ` +
+        `Raw (first 500 chars): ${raw.slice(0, 500)}`
+      );
+    }
   } catch (err) {
     console.error(
       `[match-rerank] Failed to parse LLM response as JSON: ${(err as Error).message}. ` +
