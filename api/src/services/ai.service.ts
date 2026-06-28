@@ -79,11 +79,18 @@ export async function generateChatCompletion(
 ): Promise<string> {
   const { url, apiKey } = getChatEndpoint();
 
+  const maxTokens = options.maxTokens ?? OUTPUT_SAFETY_CEILING;
+
   const body: Record<string, unknown> = {
     model: DEFAULT_CHAT_MODEL,
     messages: [{ role: "user", content: prompt }],
     temperature: options.temperature ?? 0.8,
-    max_tokens: options.maxTokens ?? OUTPUT_SAFETY_CEILING,
+    // OpenAI's newer model families (o-series, gpt-5.x) reject max_tokens
+    // outright and require max_completion_tokens instead; older OpenAI
+    // models and local OpenAI-compatible servers still expect max_tokens.
+    ...(env.chatProvider === "openai"
+      ? { max_completion_tokens: maxTokens }
+      : { max_tokens: maxTokens }),
   };
 
   if (options.responseSchema) {
