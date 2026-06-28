@@ -1,15 +1,32 @@
 import { env } from "../config/env.js";
 
-function getChatEndpoint(): { url: string; apiKey: string } {
-  if (env.chatProvider === "openai") {
+export type ChatProvider = "openai" | "local";
+
+/**
+ * Pure — provider taken as a parameter rather than read from env, so the
+ * endpoint-selection logic can be unit-tested directly for both providers
+ * without mocking the env module (env.js is a shared module-level singleton
+ * imported by dozens of files; mocking it in one test file would replace it
+ * for every other test file in the same full-suite run).
+ */
+export function buildChatEndpoint(
+  provider: ChatProvider,
+  openaiApiKey: string,
+  chatBaseUrl: string
+): { url: string; apiKey: string } {
+  if (provider === "openai") {
     return {
       url:    "https://api.openai.com/v1/chat/completions",
-      apiKey: env.openaiApiKey,
+      apiKey: openaiApiKey,
     };
   }
   // local: chatBaseUrl falls back to embeddingBaseUrl when unset — see env.ts
-  const base = env.chatBaseUrl.replace(/\/$/, "");
+  const base = chatBaseUrl.replace(/\/$/, "");
   return { url: `${base}/chat/completions`, apiKey: "local-key" };
+}
+
+function getChatEndpoint(): { url: string; apiKey: string } {
+  return buildChatEndpoint(env.chatProvider, env.openaiApiKey, env.chatBaseUrl);
 }
 
 const DEFAULT_CHAT_MODEL = env.openaiChatModel;
@@ -87,33 +104,27 @@ const OUTPUT_SAFETY_CEILING = 800;
 const DEFAULT_TIMEOUT_MS = 30000;
 
 /**
- * Sends a single prompt and returns the assistant's reply.
- * Never throws — returns an empty string on failure.
+ * Pure — provider taken as a parameter, same testability reasoning as
+ * buildChatEndpoint above. Encodes every provider-specific request-shape
+ * fix discovered against real OpenAI/local responses:
+ *   - temperature omitted for openai (o-series/gpt-5.x reject any non-
+ *     default value outright)
+ *   - max_completion_tokens for openai vs max_tokens for local (openai's
+ *     newer models reject max_tokens outright)
  */
-export async function generateChatCompletion(
+export function buildChatRequestBody(
+  provider: ChatProvider,
+  model: string,
   prompt: string,
-  options: ChatCompletionOptions = {}
-): Promise<string> {
-  const { url, apiKey } = getChatEndpoint();
-
+  options: ChatCompletionOptions
+): Record<string, unknown> {
   const maxTokens = options.maxTokens ?? OUTPUT_SAFETY_CEILING;
 
   const body: Record<string, unknown> = {
-    model: DEFAULT_CHAT_MODEL,
+    model,
     messages: [{ role: "user", content: prompt }],
-    // OpenAI's o-series and the entire gpt-5.x family are "reasoning
-    // models" that fix temperature/top_p/penalties at their defaults and
-    // reject any other explicit value outright (HTTP 400). There's no
-    // reliable way to tell from a model name alone whether a given OpenAI
-    // model is in that restricted tier (the lineup changes), so omit
-    // temperature entirely for the OpenAI provider rather than guess — the
-    // API's own default (1) is used instead. Local servers don't have this
-    // restriction, so they still get the per-call tuning.
-    ...(env.chatProvider === "openai" ? {} : { temperature: options.temperature ?? 0.8 }),
-    // OpenAI's newer model families (o-series, gpt-5.x) reject max_tokens
-    // outright and require max_completion_tokens instead; older OpenAI
-    // models and local OpenAI-compatible servers still expect max_tokens.
-    ...(env.chatProvider === "openai"
+    ...(provider === "openai" ? {} : { temperature: options.temperature ?? 0.8 }),
+    ...(provider === "openai"
       ? { max_completion_tokens: maxTokens }
       : { max_tokens: maxTokens }),
   };
@@ -132,6 +143,20 @@ export async function generateChatCompletion(
   if (options.reasoningEffort) {
     body.reasoning_effort = options.reasoningEffort;
   }
+
+  return body;
+}
+
+/**
+ * Sends a single prompt and returns the assistant's reply.
+ * Never throws — returns an empty string on failure.
+ */
+export async function generateChatCompletion(
+  prompt: string,
+  options: ChatCompletionOptions = {}
+): Promise<string> {
+  const { url, apiKey } = getChatEndpoint();
+  const body = buildChatRequestBody(env.chatProvider, DEFAULT_CHAT_MODEL, prompt, options);
 
   try {
     const res = await fetch(url, {
