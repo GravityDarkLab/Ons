@@ -46,6 +46,8 @@ Respond in this exact JSON format (no markdown, no extra text):
 {"questions":["q1","q2","q3","q4","q5"],"dateIdeas":["d1","d2","d3"]}`;
 
   const raw = await generateChatCompletion(prompt, {
+    maxTokens: 1500, // headroom for reasoning-model chain-of-thought before the short final answer
+    reasoningEffort: "low", // minimize chain-of-thought spend on models that support it
     responseSchema: {
       name: "ice_breakers",
       schema: {

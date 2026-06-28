@@ -68,7 +68,9 @@ Respond in this exact JSON format (no markdown, no extra text):
 {"pros":["strength 1","strength 2"],"cons":["note 1"]}`;
 
   const raw = await generateChatCompletion(prompt, {
-    temperature: 0.4, // grounded/factual note, not creative writing
+    temperature: 0.4, // grounded/factual note, not creative writing (ignored on OpenAI's reasoning-model tier)
+    maxTokens: 1500, // headroom for reasoning-model chain-of-thought before the short final answer
+    reasoningEffort: "low", // minimize chain-of-thought spend on models that support it
     responseSchema: {
       name: "match_summary",
       schema: {
