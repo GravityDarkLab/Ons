@@ -199,6 +199,44 @@ describe('MatchCard', () => {
   })
 })
 
+// tested: the "why this match" LLM reasoning quote, always visible (not behind
+// the expand toggle) and shown unconditionally — distinct from the score
+// breakdown's gated-by-status behavior tested below.
+describe('MatchCard match reason quote', () => {
+  it('does not render the quote when llmReasoning is absent', () => {
+    render(<MatchCard match={base} />)
+    expect(screen.queryByText('portal.matches.whyThisMatch')).not.toBeInTheDocument()
+  })
+
+  it('does not render the quote when llmReasoning is an empty string (embedding fallback)', () => {
+    render(<MatchCard match={{ ...base, llmReasoning: '' }} />)
+    expect(screen.queryByText('portal.matches.whyThisMatch')).not.toBeInTheDocument()
+  })
+
+  it('renders the quote immediately (not behind the expand toggle) when llmReasoning is present', () => {
+    const reasoning = 'Shared values around honesty and a love of the outdoors.'
+    render(<MatchCard match={{ ...base, llmReasoning: reasoning }} />)
+    expect(screen.getByText('portal.matches.whyThisMatch')).toBeInTheDocument()
+    expect(screen.getByText(`“${reasoning}”`)).toBeInTheDocument()
+  })
+
+  it('renders the quote for an in_progress/target card', () => {
+    const reasoning = 'Compatible lifestyles and complementary personalities.'
+    render(
+      <MatchCard
+        match={{ ...base, status: 'in_progress', perspective: 'target', llmReasoning: reasoning }}
+      />
+    )
+    expect(screen.getByText(`“${reasoning}”`)).toBeInTheDocument()
+  })
+
+  it('renders the quote for a dating-status card', () => {
+    const reasoning = 'Strong alignment on relationship goals.'
+    render(<MatchCard match={{ ...base, status: 'dating', llmReasoning: reasoning }} />)
+    expect(screen.getByText(`“${reasoning}”`)).toBeInTheDocument()
+  })
+})
+
 // tested: score breakdown expand/collapse (item 2/3 — "why this score")
 describe('MatchCard score breakdown', () => {
   it('does not show an expand toggle when breakdown is missing', () => {

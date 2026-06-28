@@ -445,6 +445,7 @@
       "iceBreakers": "Ice-breakers",
       "dateIdeas": "Date ideas",
       "aboutPartner": "About {{alias}}",
+      "whyThisMatch": "Why this match",
       "scoreBreakdown": "Score breakdown",
       "genericError": "Something went wrong. Please try again.",
       "status": {

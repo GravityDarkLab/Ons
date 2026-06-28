@@ -457,6 +457,7 @@
       "iceBreakers": "كاسرات الجليد",
       "dateIdeas": "أفكار للمواعدة",
       "aboutPartner": "نبذة عن {{alias}}",
+      "whyThisMatch": "لماذا هذا التوافق",
       "scoreBreakdown": "تفاصيل النتيجة",
       "genericError": "حدث خطأ ما. حاول مرة أخرى.",
       "status": {

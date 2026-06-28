@@ -290,7 +290,7 @@ interface RankedCandidate {
 }
 ```
 
-This `score` field is what flows unchanged through `proposals.ts` → `match.service.ts` → `MatchDoc.score` → the frontend — only what computes it changed when the rerank stage was added.
+This `score` field is what flows unchanged through `proposals.ts` → `match.service.ts` → `MatchDoc.score` → the frontend — only what computes it changed when the rerank stage was added. `llmReasoning` flows the same path (`CoupleProposal.llmReasoning` → `MatchDoc.llmReasoning` → `ApplicantMatchView.llmReasoning`) and is rendered as a pull-quote at the top of `MatchCard.tsx` once a candidate becomes an actual proposed match — `embeddingScore` does not flow anywhere past `RankedCandidate`; it's debug/transparency only for the admin candidate-list view.
 
 ---
 

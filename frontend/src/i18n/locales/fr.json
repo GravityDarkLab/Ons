@@ -445,6 +445,7 @@
       "iceBreakers": "Brise-glace",
       "dateIdeas": "Idées de rendez-vous",
       "aboutPartner": "À propos de {{alias}}",
+      "whyThisMatch": "Pourquoi ce match",
       "scoreBreakdown": "Détail du score",
       "genericError": "Une erreur est survenue. Réessaie.",
       "status": {

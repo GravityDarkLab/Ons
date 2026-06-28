@@ -24,6 +24,7 @@ export interface ApplicantMatchView {
   partnerAlias: string;
   score: number;
   breakdown?: Record<string, number>;
+  llmReasoning?: string;
   status: MatchStatus;
   perspective: MatchPerspective;
   contactRequestedAt?: Date; // when the initiator clicked "contact" — shown to target
@@ -77,6 +78,7 @@ export function toMatchView(
   };
 
   if (doc.breakdown) view.breakdown = doc.breakdown;
+  if (doc.llmReasoning) view.llmReasoning = doc.llmReasoning;
 
   if (partnerAnswers) {
     const profile = Object.fromEntries(

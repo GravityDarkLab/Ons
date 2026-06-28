@@ -445,6 +445,7 @@
       "iceBreakers": "Eisbrecher",
       "dateIdeas": "Date-Ideen",
       "aboutPartner": "Über {{alias}}",
+      "whyThisMatch": "Warum dieses Match",
       "scoreBreakdown": "Punkteaufschlüsselung",
       "genericError": "Etwas ist schiefgelaufen. Bitte versuche es erneut.",
       "status": {

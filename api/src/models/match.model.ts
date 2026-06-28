@@ -27,6 +27,8 @@ export interface MatchDoc {
   score: number;
   /** Per-dimension scores from the algorithm that produced this match */
   breakdown?: Record<string, number>;
+  /** Grounded explanation from the LLM rerank stage that produced `score` */
+  llmReasoning?: string;
   algorithm: string;
   status: MatchStatus;
   initiatorId?: ObjectId;       // who clicked "I want to contact"

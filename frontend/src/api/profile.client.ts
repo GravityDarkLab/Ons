@@ -13,6 +13,7 @@ export interface MatchView {
   partnerAlias: string
   score: number // 0–1
   breakdown?: Record<string, number> // per-dimension scores from the matching algorithm
+  llmReasoning?: string // grounded explanation from the LLM rerank stage that produced `score`
   status: MatchStatus
   perspective: MatchPerspective
   contactRequestedAt?: string // ISO date string
