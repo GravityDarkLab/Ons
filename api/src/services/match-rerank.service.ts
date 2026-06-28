@@ -129,6 +129,17 @@ export async function rerankCandidates(
         properties: {
           rankings: {
             type: "array",
+            // minItems/maxItems force the array open until every candidate
+            // has an entry — without these, a schema-to-grammar translator
+            // (common on local OpenAI-compatible servers) treats a 1-item
+            // array as already valid JSON, and "close the array now" becomes
+            // a legal next token the model can take regardless of what the
+            // prompt asks for in plain text. Local-only: OpenAI's hosted
+            // strict mode doesn't document support for these keywords and
+            // may reject the request outright if sent there.
+            ...(env.embeddingProvider === "local"
+              ? { minItems: candidates.length, maxItems: candidates.length }
+              : {}),
             items: {
               type: "object",
               properties: {
