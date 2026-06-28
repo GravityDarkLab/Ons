@@ -144,7 +144,7 @@ All candidates in a shortlist are presented to the model together in one prompt 
 
 ### 5.3 Structured outputs and temperature
 
-The LLM call uses OpenAI's Structured Outputs (`response_format: json_schema`, strict mode) — confirmed to also be honored by LM Studio's OpenAI-compatible server, though not by Ollama's (which expects its own `format` parameter; the request is simply ignored there rather than erroring, with no behavioral regression). Temperature is set low (~0.3): this is a grounded judgment call, not creative generation.
+The LLM call uses OpenAI's Structured Outputs (`response_format: json_schema`, strict mode) — confirmed to also be honored by LM Studio's OpenAI-compatible server, though not by Ollama's (which expects its own `format` parameter; the request is simply ignored there rather than erroring, with no behavioral regression). Temperature is requested at 0.3 — a grounded judgment call, not creative generation — but this is only honored on providers that accept a non-default value; see §5.7 for the OpenAI exception.
 
 ### 5.4 Caching
 
@@ -156,7 +156,15 @@ The rerank function is designed to never throw and never block the matching pipe
 
 ### 5.6 Latency and concurrency
 
-Each LLM call has a 15-second timeout. A full matching pass batches rerank calls at a concurrency of 5 applicants at a time rather than either fully sequential or fully unbounded, bounding worst-case wall-clock time for N applicants to `ceil(N/5) × 15s` instead of `N × 15s`.
+Each LLM call has a timeout (30s default, overridable per call — the rerank call requests 45s, since real chain-of-thought across a 15-candidate prompt takes longer than a quick pairwise prompt; an earlier 15s default, sized for fast local inference, produced a real `TimeoutError` once tested against a hosted reasoning model). A full matching pass batches rerank calls at a concurrency of 5 applicants at a time rather than either fully sequential or fully unbounded, bounding worst-case wall-clock time for N applicants to `ceil(N/5) × timeout` instead of `N × timeout`.
+
+### 5.7 Provider-specific request shaping
+
+Two providers ended up needing genuinely different request shapes, both discovered empirically (HTTP 400s with explicit error messages, not guessed):
+
+- **Chat and embedding providers are configured independently** (`CHAT_PROVIDER`/`CHAT_BASE_URL`, defaulting to `EMBEDDING_PROVIDER`/`EMBEDDING_BASE_URL` when unset) — so already-cached local embeddings don't need to be recomputed just to swap which model handles chat completions, and vice versa.
+- **OpenAI's o-series and entire gpt-5.x family are "reasoning models"** that reject `max_tokens` (require `max_completion_tokens` instead) and reject any non-default `temperature`/`top_p`/penalty value outright, fixed at their own default. Both are branched on `chatProvider` rather than a model-name allowlist, since the set of OpenAI models in this restricted tier changes over time.
+- **The rankings array's `minItems`/`maxItems`** (enforced at the JSON-schema level, forcing a schema-to-grammar translator to keep the array open until every candidate has an entry — see the listwise-completeness failure mode below) is sent only for the local provider. OpenAI's hosted strict mode doesn't document support for these array keywords and could plausibly reject the request outright; this was left untested against the real API once a hosted model turned out not to need it (see §7's second measurement — plain-text "respond with an entry for every candidate" was sufficient for `gpt-5.4-mini` to return the correct count in the large majority of calls).
 
 ## 6. Implementation summary
 
@@ -187,11 +195,31 @@ This is consistent with the §2 diagnosis: the old score's *entire* distribution
 
 **Caveat that needs follow-up before trusting this number at face value:** 90 of the 209 pairs (43.1%) fell back to the embedding score with no LLM reasoning at all — far above the "expect 0% with a healthy provider" baseline stated above. This run used a local chat model serving a 15-candidate listwise prompt; the most likely explanation is that model struggling to produce a fully valid structured-output response for every candidate in one call, not a problem with the design itself (the *fallback* mechanism is working exactly as intended — it's masking a separate reliability issue with this particular local model/prompt-size combination rather than corrupting the result). The headline numbers above are **not free of this skew**: the `score` row blends real LLM judgments with same-as-before embedding fallbacks for 43% of pairs, meaning the true post-rerank distribution (if the LLM had succeeded on every pair) is likely shifted even further from the old distribution than this run shows. Re-running against a more capable model (or a smaller shortlist size) and checking whether the fallback rate drops is the natural next step, not yet done.
 
+### Second measurement — hosted model, fallback rate resolved
+
+Investigating the first measurement's 43.1% fallback rate (and a follow-up local model run that got *worse*, 79.9–98.1%) led to diagnosing and fixing five separate mechanical issues, in order — all via §5.7's provider-specific request shaping: (1) no visibility into *why* calls were falling back — added logging at every failure point; (2) the actual cause turned out to be the model returning 1-2 entries regardless of shortlist size (1 to 15 tested) — root-caused to grammar-constrained decoding never being told a required array length, fixed by adding `minItems`/`maxItems` to the schema (local provider only); (3) switching to a hosted model (`gpt-5.4-mini` via `CHAT_PROVIDER=openai`, embeddings kept local) surfaced three more issues specific to OpenAI's current reasoning-model tier: `max_tokens` rejected outright (needs `max_completion_tokens`), `temperature` rejected outright (fixed at the default for the whole o-series/gpt-5.x family), and a 15s timeout that was sized for fast local inference, not real chain-of-thought across 15 candidates (see §5.6). All five were diagnosed from actual error messages and response payloads, not guessed.
+
+Same 100-applicant pool, same embeddings (local, unchanged), `gpt-5.4-mini` for the rerank stage:
+
+| | min | p50 | mean | p90 | max | ≥ 0.8 |
+|---|---|---|---|---|---|---|
+| `embeddingScore` (Stage 1, old) | 0.000 | 0.630 | 0.575 | 0.660 | 0.690 | 0/209 (0.0%) |
+| `score` (Stage 2, LLM-reranked) | 0.180 | 0.620 | 0.614 | 0.840 | 0.980 | 31/209 (14.8%) |
+
+Fallback rate: 9/209 (4.3%) — down from 43.1%/79.9%/98.1% across the three prior local-model attempts, and for a materially better reason: these 9 are individual candidates a 13-to-15-candidate call didn't address, not whole-call failures.
+
+This is the cleanest evidence yet for the §2 diagnosis, and for a reason beyond the raw numbers: **the LLM score moves in both directions, not just up.** A few examples from this run, `embeddingScore → score`:
+- 0.67 → 0.84 ("both want short term, both non-smokers... shared preference for active dates") — a pair the old score under-rated.
+- 0.64 → 0.22 ("social smoker and wine lover, which clashes with the target's non-smoker preference... smoking-related dealbreaker") — a pair the old score over-rated, because cosine similarity on embedded text has no way to represent a hard dealbreaker as a hard dealbreaker; it can only nudge a similarity number.
+- 0.64 → 0.43 ("the target wants Short Term while the candidate wants Long Term, and the target is Muslim while the candidate is Hindu") — same pattern: real, stated incompatibilities the old score couldn't see as incompatibilities.
+
+That bidirectional correction is the actual point of replacing the measurement, not just rescaling it (§4, why F was chosen over A/B): a pool-relative rescaling of the old cosine scores could only ever stretch the *existing* ranking across more of the [0,1] range — it has no mechanism to re-order pairs based on information the embedding geometry never captured in the first place, like a stated relationship-type mismatch or a named dealbreaker. Here the reordering is visible directly in the sampled reasoning.
+
 ## 8. Limitations and future work
 
 - **Stage 1's calibration issue isn't fully gone, only hidden from the user.** It no longer affects the *displayed* score (Stage 2 replaces that), but it can still bias *which candidates make the shortlist* in the first place — a recall concern rather than a precision one. Layering Approach A's cheap per-pool min-max rescaling onto Stage 1 would improve shortlist quality independently of this change, and is a reasonable follow-up rather than something this design depended on.
 - **Cost and latency are real, not zero.** Stage 1 is free after the one-time embedding step; Stage 2 adds one genuine LLM call per applicant per matching run, bounded but not eliminated by the concurrency cap in §5.6.
-- **Non-determinism.** Two runs over an identical shortlist can produce slightly different scores or ordering. Bounded by low temperature and the anchored rubric, not eliminated by them.
+- **Non-determinism.** Two runs over an identical shortlist can produce slightly different scores or ordering. Bounded by the anchored rubric on every provider, and additionally by low temperature on local providers — OpenAI's current reasoning-model tier rejects a non-default temperature outright, so that particular lever isn't available there (§5.7); the rubric is doing more of the calibration work on that provider as a result.
 - **No native Anthropic chat support yet.** The chat-completion layer (`ai.service.ts`) currently speaks only the OpenAI-compatible REST shape; adding native Claude support (a different request/response shape, structured output via forced tool-use rather than `response_format`) was explicitly scoped out of this change and would be its own follow-up if the production deployment target changes.
 - **`icebreaker.service.ts` intentionally was not unified onto the same profile-snippet helper as the rerank/summary services** — it needs a narrower, different set of profile fields for generating conversation starters, and forcing it onto the shared helper would have been a real (unrequested) change to its output, not a pure refactor.
 
