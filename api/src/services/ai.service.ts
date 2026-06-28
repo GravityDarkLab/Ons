@@ -91,13 +91,29 @@ export async function generateChatCompletion(
       signal: AbortSignal.timeout(15000),
     });
 
-    if (!res.ok) return "";
+    if (!res.ok) {
+      const errBody = await res.text().catch(() => "(no body)");
+      console.error(`[ai.service] Chat completion HTTP ${res.status}: ${errBody.slice(0, 300)}`);
+      return "";
+    }
 
     const json = (await res.json()) as {
-      choices?: { message?: { content?: string } }[];
+      choices?: { message?: { content?: string }; finish_reason?: string }[];
     };
-    return json.choices?.[0]?.message?.content?.trim() ?? "";
-  } catch {
+    const choice = json.choices?.[0];
+    const content = choice?.message?.content?.trim() ?? "";
+    // "length" means max_tokens was hit before the model finished — for a
+    // reasoning model that spends real tokens on chain-of-thought before its
+    // final answer, this can mean the response never reached valid JSON.
+    if (choice?.finish_reason && choice.finish_reason !== "stop") {
+      console.warn(
+        `[ai.service] Chat completion finish_reason="${choice.finish_reason}" ` +
+        `(content length ${content.length}) — model: ${DEFAULT_CHAT_MODEL}`
+      );
+    }
+    return content;
+  } catch (err) {
+    console.error("[ai.service] Chat completion request failed:", err);
     return "";
   }
 }

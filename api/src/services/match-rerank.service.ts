@@ -152,7 +152,10 @@ export async function rerankCandidates(
     const parsed = JSON.parse(raw) as {
       rankings?: { candidateId?: unknown; score?: unknown; reasoning?: unknown }[];
     };
-    if (!Array.isArray(parsed.rankings)) return fallback();
+    if (!Array.isArray(parsed.rankings)) {
+      console.error(`[match-rerank] No rankings array in response. Raw (first 300 chars): ${raw.slice(0, 300)}`);
+      return fallback();
+    }
 
     const byId = new Map(
       parsed.rankings
@@ -172,7 +175,11 @@ export async function rerankCandidates(
         reasoning,
       };
     });
-  } catch {
+  } catch (err) {
+    console.error(
+      `[match-rerank] Failed to parse LLM response as JSON: ${(err as Error).message}. ` +
+      `Raw (first 300 chars): ${raw.slice(0, 300)}`
+    );
     return fallback();
   }
 
