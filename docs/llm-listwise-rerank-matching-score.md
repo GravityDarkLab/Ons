@@ -172,7 +172,20 @@ Full file-by-file detail lives in [`api/src/matching/README.md`](../api/src/matc
 
 **What has not yet been empirically measured, and should be before treating this as fully validated:** an actual before/after comparison of the score *distribution* produced against a real or representative applicant pool — i.e., confirming that the new scores genuinely spread across a wider, more human-meaningful range (and specifically that strong pairs now score meaningfully above 80%) rather than asserting it from the design reasoning alone. The diagnosis in §2 and the design in §5 are theoretically well-grounded, but theory is not the same as a measurement, and this document should not be read as claiming one was taken.
 
-A concrete way to run that evaluation, for whoever does it next: take a snapshot of the current applicant pool (or a synthetic pool built from the seed script), run `runFullMatchingPass()` once with the rerank stage disabled (Stage 1 scores only) and once with it enabled, and compare the two resulting score distributions — histogram, min/max/mean, and specifically how many pairs clear the existing `scoreThreshold` default of 0.8. That comparison is what would turn the diagnosis in §2 from "structurally should be true" into "measured to be true in this deployment."
+A concrete way to run that evaluation, for whoever does it next: take a snapshot of the current applicant pool (or a synthetic pool built from the seed script), run `runFullMatchingPass()` once with the rerank stage disabled (Stage 1 scores only) and once with it enabled, and compare the two resulting score distributions — histogram, min/max/mean, and specifically how many pairs clear the existing `scoreThreshold` default of 0.8. That comparison is what would turn the diagnosis in §2 from "structurally should be true" into "measured to be true in this deployment." `bun run eval:rerank` (root `package.json`) implements exactly this — it runs one pass and prints both numbers per candidate side by side, since `RankedCandidate` already carries both.
+
+### First measurement
+
+Run against a synthetic pool of 100 seeded applicants (`bun run seed applicants`), local embedding model `text-embedding-qwen3-embedding-0.6b`, local chat model, 209 candidate pairs evaluated:
+
+| | min | p50 | mean | p90 | max | ≥ 0.8 |
+|---|---|---|---|---|---|---|
+| `embeddingScore` (Stage 1, old) | 0.000 | 0.630 | 0.587 | 0.660 | 0.690 | 0/209 (0.0%) |
+| `score` (Stage 2, LLM-reranked) | 0.000 | 0.660 | 0.670 | 0.900 | 0.900 | 58/209 (27.8%) |
+
+This is consistent with the §2 diagnosis: the old score's *entire* distribution sits under 0.69 — not one pair in this pool would ever have cleared the 0.8 `scoreThreshold` default, regardless of how compatible any pair actually was. The new score spreads the same pool from 0.0 to 0.9, with over a quarter of pairs now clearing 0.8. Sampled `llmReasoning` text was grounded in the actual profile fields (shared religion, lifestyle compatibility, named deal-breakers), not generic filler.
+
+**Caveat that needs follow-up before trusting this number at face value:** 90 of the 209 pairs (43.1%) fell back to the embedding score with no LLM reasoning at all — far above the "expect 0% with a healthy provider" baseline stated above. This run used a local chat model serving a 15-candidate listwise prompt; the most likely explanation is that model struggling to produce a fully valid structured-output response for every candidate in one call, not a problem with the design itself (the *fallback* mechanism is working exactly as intended — it's masking a separate reliability issue with this particular local model/prompt-size combination rather than corrupting the result). The headline numbers above are **not free of this skew**: the `score` row blends real LLM judgments with same-as-before embedding fallbacks for 43% of pairs, meaning the true post-rerank distribution (if the LLM had succeeded on every pair) is likely shifted even further from the old distribution than this run shows. Re-running against a more capable model (or a smaller shortlist size) and checking whether the fallback rate drops is the natural next step, not yet done.
 
 ## 8. Limitations and future work
 
