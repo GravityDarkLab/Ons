@@ -7,7 +7,7 @@ import { env } from "../config/env.js";
 import type { MatchSummary } from "../models/match.model.js";
 import type { ApplicantDoc } from "../models/applicant.model.js";
 
-const SUMMARY_MODEL = `${env.embeddingProvider}:${env.openaiChatModel}`;
+const SUMMARY_MODEL = `${env.chatProvider}:${env.openaiChatModel}`;
 
 const FALLBACK_PROS = [
   "You share similar values and lifestyle expectations.",

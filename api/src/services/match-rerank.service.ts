@@ -7,7 +7,7 @@ import { buildProfileSnippet } from "./profile-snippet.util.js";
 import { env } from "../config/env.js";
 import type { ApplicantDoc } from "../models/applicant.model.js";
 
-const RERANK_MODEL = `${env.embeddingProvider}:${env.openaiChatModel}`;
+const RERANK_MODEL = `${env.chatProvider}:${env.openaiChatModel}`;
 
 export interface RerankCandidateInput {
   doc: ApplicantDoc;
@@ -137,7 +137,7 @@ export async function rerankCandidates(
             // prompt asks for in plain text. Local-only: OpenAI's hosted
             // strict mode doesn't document support for these keywords and
             // may reject the request outright if sent there.
-            ...(env.embeddingProvider === "local"
+            ...(env.chatProvider === "local"
               ? { minItems: candidates.length, maxItems: candidates.length }
               : {}),
             items: {

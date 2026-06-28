@@ -46,7 +46,10 @@ cp api/.env.example api/.env
 | `ADMIN_JWT_EXPIRY` | `8h` | Admin session JWT lifetime |
 | `APPLICANT_JWT_EXPIRY` | `30d` | Applicant portal session JWT lifetime |
 | `PUBLIC_URL` | _(empty)_ | Base URL for startup logs |
-| `OPENAI_API_KEY` | _(empty)_ | Required when `EMBEDDING_PROVIDER=openai` |
+| `OPENAI_API_KEY` | _(empty)_ | Required when `EMBEDDING_PROVIDER=openai` or `CHAT_PROVIDER=openai` |
+| `CHAT_PROVIDER` | `EMBEDDING_PROVIDER` | `openai` or `local` for ice-breakers/match-summaries/match-rerank — independent of the embedding provider |
+| `CHAT_BASE_URL` | `EMBEDDING_BASE_URL` | Base URL for a local chat provider, if different from the local embedding server |
+| `OPENAI_CHAT_MODEL` | `gpt-4o-mini` | Chat model name (e.g. `gpt-5.4-mini` for OpenAI) |
 
 ---
 

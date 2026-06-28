@@ -1,14 +1,14 @@
 import { env } from "../config/env.js";
 
 function getChatEndpoint(): { url: string; apiKey: string } {
-  if (env.embeddingProvider === "openai") {
+  if (env.chatProvider === "openai") {
     return {
       url:    "https://api.openai.com/v1/chat/completions",
       apiKey: env.openaiApiKey,
     };
   }
-  // local: same base URL as embeddings, appended with /chat/completions
-  const base = env.embeddingBaseUrl.replace(/\/$/, "");
+  // local: chatBaseUrl falls back to embeddingBaseUrl when unset — see env.ts
+  const base = env.chatBaseUrl.replace(/\/$/, "");
   return { url: `${base}/chat/completions`, apiKey: "local-key" };
 }
 
