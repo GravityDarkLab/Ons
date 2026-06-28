@@ -102,7 +102,12 @@ class OpenAICompatibleProvider implements EmbeddingProvider {
         "Content-Type": "application/json",
         Authorization: `Bearer ${this.apiKey}`,
       },
-      body: JSON.stringify({ input: texts, model: this.model }),
+      body:   JSON.stringify({ input: texts, model: this.model }),
+      // Unguarded otherwise: a hung request here blocks the entire matching
+      // pass (this runs in prepare(), before any per-applicant rerank call,
+      // and has no timeout/fallback of its own) — see ai.service.ts's
+      // generateChatCompletion for the same class of fix on the chat side.
+      signal: AbortSignal.timeout(30000),
     });
 
     if (!response.ok) {
