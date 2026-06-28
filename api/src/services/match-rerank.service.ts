@@ -30,8 +30,10 @@ const RUBRIC = `  90-100: rare, near-ideal overlap across values, lifestyle, and
 
 /**
  * Builds the listwise rerank prompt: one target, the whole shortlist at
- * once — see docs/superpowers/specs/2026-06-28-llm-listwise-rerank-matching-design.md
- * for why listwise (not pairwise/pointwise) framing is used.
+ * once. Listwise (not pairwise/pointwise) framing gives the LLM real
+ * comparison points instead of an abstract 0-100 scale, which avoids the
+ * central-tendency bias LLMs show when scoring in isolation — see the
+ * "LLM rerank" section of api/src/matching/README.md.
  */
 export function buildRerankPrompt(
   target: ApplicantDoc,

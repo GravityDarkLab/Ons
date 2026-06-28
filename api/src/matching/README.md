@@ -216,7 +216,7 @@ Current `textVersion = 2` (added `work` to profile, `dream_first_date` to prefer
 
 ## LLM rerank (`../services/match-rerank.service.ts`)
 
-The embedding scorer above is structurally incapable of producing a score near 100%, even for a genuinely great pair — embedding anisotropy and the inverted deal-breaker term (`1 - cosine(...)`) both push every cosine term toward a high floor, capping the realistic ceiling around ~0.85. Full diagnosis with citations: [`docs/superpowers/specs/2026-06-28-llm-listwise-rerank-matching-design.md`](../../../docs/superpowers/specs/2026-06-28-llm-listwise-rerank-matching-design.md).
+The embedding scorer above is structurally incapable of producing a score near 100%, even for a genuinely great pair. Two geometric effects compound: **embedding anisotropy** (learned text embeddings cluster in a narrow cone, so even unrelated texts produce a baseline cosine of ~0.6–0.75 — see Ethayarajh 2019, *How Contextual are Contextualized Word Representations?*; Steck, Ekanadham & Kallus 2024, [*Is Cosine-Similarity of Embeddings Really About Similarity?*](https://arxiv.org/abs/2403.05440)) and the **inverted deal-breaker term** (`1 - cosine(...)`), which caps near 0.25–0.4 even for a perfect non-overlap since it's an inversion stacked on that already-inflated baseline. Net effect: a realistic ceiling around ~0.85, not 1.0.
 
 The fix keeps the embedding scorer exactly as documented above for cheap O(N) shortlisting, then replaces what's *displayed* with an LLM judgment:
 
