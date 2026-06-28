@@ -49,10 +49,10 @@ ${RUBRIC}
 
 Target: ${buildProfileSnippet(target)}
 
-Candidates:
+Candidates (${candidates.length} total):
 ${candidateLines}
 
-Respond with a ranking entry for every candidate listed above, using their exact id. Output the JSON object directly — no reasoning, no chain-of-thought, no preamble, no explanation outside the JSON fields themselves.`;
+Your response MUST include exactly ${candidates.length} ranking ${candidates.length === 1 ? "entry" : "entries"} — one for every candidate listed above, no more, no fewer, none skipped. Copy each "candidateId" character-for-character exactly as given in the "id=" field above — do not shorten, truncate, paraphrase, or reformat it. Output the JSON object directly — no reasoning, no chain-of-thought, no preamble, no explanation outside the JSON fields themselves.`;
 }
 
 /**
