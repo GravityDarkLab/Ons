@@ -32,7 +32,12 @@ export interface JsonSchemaResponseFormat {
 }
 
 export interface ChatCompletionOptions {
-  /** Default 0.8 (creative). Pass lower (e.g. 0.4) for factual/grounded tasks. */
+  /**
+   * Default 0.8 (creative). Pass lower (e.g. 0.4) for factual/grounded tasks.
+   * Ignored entirely when chatProvider is "openai" — OpenAI's o-series/
+   * gpt-5.x reasoning models reject any non-default value, see the omission
+   * below.
+   */
   temperature?: number;
   /**
    * OpenAI-style Structured Outputs (response_format: json_schema) —
@@ -84,7 +89,15 @@ export async function generateChatCompletion(
   const body: Record<string, unknown> = {
     model: DEFAULT_CHAT_MODEL,
     messages: [{ role: "user", content: prompt }],
-    temperature: options.temperature ?? 0.8,
+    // OpenAI's o-series and the entire gpt-5.x family are "reasoning
+    // models" that fix temperature/top_p/penalties at their defaults and
+    // reject any other explicit value outright (HTTP 400). There's no
+    // reliable way to tell from a model name alone whether a given OpenAI
+    // model is in that restricted tier (the lineup changes), so omit
+    // temperature entirely for the OpenAI provider rather than guess — the
+    // API's own default (1) is used instead. Local servers don't have this
+    // restriction, so they still get the per-call tuning.
+    ...(env.chatProvider === "openai" ? {} : { temperature: options.temperature ?? 0.8 }),
     // OpenAI's newer model families (o-series, gpt-5.x) reject max_tokens
     // outright and require max_completion_tokens instead; older OpenAI
     // models and local OpenAI-compatible servers still expect max_tokens.
