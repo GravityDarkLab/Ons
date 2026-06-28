@@ -79,6 +79,20 @@ bun run --cwd .. seed:applicants -- --count 50 --clear
 
 ---
 
+## Evaluating the matching score
+
+`bun run eval:rerank` (from the monorepo root) runs one full matching pass and prints embedding-vs-LLM score distributions side by side — no need to disable the rerank stage to compare, since every candidate already carries both numbers. Requires a seeded applicant pool and a configured `EMBEDDING_PROVIDER`/`OPENAI_CHAT_MODEL` (real embedding + LLM calls, not mocked):
+
+```bash
+bun run eval:rerank                  # api/.env.dev
+bun run eval:rerank --env=test
+bun run eval:rerank --csv=out.csv    # also write every candidate row to CSV
+```
+
+See ["7. Evaluation"](../docs/llm-listwise-rerank-matching-score.md#7-evaluation) in the design writeup for what this is meant to validate.
+
+---
+
 ## API reference
 
 ### Public

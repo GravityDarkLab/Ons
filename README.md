@@ -332,6 +332,7 @@ Inject secrets via ECS task-definition environment variables or AWS Secrets Mana
 | `bun run dev:api:prod` | API only — `.env.prod` (hot reload) |
 | `bun run dev:frontend` | Frontend only (hot reload) |
 | `bun run seed` | Interactive seed runner — choose questionnaire, applicants, or both; prompts for environment |
+| `bun run eval:rerank` | Runs a full matching pass and prints embedding-vs-LLM score distributions side by side (real calls, not mocked) |
 | `bun run build` | Build all workspaces |
 | `bun run typecheck` | Type-check all workspaces |
 | `bun run test` | Run API + frontend test suites in parallel (API: 515 tests, no DB required) |
