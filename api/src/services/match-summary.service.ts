@@ -1,7 +1,8 @@
 import { ObjectId } from "mongodb";
 import { getDb } from "../db/connection.js";
 import { getMatchesCollection, getApplicantsCollection } from "../db/collections.js";
-import { generateChatCompletion, truncateForPrompt } from "./ai.service.js";
+import { generateChatCompletion } from "./ai.service.js";
+import { buildProfileSnippet } from "./profile-snippet.util.js";
 import { env } from "../config/env.js";
 import type { MatchSummary } from "../models/match.model.js";
 import type { ApplicantDoc } from "../models/applicant.model.js";
@@ -16,22 +17,6 @@ const FALLBACK_PROS = [
 const FALLBACK_CONS = [
   "Like any new connection, this one will need open conversation to thrive.",
 ];
-
-function profileSnippet(doc: ApplicantDoc): string {
-  const a = doc.answers as Record<string, unknown>;
-  const t = (v: unknown) => truncateForPrompt(String(v));
-  const parts: string[] = [];
-  if (a.location)                  parts.push(`Location: ${t(a.location)}`);
-  if (a.work)                      parts.push(`Work: ${t(a.work)}`);
-  if (a.religion)                  parts.push(`Religion: ${t(a.religion)}`);
-  if (a.relationship_type)         parts.push(`Looking for: ${t(a.relationship_type)}`);
-  if (a.vibe_words)                parts.push(`Describes themselves as: ${t(a.vibe_words)}`);
-  if (a.lifestyle)                 parts.push(`Lifestyle: ${t(a.lifestyle)}`);
-  if (a.preferred_character_traits) parts.push(`Seeks in partner: ${t(a.preferred_character_traits)}`);
-  if (a.deal_breakers)             parts.push(`Deal breakers: ${t(a.deal_breakers)}`);
-  if (a.dream_first_date)          parts.push(`Dream first date: ${t(a.dream_first_date)}`);
-  return parts.join(". ") || "No profile details available.";
-}
 
 export async function getOrGenerateMatchSummary(
   matchId: string,
@@ -71,9 +56,9 @@ export async function getOrGenerateMatchSummary(
 
   const prompt = `You are a professional matchmaker writing a compatibility note for two people who have been matched.
 
-Person A: ${profileSnippet(a)}
+Person A: ${buildProfileSnippet(a)}
 
-Person B: ${profileSnippet(b)}
+Person B: ${buildProfileSnippet(b)}
 
 Write a brief, professional, and warm compatibility note grounded only in what's stated above — do not invent details — with:
 - 2 to 3 "Strengths": genuine points of alignment (one sentence each, max 18 words)
