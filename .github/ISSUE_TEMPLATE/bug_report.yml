@@ -1,0 +1,107 @@
+name: Bug report
+description: Something in the app is broken or behaves unexpectedly.
+title: "bug: "
+labels: ["type: bug", "status: needs triage"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for reporting. **Never paste real applicant data** — no names, Instagram handles, birth dates or answers. Use seeded demo data, or describe the situation instead.
+        For anything that exposes personal data or could be abused, follow the [security policy](https://github.com/GravityDarkLab/Ons/security/policy) instead of opening an issue.
+
+  - type: dropdown
+    id: area
+    attributes:
+      label: Where does it happen?
+      options:
+        - Application form
+        - Applicant portal
+        - Admin panel
+        - Matching (scores, proposals, filters)
+        - API
+        - Deployment / CI
+        - Not sure
+    validations:
+      required: true
+
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: What happened?
+      description: What you saw, including any error message.
+    validations:
+      required: true
+
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      placeholder: |
+        1. Open /apply on a phone
+        2. Answer the first question
+        3. Tap Back
+        4. …
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: What did you expect instead?
+    validations:
+      required: true
+
+  - type: dropdown
+    id: device
+    attributes:
+      label: Screen size
+      multiple: true
+      options:
+        - Phone
+        - Tablet
+        - Laptop / desktop
+    validations:
+      required: true
+
+  - type: dropdown
+    id: language
+    attributes:
+      label: App language
+      multiple: true
+      options:
+        - English
+        - Français
+        - Deutsch
+        - العربية (right-to-left)
+
+  - type: input
+    id: browser
+    attributes:
+      label: Browser and version
+      placeholder: e.g. Safari on iOS 19, Chrome 140 on macOS
+
+  - type: dropdown
+    id: impact
+    attributes:
+      label: How bad is it?
+      description: The maintainer sets the final priority during triage.
+      options:
+        - Blocks applicants or admins entirely
+        - Wrong result, but there is a workaround
+        - Cosmetic or minor
+    validations:
+      required: true
+
+  - type: textarea
+    id: evidence
+    attributes:
+      label: Screenshots or logs
+      description: Drag images in here. Crop or blur anything personal.
+
+  - type: checkboxes
+    id: privacy
+    attributes:
+      label: Privacy
+      options:
+        - label: This report contains no real applicant data.
+          required: true
