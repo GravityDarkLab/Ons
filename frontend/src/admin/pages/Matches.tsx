@@ -184,8 +184,8 @@ export function Matches() {
         ))}
       </div>
 
-      {/* Desktop table */}
-      <div className="hidden md:block bg-surface border border-border rounded-2xl overflow-hidden shadow-card">
+      {/* Desktop table: from lg, since five columns don't fit beside the sidebar at md */}
+      <div className="hidden lg:block bg-surface border border-border rounded-2xl overflow-hidden shadow-card">
         <table className="w-full text-sm">
           <thead className="bg-surface-subtle">
             <tr className="border-b border-border">
@@ -219,7 +219,7 @@ export function Matches() {
       </div>
 
       {/* Mobile card list */}
-      <div className="md:hidden space-y-3">
+      <div className="lg:hidden space-y-3">
         {loading ? (
           Array.from({ length: 4 }).map((_, i) => (
             <div key={i} className="bg-surface border border-border rounded-2xl p-4 space-y-2 shadow-card">

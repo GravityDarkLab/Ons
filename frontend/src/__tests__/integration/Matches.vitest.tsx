@@ -94,6 +94,20 @@ describe('Matches page — initial render', () => {
     expect(screen.getAllByText('admin.matches.proposed').length).toBeGreaterThanOrEqual(2)
   })
 
+  // The five-column table needs ~710px (German). With the sidebar open at 768px
+  // only ~500px is left, so tablets keep the card list and the table starts at lg.
+  it('switches from cards to the table at the lg breakpoint, not md', async () => {
+    mockFetchMatches.mockResolvedValue({ data: [MATCH_A], total: 1, page: 1, limit: 20, totalPages: 1 })
+    renderMatches()
+    await waitFor(() => table().getByText('Lunar Ocean'))
+    const tableBox = screen.getByRole('table').parentElement!
+    expect(tableBox.className).toContain('lg:block')
+    expect(tableBox.className).not.toContain('md:block')
+    const cardList = screen.getAllByText('Lunar Ocean').find(el => !el.closest('table'))!.closest('.shadow-card')!.parentElement!
+    expect(cardList.className).toContain('lg:hidden')
+    expect(cardList.className).not.toContain('md:hidden')
+  })
+
   it('shows total count in subtitle', async () => {
     mockFetchMatches.mockResolvedValue({ data: [MATCH_A], total: 1, page: 1, limit: 20, totalPages: 1 })
     renderMatches()
