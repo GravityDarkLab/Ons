@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useId, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { Link } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
@@ -376,29 +376,34 @@ function RowActions({ match, expanded, saving, onToggleExpand, onStatusChange, o
 
 function NotesEditor({ notes, saving, onNotesChange, onSaveNotes }: Pick<RowProps, 'notes' | 'saving' | 'onNotesChange' | 'onSaveNotes'>) {
   const { t } = useTranslation()
+  const id = useId()
   return (
-    <div className="flex gap-2 items-end">
+    <div className="flex h-full flex-col gap-2">
+      <label htmlFor={id} className={DETAIL_HEADING}>{t('admin.matches.notes')}</label>
       <textarea
-        rows={2}
+        id={id}
+        rows={4}
         value={notes}
         onChange={e => onNotesChange(e.target.value)}
         placeholder={t('admin.matches.notesPlaceholder')}
-        className="flex-1 rounded-xl border border-border bg-surface px-3 py-2 text-sm text-primary placeholder:text-muted resize-none focus:outline-none focus:ring-2 focus:ring-accent/40"
+        className="min-h-24 flex-1 rounded-xl border border-border bg-surface px-3 py-2 text-sm text-primary placeholder:text-muted resize-none focus:outline-none focus:ring-2 focus:ring-accent/40"
       />
-      <Button onClick={onSaveNotes} loading={saving} variant="primary">
+      <Button onClick={onSaveNotes} loading={saving} variant="primary" size="sm" className="self-end">
         {t('admin.matches.saveNotes')}
       </Button>
     </div>
   )
 }
 
+const DETAIL_HEADING = 'text-xs font-medium uppercase tracking-wider text-muted'
+
 /** The full per-dimension breakdown next to the notes editor. */
 function MatchDetails(props: RowProps) {
   const { t } = useTranslation()
   return (
-    <div className="grid gap-5 md:grid-cols-2">
-      <section aria-label={t('admin.matches.colBreakdown')}>
-        <p className="mb-2 text-xs font-medium uppercase tracking-wider text-muted">{t('admin.matches.colBreakdown')}</p>
+    <div className="grid gap-6 md:grid-cols-2 md:gap-8">
+      <section aria-label={t('admin.matches.colBreakdown')} className="flex flex-col gap-2">
+        <p className={DETAIL_HEADING}>{t('admin.matches.colBreakdown')}</p>
         <ScoreBreakdown breakdown={props.match.breakdown} />
       </section>
       <NotesEditor {...props} />

@@ -254,6 +254,7 @@
       "markFailed": "Échoué",
       "markDeclined": "Refusé",
       "markExpired": "Expiré",
+      "notes": "Notes",
       "notesPlaceholder": "Ajouter des notes sur ce couple…",
       "saveNotes": "Enregistrer",
       "delete": "Supprimer",

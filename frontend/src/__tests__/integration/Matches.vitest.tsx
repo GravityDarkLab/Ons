@@ -238,7 +238,7 @@ describe('Matches page — details', () => {
     await waitFor(() => table().getByRole('button', { name: 'admin.matches.details' }))
 
     await userEvent.click(table().getByRole('button', { name: 'admin.matches.details' }))
-    expect(table().getByPlaceholderText('admin.matches.notesPlaceholder')).toBeInTheDocument()
+    expect(table().getByRole('textbox', { name: 'admin.matches.notes' })).toBeInTheDocument()
     expect(table().getByRole('button', { name: 'admin.matches.hideDetails' })).toBeInTheDocument()
   })
 

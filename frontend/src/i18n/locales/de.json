@@ -254,6 +254,7 @@
       "markFailed": "Gescheitert",
       "markDeclined": "Abgelehnt",
       "markExpired": "Abgelaufen",
+      "notes": "Notizen",
       "notesPlaceholder": "Notizen zu diesem Paar hinzufügen…",
       "saveNotes": "Speichern",
       "delete": "Löschen",

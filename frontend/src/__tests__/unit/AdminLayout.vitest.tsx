@@ -63,6 +63,23 @@ describe('AdminLayout', () => {
     })
   })
 
+  it('on a phone, opens the menu as a drawer and closes it once a page is picked', async () => {
+    const width = window.innerWidth
+    window.innerWidth = 375
+    try {
+      renderLayout()
+      // Starts closed: icons only, no labels
+      expect(screen.queryByText('admin.nav.applicants')).not.toBeInTheDocument()
+
+      await userEvent.click(screen.getByRole('button', { name: 'admin.nav.toggleSidebar' }))
+      await userEvent.click(await screen.findByText('admin.nav.applicants'))
+
+      await waitFor(() => expect(screen.queryByText('admin.nav.applicants')).not.toBeInTheDocument())
+    } finally {
+      window.innerWidth = width
+    }
+  })
+
   it('shows role badge in topbar', () => {
     renderLayout()
     // Role badge shows a translated label for the role
