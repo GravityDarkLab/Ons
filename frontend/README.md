@@ -79,19 +79,23 @@ Access to `/`, `/apply`, and `/success` is gated by `InviteGate` — users must 
 | `/profile` | `ProfileDashboard.tsx` | Tabs for viewing matches and editing questionnaire answers |
 | `/admin/*` | `admin/pages/*` | Admin panel — dashboard, applicants, matching, matches, audit logs (see [`src/admin/`](./src/admin)) |
 
-### Form steps
+### The application form
 
-The `/apply` page is a wizard that walks the user through the questionnaire:
+`/apply` asks one thing at a time:
 
-| Step | Component | What it collects |
+| Screen | Rendered by | What it collects |
 |---|---|---|
-| 1 | `Step1Identity.tsx` | First name, last name, Instagram handle, location |
-| 2 | `Step2AboutYou.tsx` | Birth date, height, work, gender identity, sexual orientation, religion |
-| 3 | `Step3Vibe.tsx` | Vibe words, lifestyle description |
-| 4 | `Step4Preferences.tsx` | Relationship type, long-distance openness, age gap preference (max gap + open to older/younger, shown conditionally), preferred traits, deal breakers |
-| 5 | `Step5Final.tsx` | Physical affection importance, dream first date, disclaimer agreement |
+| First | `steps/Step1Identity.tsx` | The only typed fields: first name, last name, Instagram handle, city, birth date |
+| One per question | `components/QuestionField.tsx` | A tap question: single choice, pick-three, Yes/No, or a five-point agreement scale |
+| Last | `pages/Apply.tsx` | An optional free-text note, consent, Submit |
 
-The questionnaire schema is fetched dynamically from `GET /api/v1/form/questionnaire` so the form always reflects the latest active version. The `X-Submission-Key` returned by that endpoint is sent as a header with `POST /api/v1/form/submit` to prevent version enumeration.
+A single-choice tap advances by itself after 250 ms; Back keeps every answer. Focus moves to each question
+heading and progress is announced as "Question n of N". Choice groups are real radio / checkbox groups
+(`components/ui/RadioCard.tsx`) with a roving tab stop and arrow-key navigation.
+
+The questions are **not** defined in the frontend. They are fetched from `GET /api/v1/form/questionnaire`
+(defined in `api/src/questionnaire/questions.ts`) and rendered generically; the frontend only owns their
+translations under `questions.*` in the four locale files. Stored values are language-independent. The `X-Submission-Key` returned by that endpoint is sent as a header with `POST /api/v1/form/submit` to prevent version enumeration.
 
 ### Applicant portal
 
@@ -129,7 +133,7 @@ frontend/
 │   │   ├── Apply.tsx
 │   │   ├── Success.tsx
 │   │   └── profile/        ← Applicant portal (ProfileLoginPage, ProfileDashboard, ...)
-│   ├── steps/           ← Form wizard step components
+│   ├── steps/           ← The form's one typed screen (identity)
 │   ├── theme/           ← Theme provider + toggle (light/dark)
 │   ├── types/           ← Shared TypeScript types
 │   ├── App.tsx          ← Router setup + InviteGate wrapper

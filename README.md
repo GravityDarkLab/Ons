@@ -5,7 +5,7 @@
 A privacy-first couple matching platform. Applicants fill out a form, an admin reviews and runs the matching engine, and compatible pairs are surfaced — no Instagram handles or personal details ever leave the encrypted identity store.
 
 **Stack:** Bun · Hono · MongoDB · React · Vite · Tailwind  
-**Docs:** [`api/README.md`](./api/README.md) · [`frontend/README.md`](./frontend/README.md) · [`api/src/matching/README.md`](./api/src/matching/README.md) · [LLM listwise-rerank matching score — design & literature](./docs/llm-listwise-rerank-matching-score.md)
+**Docs:** [`api/README.md`](./api/README.md) · [`frontend/README.md`](./frontend/README.md) · [`api/src/matching/README.md`](./api/src/matching/README.md)
 
 ---
 
@@ -137,9 +137,9 @@ ons/
 
 ## How it works
 
-1. **Applicant fills the form** — the frontend fetches the active questionnaire, gates access with an invite key, and POSTs answers to the API.
+1. **Applicant fills the form** — the frontend fetches the active questionnaire and gates access with an invite key. Only name, Instagram, city and birth date are typed; the other 32 questions are answered by tapping, one per screen.
 2. **PII is isolated at submission** — the first/last name and Instagram handle are each AES-256-GCM encrypted (own fresh IV per field) and stored in a separate `identities` collection, never in the applicant profile.
-3. **Admin runs matching** — `POST /api/v1/matching/run` shortlists all active applicants pairwise with text embeddings, then an LLM rerank call (one per applicant, covering its whole shortlist) judges the shortlist and produces the score that's actually returned — the embedding step alone is structurally incapable of scoring a great pair above ~80%, see [`api/src/matching/README.md`](./api/src/matching/README.md#llm-rerank-servicesmatch-rerankservicets).
+3. **Admin runs matching** — `POST /api/v1/matching/run` drops incompatible pairs with hard filters (orientation, age, religion, distance, children, smoking and alcohol), then scores the rest by comparing their tap answers directly across five weighted dimensions. It is deterministic and makes no network calls; see [`api/src/matching/README.md`](./api/src/matching/README.md).
 4. **Admin resolves identities** — every access to someone else's encrypted identity is audit-logged. (Applicants can always see their own name on their own profile — that's not a "reveal", just their own data.)
 5. **Applicant uses their portal** — a magic link from the admin grants access to `/profile`, where the applicant reviews their matches and can edit their questionnaire answers.
 6. **Matched applicants connect** — either side can initiate contact; the target receives ice-breaker prompts and date ideas to decide. Only when the target **accepts** are both parties' Instagram handles and names decrypted simultaneously, audit-logged, and revealed to each other. A declined or withdrawn request leaves identities sealed.
@@ -159,16 +159,15 @@ browser ──► frontend (React + Vite)
            └──┬─┴───────┴────┬────┴───┬───┘
               │               │        │
           MongoDB              Matching engine
-        ┌───────┴───────┐     (embedding-cosine shortlist
-        │ applicants    │      + age filter, then an
-        │ identities    │      LLM listwise rerank for
-        │ embeddings    │      the displayed score)
-        │ match_reranks │
+        ┌───────┴───────┐     (hard filters, then a
+        │ applicants    │      deterministic rule-based
+        │ identities    │      score — no network calls)
+        │ matches       │
         │ audit_logs    │
         └───────────────┘
 ```
 
-See [`api/src/matching/README.md`](./api/src/matching/README.md) for the full pipeline breakdown — weights, age filter math, embedding batching, and how to extend the system.
+See [`api/src/matching/README.md`](./api/src/matching/README.md) for the full pipeline breakdown — filters, weights, formulas and how to extend the system.
 
 ---
 
@@ -178,7 +177,6 @@ See [`api/src/matching/README.md`](./api/src/matching/README.md) for the full pi
 |---|---|---|
 | Questionnaire answers | `applicants` | Admin, and the applicant themselves via `/profile` |
 | Instagram handle + first/last name | `identities` (AES-256-GCM encrypted, each field its own IV) | The applicant themselves (their own name, not audit-logged); admin (audit-logged); or both matched applicants simultaneously after mutual acceptance of a contact request (each audit-logged independently) |
-| Text embeddings | `embeddings` | Matching engine |
 | Admin actions | `audit_logs` | Admin |
 
 The Instagram handle and name never touch the `applicants` collection. Each is encrypted with its own fresh random IV on every write and stored separately — even within the same `identities` document, no two fields ever share an IV. Decryption requires the `ENCRYPTION_KEY` secret. Decrypting *someone else's* identity (an admin lookup, or a matched applicant's mutual reveal) is always written to `audit_logs` before the plaintext is returned; an applicant viewing their own name on their own profile is not, since that's not a privacy-sensitive reveal.
@@ -332,7 +330,6 @@ Inject secrets via ECS task-definition environment variables or AWS Secrets Mana
 | `bun run dev:api:prod` | API only — `.env.prod` (hot reload) |
 | `bun run dev:frontend` | Frontend only (hot reload) |
 | `bun run seed` | Interactive seed runner — choose questionnaire, applicants, or both; prompts for environment |
-| `bun run eval:rerank` | Runs a full matching pass and prints embedding-vs-LLM score distributions side by side (real calls, not mocked) |
 | `bun run build` | Build all workspaces |
 | `bun run typecheck` | Type-check all workspaces |
 | `bun run test` | Run API + frontend test suites in parallel (API: 515 tests, no DB required) |

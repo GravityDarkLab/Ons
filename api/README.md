@@ -31,7 +31,7 @@ cp api/.env.example api/.env
 | `ADMIN_USERNAME` | Admin login username | — |
 | `ADMIN_PASSWORD` | Admin login password | — |
 | `FORM_SECRET` | HMAC secret for submission keys | `openssl rand -hex 32` |
-| `OPENAI_API_KEY` | OpenAI API key — matching always calls OpenAI (embeddings, rerank, match summaries, ice-breakers) | — |
+| `OPENAI_API_KEY` | OpenAI API key — used for match summaries and ice-breakers only; matching itself is rule-based and never calls OpenAI | — |
 
 ### Optional variables
 
@@ -45,8 +45,7 @@ cp api/.env.example api/.env
 | `ADMIN_JWT_EXPIRY` | `8h` | Admin session JWT lifetime |
 | `APPLICANT_JWT_EXPIRY` | `30d` | Applicant portal session JWT lifetime |
 | `PUBLIC_URL` | _(empty)_ | Base URL for startup logs |
-| `EMBEDDING_MODEL` | `text-embedding-3-small` | OpenAI embedding model (or `text-embedding-3-large`) |
-| `OPENAI_CHAT_MODEL` | `gpt-4o-mini` | Chat model for ice-breakers/match-summaries/match-rerank (e.g. `gpt-5.4-mini`) |
+| `OPENAI_CHAT_MODEL` | `gpt-4o-mini` | Chat model for ice-breakers and match summaries (e.g. `gpt-5.4-mini`) |
 
 ---
 
@@ -79,19 +78,6 @@ bun run --cwd .. seed:applicants -- --count 50 --clear
 
 ---
 
-## Evaluating the matching score
-
-`bun run eval:rerank` (from the monorepo root) runs one full matching pass and prints embedding-vs-LLM score distributions side by side — no need to disable the rerank stage to compare, since every candidate already carries both numbers. Requires a seeded applicant pool and `OPENAI_API_KEY` set (real embedding + LLM calls, not mocked):
-
-```bash
-bun run eval:rerank                  # api/.env.dev
-bun run eval:rerank --env=test
-bun run eval:rerank --csv=out.csv    # also write every candidate row to CSV
-```
-
-See ["7. Evaluation"](../docs/llm-listwise-rerank-matching-score.md#7-evaluation) in the design writeup for what this is meant to validate.
-
----
 
 ## API reference
 
@@ -139,7 +125,7 @@ curl -X POST http://localhost:3001/api/v1/admin/login \
 | `GET` | `/api/v1/matching/last-run` | Summary of the most recent matching pass |
 | `POST` | `/api/v1/matching/run` | Full pairwise pass over all active applicants |
 
-Candidates are shortlisted with the `embedding-cosine` algorithm (semantic text embeddings + age filter), then the shortlist is rescored by an LLM listwise rerank call — that's the score actually returned and displayed. No `algorithm` parameter is accepted.  
+Pairs that fail a hard filter get no result. The rest are scored by the rule-based scorer (`rules-v1`): deterministic, no network calls.  
 See [`src/matching/README.md`](./src/matching/README.md) for pipeline details.
 
 ### Applicant portal (session cookie)
@@ -176,14 +162,15 @@ api/
 │   ├── config/          ← env loader, CORS config
 │   ├── controllers/     ← request handlers (thin — delegate to services)
 │   ├── db/              ← MongoDB connection, collections, index setup
-│   ├── matching/        ← Engine, algorithms, filters, embeddings
+│   ├── matching/        ← Engine, hard filters, rule-based scorer
 │   │   └── README.md    ← Matching system deep-dive
 │   ├── middleware/       ← Auth (JWT), rate limiting, audit logging
 │   ├── models/          ← TypeScript interfaces for MongoDB documents
 │   ├── privacy/         ← Encryption, alias generator, submission keys
 │   ├── routes/          ← Hono route definitions
 │   ├── seeds/           ← Dev data seeders
-│   ├── services/        ← Business logic (form, admin, profile, matching, questionnaire, embedding)
+│   ├── questionnaire/   ← The question definitions (single source of truth)
+│   ├── services/        ← Business logic (form, admin, profile, matching, questionnaire)
 │   ├── utils/           ← Shared helpers (e.g. age-from-birth-date)
 │   ├── validators/      ← Zod schemas for request validation
 │   └── server.ts        ← App entry point, middleware wiring, bootstrap

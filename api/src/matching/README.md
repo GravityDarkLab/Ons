@@ -1,303 +1,98 @@
-# Matching System
+# Matching
 
-This directory contains the full matching pipeline: the engine that orchestrates scoring, hard pre-filters, the embedding-based scorer, and shared weights. The score this scorer produces is an internal ranking signal only — the score actually shown to users comes from an LLM rerank stage in [`services/match-rerank.service.ts`](../services/match-rerank.service.ts) (see [Stage 6](#llm-rerank-servicesmatch-rerankservicets) below).
+A single, deterministic pipeline: **filter → score**. No network, no model, no cache. The same two answer
+sets always produce the same score, and every part of it can be explained.
 
----
-
-## Directory layout
-
-```
-matching/
-├── engine.ts                  ← Orchestrator — loads applicants, runs filters, calls prepare() + score()
-├── scorer.ts                  ← Embedding-cosine scorer (prepare + score)
-├── proposals.ts                ← Derives unique couple proposals from a matching pass
-├── scoring/
-│   └── weights.ts             ← Single source of truth for all scoring weights
-├── scorers/
-│   └── numeric.scorer.ts      ← Numeric-vector encoding + cosine similarity, shared by scorer.ts
-├── filters/
-│   ├── orientation.filter.ts  ← Hard orientation-compatibility filter
-│   ├── age.filter.ts          ← Hard age-preference filter + soft modifier
-│   ├── religion.filter.ts     ← Hard religion deal-breaker filter
-│   ├── location.filter.ts     ← Hard long-distance deal-breaker filter
-│   └── answer.util.ts         ← Shared case-insensitive answer normalization
-└── embeddings/
-    └── provider.ts            ← EmbeddingProvider interface + OpenAI-compatible factory
-
-../services/
-├── match-rerank.service.ts    ← LLM listwise rerank — produces the score actually shown (see below)
-└── profile-snippet.util.ts    ← Shared free-text profile summary used to build LLM prompts
-```
-
----
-
-## Pipeline
-
-Every matching request — single candidate lookup or full pairwise pass — goes through the same stages:
+What this can and cannot do: a questionnaire does not predict attraction between two specific people
+(Joel, Eastwick & Finkel, 2017). It can rule out real incompatibilities and rank the remaining pairs by
+shared values, lifestyle and how they relate. The product copy should not claim more than that.
 
 ```
-1. LOAD      Load all active applicants from MongoDB.
-
-2. FILTER    Remove incompatible pairs before any scoring.
-             Hard pass/fail — not scored, not ranked low.
-             Four filters run in sequence:
-               a) Orientation compatibility (see below)
-               b) Age preferences (see below)
-               c) Religion deal-breaker (see below)
-               d) Long-distance deal-breaker (see below)
-
-3. PREPARE   Batch-embeds all applicants once before pairwise scoring
-             begins (O(N) API calls, not O(N²)).
-             Embeddings are persisted; subsequent runs hit the DB cache.
-
-4. SCORE     Call score(a, b) for every compatible pair.
-             Returns a composite score in [0, 1] + a named breakdown.
-
-5. SHORTLIST Sort descending by embedding score, take max(topN, 15).
-             This is the cheap, broad ranking signal — internal only.
-
-6. RERANK    One LLM call per applicant, covering its whole shortlist at
-             once. Produces the score and reasoning actually displayed.
-             Falls back to the embedding score on any failure. See below.
+engine.ts            orchestrator: load applicants → skip active contacts → filter → score → top N
+filters/             hard, binary pass/fail — an excluded pair gets no result, not a low score
+scorer.ts            the only scorer: five weighted dimensions × age modifier
+scoring/weights.ts   the weights (sum to 1.0)
+proposals.ts         unique couple proposals (canonical pair, symmetric score) from a full pass
 ```
 
----
+Questions, their option order and which answers are shareable live in
+[`../questionnaire/questions.ts`](../questionnaire/questions.ts). The scorer compares ordered answers by
+their position in that list, so **option order is part of the scoring**.
 
 ## Hard filters
 
-Filters run before scoring. A pair that fails any filter is excluded entirely.
+Both directions are checked. A missing answer skips that check.
 
-### Orientation compatibility (`filters/orientation.filter.ts`)
-
-Both directions must pass:
-
-| Person A | Person B gender | Compatible? |
-|---|---|---|
-| Straight (Male) | Female | ✅ |
-| Straight | Same gender | ❌ |
-| Gay (Male) | Male | ✅ |
-| Gay (Male) | Female | ❌ |
-| Lesbian (Female) | Female | ✅ |
-| Bisexual / Pansexual | Any | ✅ |
-| Asexual | Any | ✅ (other side's filter still applies) |
-| Unknown / missing | Any | ✅ pass-through |
-
-### Religion deal-breaker (`filters/religion.filter.ts`)
-
-If either applicant has `religion_deal_breaker = true` and their religions differ → reject.
-
-| A `religion_deal_breaker` | B `religion_deal_breaker` | Same religion? | Compatible? |
-|---|---|---|---|
-| `true` | any | ✅ | ✅ |
-| `true` | any | ❌ | ❌ |
-| `false` | `true` | ❌ | ❌ |
-| `false` | `false` | any | ✅ |
-
-Missing or blank `religion` → skip (pass-through). Comparison is case-insensitive.
-
-### Long-distance deal-breaker (`filters/location.filter.ts`)
-
-If either applicant has `open_to_long_distance = false` and they are in different cities → reject.
-
-| A `open_to_long_distance` | B `open_to_long_distance` | Same city? | Compatible? |
-|---|---|---|---|
-| `false` | any | ✅ | ✅ |
-| `false` | any | ❌ | ❌ |
-| `true` | `false` | ❌ | ❌ |
-| `true` | `true` | any | ✅ |
-
-Missing or blank `location` → skip (pass-through). Comparison is case-insensitive exact match on the stored string.
-
-### Age preferences (`filters/age.filter.ts`)
-
-Each applicant can express age constraints via three optional answers:
-
-| Field | Type | Meaning |
-|---|---|---|
-| `max_age_gap` | `number \| null` | Maximum age difference (years). `null` = no preference. |
-| `open_to_older` | `boolean \| null` | Allow partner older than self. Only shown/stored when `max_age_gap > 0`. |
-| `open_to_younger` | `boolean \| null` | Allow partner younger than self. Same condition. |
-
-**Hard exclusion rules** (either direction failing rejects the pair):
-
-1. `open_to_older = false` and partner is older → reject.
-2. `open_to_younger = false` and partner is younger → reject.
-3. Gap > `2 × max_age_gap` → hard outer limit, reject.
-4. `max_age_gap = null` → skip all checks for that applicant (no preference).
-5. Missing `birth_date` on either side → skip filter for that pair.
-
-**Age modifier** (soft multiplier, applied after weighted scoring):
-
-```
-gap = |age(A) - age(B)|
-
-gap ≤ max_gap         → modifier = 1.0   (no penalty)
-max_gap < gap ≤ 2×max_gap → modifier = cos((gap - max_gap) / max_gap × π/2)
-gap > 2×max_gap        → should be filtered; returns 0.0 defensively
-
-final_score = compatibility_score × min(A_modifier, B_modifier)
-```
-
-Bidirectional — the stricter (min) of both parties' modifiers is applied.
-
----
-
-## Scorer (`scorer.ts`)
-
-The single production scorer uses dense text embeddings for semantic comparison. There are no other algorithm variants.
-
-### Weights
-
-```typescript
-// matching/scoring/weights.ts
-export const WEIGHTS = {
-  numeric:               0.22,   // structured numeric preferences
-  lifestyle:             0.22,   // semantic lifestyle similarity
-  character_cross_match: 0.35,   // bidirectional character match
-  deal_breakers:         0.21,   // bidirectional deal-breaker penalty
-} as const;
-```
-
-### Score components
-
-| Component | Weight | How computed |
-|---|---|---|
-| Numeric compatibility | 0.22 | `cosine(numeric_vec_A, numeric_vec_B)` — structured fields |
-| Lifestyle similarity | 0.22 | `cosine(embed(profile_A), embed(profile_B))` |
-| Character cross-match | 0.35 | `(cosine(pref_A, profile_B) + cosine(pref_B, profile_A)) / 2` — bidirectional |
-| Deal-breaker penalty | 0.21 | `1 − (cosine(breaks_A, profile_B) + cosine(breaks_B, profile_A)) / 2` |
-| **× Age modifier** | ✦ | Multiplied onto the weighted sum — see above |
-
-**Numeric vector** (no text, exact encoding):
-```
-[rel_long_term, rel_short_term, open_to_long_distance, affection/10, religion_open]
-```
-
-**Embedding text composition (v2):**
-
-| Vector | Fields joined |
+| Filter | Excludes a pair when |
 |---|---|
-| `profile` | `lifestyle + " — " + vibe_words + " — " + work` |
-| `preference` | `preferred_character_traits + " — " + preferred_physical_traits + " — " + dream_first_date` |
-| `dealBreakers` | `deal_breakers` |
+| `orientation.filter.ts` | either person's orientation does not include the other's gender |
+| `age.filter.ts` | the gap is more than 2× either person's `age_gap`, or the partner is on the wrong side of their `age_direction` |
+| `religion.filter.ts` | either holds `religion_match = deal_breaker` and they do not share the same named religion |
+| `location.filter.ts` | they are in different cities and either is not open to long distance |
+| `children.filter.ts` | one answered `want` and the other `dont_want` |
+| `habits.filter.ts` | either holds `partner_smoking` / `partner_alcohol` = `deal_breaker` and the other does it at all |
 
-### Why semantic embeddings?
+Religion details: `other` and `prefer_not_to_say` never count as "the same religion". A deal breaker only
+applies when the holder's own religion is a named one, so nobody is left with zero candidates.
 
-| Pair | Bag-of-words | Embedding |
+## Score
+
+`final = (Σ weight × dimension) × ageModifier`, rounded to two decimals. Every component is symmetric and in
+[0, 1]. A missing, wrongly typed or unknown answer contributes a neutral 0.5 for that item, so legacy
+records and bad data lower confidence instead of breaking the run.
+
+`ordinalSim(x, y) = 1 − |index(x) − index(y)| ÷ (options − 1)`. A 1–5 agreement item scales to `(x − 1) ÷ 4`.
+
+| Dimension | Weight | How it is computed |
 |---|---|---|
-| "driven" vs "ambitious" | 0.00 | ~0.85 |
-| "funny" vs "humorous" | 0.00 | ~0.91 |
-| "gym" vs "fitness" | 0.00 | ~0.87 |
-| "spontaneous" vs "adventurous" | 0.00 | ~0.82 |
+| `values` | 0.25 | mean of three: shared `top_values` ÷ 3; `ordinalSim(religion_practice)`; religion fit |
+| `lifestyle` | 0.25 | mean of eight: `ordinalSim` of `social_energy`, `sleep_rhythm`, `activity_level`, `planning_style`, `money_style`, `opposite_gender_friends`; smoking fit; alcohol fit |
+| `connection` | 0.30 | 0.4 × attachment + 0.2 × conflict + 0.2 × `ordinalSim(physical_affection)` + 0.2 × `ordinalSim(contact_frequency)` |
+| `personality` | 0.10 | mean similarity of the four agreement items |
+| `goals` | 0.10 | mean of relationship-goal fit and children fit |
 
-### `prepare()` — embedding batching
+- **Religion fit** (each direction, then averaged): `fine` → 1; `rather_share` / `deal_breaker` → 1 with the
+  same named religion, else 0.
+- **Habit fit** (each direction, then averaged): partner preference `fine` → 1; otherwise 1 / 0.5 / 0 for the
+  other person's never / sometimes / regularly.
+- **Attachment**: `1 − max(anxA × avoB, anxB × avoA)`. Pair-level only — the anxious-with-avoidant
+  combination is penalised; nobody is scored down against everyone for their own answers.
+- **Conflict** and **children** fit are small symmetric tables in `scorer.ts`.
+- **Relationship-goal fit** is the cosine of each answer's `[long-term, short-term]` affinity.
+- **Age modifier**: 1 within the preferred gap, cosine decay to 0 at twice the gap.
 
-Running the embedding API inside `score()` would cost one call per pair:
+The breakdown stored on a match has the keys `values`, `lifestyle`, `connection`, `personality`, `goals`
+and `age_modifier`. Applicants are only shown `values`, `lifestyle` and `goals`
+(`APPLICANT_BREAKDOWN_KEYS` in `services/match-state.service.ts`): the other two are computed from private
+answers and could be worked backwards.
 
-```
-50 applicants × 49 pairs × 3 text fields = 7,350 API calls per run
-```
+## Thresholds
 
-Instead, `prepare()` runs once and batch-embeds all applicants:
+Rule-based scores sit lower and closer together than the LLM-rerank scores this replaced. On the seeded dev
+pool (100 applicants) the median proposal scores 0.57 and the best 0.83.
 
-```
-50 applicants × 3 text fields = 3 batch requests (150 embeddings total)
-```
+| Constant | Value | Meaning |
+|---|---|---|
+| `PORTAL_MIN_SCORE` | 0.5 | below this a proposal is never shown, and does not promote `applied → matched` |
+| `DEFAULT_SCORE_THRESHOLD` | 0.6 | a new applicant's own slider setting (range 0.5–1.0) |
 
-Embeddings are **persisted** to the `embeddings` MongoDB collection at form-submission time (fire-and-forget). In steady state `prepare()` loads from the DB — zero API calls.
+## Where the numbers come from
 
-**Stale detection:** embeddings are recomputed automatically when:
-- `EMBEDDING_MODEL` changes (different vector space).
-- `textVersion` in the stored document differs from `CURRENT_TEXT_VERSION` (text composition changed).
+The weights, the conflict table and the thresholds are reasoned starting points, **not fitted to outcome
+data**. Match outcomes (`success` / `failed`) are stored and can be used to tune them. The attachment and
+personality items are written for Ons and modelled on ECR-S (Wei et al., 2007) and BFI-10 (Rammstedt & John,
+2007); they are not those validated scales.
 
-Current `textVersion = 2` (added `work` to profile, `dream_first_date` to preference in v1.1.0).
+## Changing things
 
----
+- **A question or option**: edit `questionnaire/questions.ts`, add the strings to all four locale files
+  (a test fails until you do), bump the questionnaire version and reseed.
+- **A weight**: `scoring/weights.ts` — they must sum to 1.0.
+- **A new dimension or filter**: add it to `scorer.ts` or `filters/`, wire a filter into `applyFilters` in
+  `engine.ts`, and add the breakdown label to the locale files.
 
-## LLM rerank (`../services/match-rerank.service.ts`)
+## OpenAI
 
-The embedding scorer above is structurally incapable of producing a score near 100%, even for a genuinely great pair. Two geometric effects compound: **embedding anisotropy** (learned text embeddings cluster in a narrow cone, so even unrelated texts produce a baseline cosine of ~0.6–0.75) and the **inverted deal-breaker term** (`1 - cosine(...)`), which caps near 0.25–0.4 even for a perfect non-overlap since it's an inversion stacked on that already-inflated baseline. Net effect: a realistic ceiling around ~0.85, not 1.0.
-
-Full write-up — the diagnosis with citations, six alternatives considered and why each was rejected, the prompt/caching/failure-handling design, and what has/hasn't been empirically validated yet: [`docs/llm-listwise-rerank-matching-score.md`](../../../docs/llm-listwise-rerank-matching-score.md).
-
-The fix keeps the embedding scorer exactly as documented above for cheap O(N) shortlisting, then replaces what's *displayed* with an LLM judgment:
-
-- **One LLM call per applicant**, covering that applicant's entire shortlist at once (listwise, not pairwise/pointwise — RankGPT/Pairwise-Ranking-Prompting-style). Listwise framing gives the model real comparison points instead of guessing against an abstract 0–100 scale, which avoids the central-tendency bias LLMs show when scoring in isolation.
-- Scored against an explicit **anchored rubric** (90-100 / 70-89 / 50-69 / 30-49 / 0-29 with a one-line description each) via OpenAI Structured Outputs (`responseSchema` in [`ai.service.ts`](../services/ai.service.ts)), at low temperature (~0.3) — a grounded judgment call, not creative writing.
-- **Cached** per applicant in the `match_reranks` collection, keyed by a hash of the shortlist's composition (candidate IDs + their embedding scores) plus the chat model — invalidates automatically if the pool or ranking shifts, mirrors the staleness pattern in `embedding.service.ts`.
-- **Never blocks the pipeline.** On any failure (empty/malformed LLM response, a candidate missing from the response, an invalid score, cache read/write errors) it falls back to that candidate's embedding score individually — a partial LLM response degrades only the affected candidates, not the whole shortlist.
-
-```typescript
-// services/match-rerank.service.ts
-function rerankCandidates(
-  target: ApplicantDoc,
-  candidates: { doc: ApplicantDoc; embeddingScore: number }[],
-): Promise<{ applicantId: string; score: number; reasoning: string }[]>
-```
-
-`engine.ts`'s `applyRerank()` wires this in: shortlist the embedding-ranked list to `max(topN, 15)`, call `rerankCandidates`, re-sort by the result, slice to `topN`. `runFullMatchingPass()` batches this at a concurrency of 5 (not fully sequential — see the `RERANK_CONCURRENCY` comment in `engine.ts`) so a full pass over N applicants doesn't take N × 15s in the worst case.
-
----
-
-## Embedding provider (`embeddings/provider.ts`)
-
-```typescript
-interface EmbeddingProvider {
-  name: string;
-  model: string;
-  embed(text: string): Promise<number[]>;
-  embedBatch(texts: string[]): Promise<number[][]>;
-}
-```
-
-Matching always embeds via the OpenAI API (`OPENAI_API_KEY`, `EMBEDDING_MODEL` — default `text-embedding-3-small`). There is deliberately no local/self-hosted option — matching is the one place in this codebase where output quality and consistency matter more than avoiding API cost. A future non-matching feature that wants a local model gets its own client rather than a branch of this one.
-
-> **Why not Claude / Anthropic?** Anthropic does not offer a public embeddings API.
-
----
-
-## Score output
-
-`scorer.ts`'s raw output (internal, pre-rerank):
-
-```typescript
-interface MatchScore {
-  score: number;                     // composite weighted score in [0, 1]
-  breakdown: Record<string, number>; // named per-component scores + age_modifier
-}
-```
-
-Breakdown keys: `numeric_compatibility`, `lifestyle_similarity`, `character_cross_match`, `character_a_wants_b`, `character_b_wants_a`, `deal_breaker_penalty`, `age_modifier`. All values are rounded to two decimal places.
-
-`engine.ts`'s `getCandidates()`/`runFullMatchingPass()` return the post-rerank shape — `breakdown` here is still the embedding-stage breakdown above (kept for debugging), but `score` is now the LLM-derived number:
-
-```typescript
-interface RankedCandidate {
-  alias: string;
-  applicantId: string;
-  score: number;            // displayed score (0-1) — from the LLM rerank stage,
-                             // or the embedding score unchanged if reranking failed
-  breakdown: Record<string, number>;
-  embeddingScore: number;   // the pre-rerank embedding-cosine score — debug/transparency only
-  llmReasoning: string;     // short grounded explanation from the rerank stage; "" if unavailable
-}
-```
-
-This `score` field is what flows unchanged through `proposals.ts` → `match.service.ts` → `MatchDoc.score` → the frontend — only what computes it changed when the rerank stage was added. `llmReasoning` flows the same path (`CoupleProposal.llmReasoning` → `MatchDoc.llmReasoning` → `ApplicantMatchView.llmReasoning`) and is rendered as a pull-quote at the top of `MatchCard.tsx` once a candidate becomes an actual proposed match — `embeddingScore` does not flow anywhere past `RankedCandidate`; it's debug/transparency only for the admin candidate-list view.
-
----
-
-## Extending the pipeline
-
-**Add a new hard filter:**
-1. Create `filters/my-filter.ts` exporting a `isCompatible(a, b): boolean` function.
-2. Call it in `engine.ts` inside `applyFilters()`.
-
-**Change scoring weights:**
-- Edit `scoring/weights.ts`. The values must sum to 1.0.
-
-**Change embedded text composition:**
-- Update `buildTexts()` in `services/embedding.service.ts`.
-- Bump `CURRENT_TEXT_VERSION` in the same file (triggers automatic re-embed for all applicants on next run).
-
-**Add a second scorer:** the engine calls `prepare()` and `score()` directly from `scorer.ts`. To swap or A/B-test a different algorithm, change those imports in `engine.ts`.
+Matching never calls OpenAI. It is still used for match summaries and ice-breakers, which receive only the
+answers marked `shared` in the question definitions; the optional free-text note goes to the ice-breaker
+prompt only, which runs after a contact request has already revealed the Instagram handle.
