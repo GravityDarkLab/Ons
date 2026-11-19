@@ -29,7 +29,7 @@ info:
     - Admin endpoints: 200 requests per minute per IP
     - Profile login: 10 requests per minute per IP
     - Profile endpoints: 100 requests per minute per IP
-  version: 1.2.0
+  version: 2.0.0
   contact:
     name: Admin
 
@@ -165,135 +165,215 @@ components:
     # ── Form ──────────────────────────────────────────────────────────────────
     FormAnswers:
       type: object
+      description: |
+        Answers keyed by question id. Generated from `api/src/questionnaire/questions.ts`,
+        which is the single source of truth — option order is meaningful (ordered answers
+        are compared by position). Answers marked **shared** may be shown to a match and
+        sent to OpenAI; every other answer is private to the applicant and admins.
       required:
         - first_name
         - last_name
         - instagram_handle
         - location
         - birth_date
-        - work
         - gender_identity
         - sexual_orientation
         - religion
-        - vibe_words
-        - lifestyle
+        - religion_practice
         - relationship_type
+        - wants_children
+        - smoking
+        - partner_smoking
+        - alcohol
+        - partner_alcohol
+        - religion_match
         - open_to_long_distance
-        - preferred_physical_traits
-        - preferred_character_traits
-        - deal_breakers
-        - okay_with_opposite_gender_friends
-        - religion_deal_breaker
-        - physical_affection_importance
-        - dream_first_date
+        - age_gap
+        - age_direction
+        - top_values
+        - social_energy
+        - sleep_rhythm
+        - activity_level
+        - planning_style
+        - money_style
+        - opposite_gender_friends
+        - attach_anxiety_1
+        - attach_anxiety_2
+        - attach_avoidance_1
+        - attach_avoidance_2
+        - conflict_style
+        - physical_affection
+        - contact_frequency
+        - p_calm
+        - p_trust
+        - p_thorough
+        - p_open
         - disclaimer_agreed
       properties:
         first_name:
           type: string
-          minLength: 1
-          maxLength: 50
-          pattern: "^[\\p{L}\\p{M}'\\- ]+$"
-          example: "Jane"
-          description: "Sensitive — stored encrypted alongside the Instagram handle, never appears in matching profile."
+          description: "First name — Encrypted, stored separately."
         last_name:
           type: string
-          minLength: 1
-          maxLength: 50
-          pattern: "^[\\p{L}\\p{M}'\\- ]+$"
-          example: "Doe"
-          description: "Sensitive — stored encrypted alongside the Instagram handle, never appears in matching profile."
+          description: "Last name — Encrypted, stored separately."
         instagram_handle:
           type: string
-          pattern: '^@?[\w.]+$'
-          example: "@example_user"
-          description: "Sensitive — stored encrypted, never appears in matching profile."
+          description: "Instagram handle — Encrypted, stored separately."
         location:
           type: string
-          example: "Paris, France"
+          description: "Where are you based? — Shared with matches."
         birth_date:
           type: string
           format: date
-          pattern: '^\d{4}-\d{2}-\d{2}$'
-          example: "1997-06-15"
-          description: "YYYY-MM-DD. Applicant must be between 18 and 120 years old."
-        height_cm:
-          type: integer
-          minimum: 100
-          maximum: 250
-          example: 178
-        work:
-          type: string
-          example: "Software Engineer"
+          description: "Birth date — Private."
         gender_identity:
           type: string
-          enum: [Male, Female, Non-binary, Genderqueer, "Prefer not to say", Other]
-          example: "Male"
+          enum: ["Male", "Female", "Non-binary", "Other"]
+          description: "How do you identify? — Private."
         sexual_orientation:
           type: string
-          enum: [Straight, Gay, Lesbian, Bisexual, Pansexual, Asexual, "Prefer not to say", Other]
-          example: "Straight"
+          enum: ["Straight", "Gay", "Bisexual", "Other"]
+          description: "Who are you attracted to? — Private."
         religion:
           type: string
-          example: "Agnostic"
-        vibe_words:
+          enum: ["muslim", "christian", "jewish", "spiritual", "not_religious", "other", "prefer_not_to_say"]
+          description: "What is your religion? — Shared with matches."
+        religion_practice:
           type: string
-          example: "curious, calm, funny"
-          description: "Three words describing your vibe."
-        lifestyle:
-          type: string
-          example: "Social drinker, non-smoker"
+          enum: ["not_at_all", "a_little", "quite_a_lot", "central"]
+          description: "How much is faith part of your daily life? — Shared with matches."
         relationship_type:
           type: string
           enum: ["Long Term", "Short Term", "Open to Both", "Casual", "Not Sure"]
-          example: "Long Term"
+          description: "What are you looking for? — Shared with matches."
+        wants_children:
+          type: string
+          enum: ["want", "open", "dont_want", "not_sure"]
+          description: "Do you want children? — Shared with matches."
+        smoking:
+          type: string
+          enum: ["never", "sometimes", "regularly"]
+          description: "Do you smoke? — Shared with matches."
+        partner_smoking:
+          type: string
+          enum: ["fine", "rather_not", "deal_breaker"]
+          description: "A partner who smokes is… — Private."
+        alcohol:
+          type: string
+          enum: ["never", "sometimes", "regularly"]
+          description: "Do you drink alcohol? — Shared with matches."
+        partner_alcohol:
+          type: string
+          enum: ["fine", "rather_not", "deal_breaker"]
+          description: "A partner who drinks is… — Private."
+        religion_match:
+          type: string
+          enum: ["fine", "rather_share", "deal_breaker"]
+          description: "A partner with a different faith is… — Private."
         open_to_long_distance:
           type: boolean
-          example: true
-        max_age_gap:
-          type: integer
-          minimum: 0
-          maximum: 40
-          nullable: true
-          example: 8
-          description: "Maximum age gap (in years) the applicant is comfortable with. `null` means no preference — the age filter is disabled for this applicant."
-        open_to_older:
-          type: boolean
-          nullable: true
-          example: false
-          description: "Open to a partner older than themselves. Only relevant when `max_age_gap > 0`; stored as `null` otherwise."
-        open_to_younger:
-          type: boolean
-          nullable: true
-          example: true
-          description: "Open to a partner younger than themselves. Only relevant when `max_age_gap > 0`; stored as `null` otherwise."
-        preferred_physical_traits:
+          description: "Are you open to long distance? — Private."
+        age_gap:
           type: string
-          example: "Athletic, tall"
-        preferred_character_traits:
+          enum: ["3", "5", "10", "any"]
+          description: "Biggest age gap you are comfortable with? — Private."
+        age_direction:
           type: string
-          example: "Ambitious, kind, funny"
-        deal_breakers:
+          enum: ["either", "older", "younger"]
+          description: "Older or younger? — Private."
+        top_values:
+          type: array
+          minItems: 3
+          maxItems: 3
+          uniqueItems: true
+          items:
+            type: string
+            enum: ["family", "faith", "career", "adventure", "stability", "growth", "helping", "fun"]
+          description: "Pick the three that matter most to you — Shared with matches."
+        social_energy:
           type: string
-          example: "Dishonesty, smoking"
-        okay_with_opposite_gender_friends:
-          type: boolean
-          example: true
-        religion_deal_breaker:
-          type: boolean
-          example: false
-        physical_affection_importance:
+          enum: ["home", "small_circle", "mix", "big_crowd"]
+          description: "Your ideal weekend? — Shared with matches."
+        sleep_rhythm:
+          type: string
+          enum: ["early", "between", "night"]
+          description: "Early bird or night owl? — Shared with matches."
+        activity_level:
+          type: string
+          enum: ["rarely", "weekly", "most_days"]
+          description: "How active are you? — Shared with matches."
+        planning_style:
+          type: string
+          enum: ["plan_all", "mostly_plan", "mostly_spontaneous", "spontaneous"]
+          description: "Plans or spontaneity? — Shared with matches."
+        money_style:
+          type: string
+          enum: ["saver", "between", "spender"]
+          description: "With money, you are more of a… — Shared with matches."
+        opposite_gender_friends:
+          type: string
+          enum: ["fine", "depends", "not_ok"]
+          description: "A partner having close friends of the opposite gender is… — Private."
+        attach_anxiety_1:
           type: integer
           minimum: 1
-          maximum: 10
-          example: 8
-          description: "Scale from 1 (low) to 10 (very important)."
-        dream_first_date:
+          maximum: 5
+          description: "I worry a partner won't care about me as much as I care about them. — Private."
+        attach_anxiety_2:
+          type: integer
+          minimum: 1
+          maximum: 5
+          description: "I need a lot of reassurance that I am loved. — Private."
+        attach_avoidance_1:
+          type: integer
+          minimum: 1
+          maximum: 5
+          description: "I prefer not to depend on a partner. — Private."
+        attach_avoidance_2:
+          type: integer
+          minimum: 1
+          maximum: 5
+          description: "I get uncomfortable when someone wants to be very close. — Private."
+        conflict_style:
           type: string
-          example: "Coffee at a bookstore, then a walk by the river"
+          enum: ["talk_now", "cool_off", "let_go", "avoid"]
+          description: "When you disagree with a partner, you usually… — Shared with matches."
+        physical_affection:
+          type: string
+          enum: ["not_important", "a_little", "quite", "essential"]
+          description: "How important is physical affection to you? — Shared with matches."
+        contact_frequency:
+          type: string
+          enum: ["all_day", "few_times", "once", "when_needed"]
+          description: "How often do you like to be in touch? — Shared with matches."
+        p_calm:
+          type: integer
+          minimum: 1
+          maximum: 5
+          description: "I stay calm under stress. — Private."
+        p_trust:
+          type: integer
+          minimum: 1
+          maximum: 5
+          description: "I tend to trust people easily. — Private."
+        p_thorough:
+          type: integer
+          minimum: 1
+          maximum: 5
+          description: "I finish what I start. — Private."
+        p_open:
+          type: integer
+          minimum: 1
+          maximum: 5
+          description: "I love trying new things. — Private."
+        note_to_match:
+          type: string
+          maxLength: 280
+          description: "One thing you would love a match to know? — Private."
         disclaimer_agreed:
           type: boolean
           enum: [true]
-          description: "Must be exactly `true`. User consents to data collection for matchmaking only."
+          description: "I agree that my data will be used solely for the purpose of this matching exercise and will be handled with care. — Private."
 
     QuestionnaireQuestion:
       type: object
@@ -318,8 +398,22 @@ components:
         options:
           type: array
           items:
-            type: string
-          description: "Only present for select/multiselect questions."
+            type: object
+            required: [value, label]
+            properties:
+              value:
+                type: string
+                description: "What gets stored. Language-independent; the frontend translates it."
+              label:
+                type: string
+                description: "English label (used in OpenAI prompts and as an admin fallback)."
+          description: "Only present for select/multiselect questions. Order is meaningful — ordered answers are compared by position."
+        maxSelect:
+          type: integer
+          description: "multiselect only: exactly this many options must be chosen."
+        shared:
+          type: boolean
+          description: "Opt-in, default-deny: only shared answers may be shown to a match or sent to OpenAI."
         min:
           type: number
           description: "Only present for number/range questions."
@@ -337,7 +431,7 @@ components:
           example: "identity"
         title:
           type: string
-          example: "Your Identity"
+          example: "About you"
         order:
           type: integer
         questions:
@@ -359,7 +453,7 @@ components:
           properties:
             version:
               type: string
-              example: "1.2.0"
+              example: "2.0.0"
             name:
               type: string
               example: "Matching Form v1"
@@ -543,11 +637,11 @@ components:
         scoreThreshold:
           type: number
           format: float
-          minimum: 0.6
+          minimum: 0.5
           maximum: 1.0
-          default: 0.8
-          example: 0.8
-          description: "Minimum score a match must reach to appear in the portal. Clamped to [0.6, 1.0]."
+          default: 0.6
+          example: 0.6
+          description: "Minimum score a match must reach to appear in the portal. Clamped to [0.5, 1.0]."
         createdAt:
           type: string
           format: date-time
@@ -639,16 +733,26 @@ components:
           type: object
           additionalProperties:
             type: number
-          description: "Per-dimension scores (0–1) from the matching algorithm, keyed by dimension name."
-          example: { numeric_compatibility: 0.9, lifestyle_similarity: 0.7 }
+          description: |
+            The score bars an applicant may see: `values` and `lifestyle` computed from
+            **shared answers only**, and `goals`. `connection` and `personality` are never
+            included — they derive from private answers and could be worked backwards.
+          example: { values: 0.83, lifestyle: 0.8, goals: 1 }
         partnerProfile:
           type: object
           additionalProperties: true
           description: |
-            Partner's public questionnaire answers (location, age, work, vibe words, …).
-            Identity fields are stored encrypted in a separate collection and are never
-            part of this object; consent checkboxes are filtered out.
-          example: { location: "Paris, France", age: 27, work: "Student" }
+            The partner's **shared** answers only (allow-list, see `FormAnswers`), plus
+            `age` derived from the birth date. Identity, birth date, partner preferences,
+            attachment and personality answers and the free-text note are never included.
+          example: { location: "Paris, France", age: 27, religion: "muslim", smoking: "never", top_values: ["family", "growth", "fun"] }
+        partnerNote:
+          type: string
+          description: |
+            The partner's optional free-text note. Only present once `dating` — the same
+            gate as the identity reveal. It is free text, so before that point it could
+            carry a handle or phone number around the mutual-reveal rule.
+          example: "I make a great couscous"
         partnerInstagram:
           type: string
           description: |
@@ -803,7 +907,7 @@ components:
           example: "Blue Falcon"
         questionnaireVersion:
           type: string
-          example: "1.2.0"
+          example: "2.0.0"
         answers:
           type: object
           description: "All non-sensitive answers. instagram_handle, first_name, and last_name are never present — they live encrypted in the identities collection."
@@ -811,9 +915,11 @@ components:
           example:
             location: "Paris, France"
             birth_date: "1997-06-15"
-            height_cm: 178
-            work: "Software Engineer"
+            religion: "muslim"
             relationship_type: "Long Term"
+            wants_children: "want"
+            top_values: ["family", "growth", "fun"]
+            attach_anxiety_1: 2
         status:
           $ref: '#/components/schemas/ApplicantStatus'
         submissionIp:
@@ -988,31 +1094,34 @@ components:
     MatchScoreBreakdown:
       type: object
       description: |
-        Per-dimension scores from the embedding-cosine scorer, each in [0, 1].
+        Per-dimension scores from the rule-based scorer (`rules-v1`), each in [0, 1].
+        Deterministic: the same two answer sets always give the same numbers.
 
-        Fields:
-        - `numeric_compatibility` — structured preference alignment (rel type, long distance, affection, religion openness)
-        - `lifestyle_similarity` — semantic cosine similarity of lifestyle + vibe + work embeddings
-        - `character_cross_match` — bidirectional: avg of (A wants B) and (B wants A) character match
-        - `character_a_wants_b` — how well B's profile matches A's stated character preferences
-        - `character_b_wants_a` — how well A's profile matches B's stated character preferences
-        - `deal_breaker_penalty` — 1 minus deal-breaker overlap (higher = fewer deal-breakers triggered)
-        - `age_modifier` — soft age-gap multiplier in [0, 1]; 1.0 means no penalty; values below 1.0
-          indicate the gap falls between one and two times `max_age_gap`. The final composite score
-          equals the weighted sum multiplied by `min(A_age_modifier, B_age_modifier)`.
+        - `values` (weight 0.25) — shared top values, faith in daily life, faith preference
+        - `lifestyle` (0.25) — social energy, sleep, activity, planning, money, opposite-gender friends, smoking fit, alcohol fit
+        - `connection` (0.30) — attachment pairing, conflict style, physical affection, contact frequency
+        - `personality` (0.10) — four agreement items
+        - `goals` (0.10) — relationship goal and children
+        - `age_modifier` — multiplier: 1 within both preferred gaps, decaying to 0 at twice the gap
+        - `values_shared`, `lifestyle_shared` — the same dimensions from shared answers only;
+          these are what applicants see
+
+        `score = (Σ weight × dimension) × age_modifier`. A missing or unknown answer
+        counts as a neutral 0.5 for that item.
       additionalProperties:
         type: number
         format: float
         minimum: 0
         maximum: 1
       example:
-        numeric_compatibility: 0.91
-        lifestyle_similarity: 0.78
-        character_cross_match: 0.85
-        character_a_wants_b: 0.88
-        character_b_wants_a: 0.82
-        deal_breaker_penalty: 0.94
-        age_modifier: 0.95
+        values: 0.89
+        lifestyle: 0.81
+        connection: 0.92
+        personality: 0.75
+        goals: 1
+        age_modifier: 1
+        values_shared: 0.83
+        lifestyle_shared: 0.8
 
     RankedCandidate:
       type: object
@@ -1030,7 +1139,7 @@ components:
           minimum: 0
           maximum: 1
           example: 0.83
-          description: "Weighted composite score across all dimensions."
+          description: "Weighted sum of the five dimensions, times the age modifier."
         breakdown:
           $ref: '#/components/schemas/MatchScoreBreakdown'
 
@@ -1054,19 +1163,12 @@ components:
       properties:
         algorithm:
           type: string
-          enum: [embedding-cosine]
-          default: embedding-cosine
+          enum: [rules-v1]
+          default: rules-v1
           description: |
-            The only supported algorithm is `embedding-cosine`.
-
-            Dense text embeddings are used for semantic matching: "driven" ≈ "ambitious" ≈
-            "ehrgeizig" ≈ "طموح" because they map to nearby vectors in embedding space.
-            Supports EN / DE / FR / AR and any other language supported by the configured
-            embedding model.
-
-            Requires `OPENAI_API_KEY` — matching always embeds via the OpenAI API.
-            A `prepare()` step batch-embeds all applicants before pairwise scoring — O(N) API
-            calls, not O(N²). Embeddings are persisted to the DB; subsequent runs reuse them.
+            The only algorithm is `rules-v1`: hard filters, then a deterministic
+            rule-based score over the tap answers. No network calls, no model —
+            OpenAI is used only for match summaries and ice-breakers.
 
     MatchingRunResponse:
       type: object
@@ -1077,8 +1179,8 @@ components:
           enum: [true]
         algorithm:
           type: string
-          enum: [embedding-cosine]
-          example: "embedding-cosine"
+          enum: [rules-v1]
+          example: "rules-v1"
         totalApplicants:
           type: integer
           description: "Number of active applicants included in this pass."
@@ -1247,29 +1349,46 @@ paths:
             schema:
               $ref: '#/components/schemas/FormSubmissionRequest'
             example:
-              questionnaireVersion: "1.2.0"
+              questionnaireVersion: "2.0.0"
               answers:
                 first_name: "Jane"
                 last_name: "Doe"
                 instagram_handle: "@example_user"
                 location: "Paris, France"
                 birth_date: "1997-06-15"
-                height_cm: 178
-                work: "Software Engineer"
-                gender_identity: "Male"
+                gender_identity: "Female"
                 sexual_orientation: "Straight"
-                religion: "Agnostic"
-                vibe_words: "curious, calm, funny"
-                lifestyle: "Social drinker, non-smoker"
+                religion: "muslim"
+                religion_practice: "a_little"
                 relationship_type: "Long Term"
+                wants_children: "want"
+                smoking: "never"
+                partner_smoking: "rather_not"
+                alcohol: "never"
+                partner_alcohol: "fine"
+                religion_match: "rather_share"
                 open_to_long_distance: true
-                preferred_physical_traits: "Athletic, tall"
-                preferred_character_traits: "Ambitious, kind, funny"
-                deal_breakers: "Dishonesty, smoking"
-                okay_with_opposite_gender_friends: true
-                religion_deal_breaker: false
-                physical_affection_importance: 8
-                dream_first_date: "Coffee at a bookstore, then a walk by the river"
+                age_gap: "5"
+                age_direction: "either"
+                top_values: ["family", "growth", "fun"]
+                social_energy: "mix"
+                sleep_rhythm: "early"
+                activity_level: "weekly"
+                planning_style: "mostly_plan"
+                money_style: "between"
+                opposite_gender_friends: "fine"
+                attach_anxiety_1: 2
+                attach_anxiety_2: 2
+                attach_avoidance_1: 1
+                attach_avoidance_2: 2
+                conflict_style: "cool_off"
+                physical_affection: "quite"
+                contact_frequency: "few_times"
+                p_calm: 4
+                p_trust: 3
+                p_thorough: 4
+                p_open: 4
+                note_to_match: "I make a great couscous"
                 disclaimer_agreed: true
       responses:
         '201':
@@ -1952,8 +2071,9 @@ paths:
       summary: Get top match candidates for an applicant
       operationId: getCandidates
       description: |
-        Returns the top N candidates scored against the given applicant using the
-        embedding-cosine algorithm. Returns aliases and scores only — no PII.
+        Returns the top N candidates scored against the given applicant with the
+        rule-based scorer, including the full per-dimension breakdown (admins see
+        `connection` and `personality`). Returns aliases and scores only — no PII.
       parameters:
         - name: applicantId
           in: path
@@ -1984,13 +2104,12 @@ paths:
                     applicantId: "64f1a2b3c4d5e6f7a8b9c0d3"
                     score: 0.83
                     breakdown:
-                      numeric_compatibility: 0.91
-                      lifestyle_similarity: 0.78
-                      character_cross_match: 0.85
-                      character_a_wants_b: 0.88
-                      character_b_wants_a: 0.82
-                      deal_breaker_penalty: 0.94
-                      age_modifier: 1.0
+                      values: 0.89
+                      lifestyle: 0.81
+                      connection: 0.92
+                      personality: 0.75
+                      goals: 1
+                      age_modifier: 1
         '400':
           description: Invalid applicant ID
           content:
@@ -2048,7 +2167,7 @@ paths:
                 success: true
                 data:
                   at: "2026-06-10T09:03:55.643Z"
-                  algorithm: "embedding-cosine"
+                  algorithm: "rules-v1"
                   totalApplicants: 97
                   couplesProposed: 667
                   durationMs: 25
@@ -2069,15 +2188,16 @@ paths:
         `applicantId → top 10 ranked candidates`. Computationally
         O(n²) — intended for offline/scheduled use, not real-time.
 
-        **Four hard pre-filters run before any scoring** (pairs that fail are never scored):
-        1. **Orientation** — incompatible sexual orientations are excluded.
-        2. **Age** — `open_to_older=false`/`open_to_younger=false` vetoes, plus outer gap limit.
-        3. **Religion** — if either person has `religion_deal_breaker=true` and religions differ → excluded.
-        4. **Long distance** — if either person has `open_to_long_distance=false` and locations differ → excluded.
+        **Six hard filters run before any scoring** (pairs that fail are never scored):
+        1. **Orientation** — either person's orientation excludes the other's gender.
+        2. **Age** — the gap is more than twice either person's `age_gap`, or the partner is on the wrong side of their `age_direction`.
+        3. **Religion** — a holder of `religion_match = deal_breaker` with a named religion, and the two do not share that religion.
+        4. **Long distance** — different cities and either person is not open to long distance.
+        5. **Children** — one wants children and the other does not.
+        6. **Habits** — `partner_smoking` / `partner_alcohol` = `deal_breaker` and the other person does it at all.
 
-        Embeddings are loaded from the DB (written at form submission time).
-        Only missing or stale embeddings trigger API calls — in steady state
-        this is O(1) extra work. Stale = wrong model or outdated `textVersion`.
+        The remaining pairs are scored by the deterministic rule-based scorer — see
+        `MatchScoreBreakdown`. No network calls.
       requestBody:
         required: true
         content:
@@ -2085,7 +2205,7 @@ paths:
             schema:
               $ref: '#/components/schemas/MatchingRunRequest'
             example:
-              algorithm: "embedding-cosine"
+              algorithm: "rules-v1"
       responses:
         '200':
           description: Full matching results
@@ -2095,7 +2215,7 @@ paths:
                 $ref: '#/components/schemas/MatchingRunResponse'
               example:
                 success: true
-                algorithm: "embedding-cosine"
+                algorithm: "rules-v1"
                 totalApplicants: 42
                 durationMs: 8450
                 results:
@@ -2104,13 +2224,12 @@ paths:
                       applicantId: "64f1a2b3c4d5e6f7a8b9c0d3"
                       score: 0.83
                       breakdown:
-                        numeric_compatibility: 0.91
-                        lifestyle_similarity: 0.78
-                        character_cross_match: 0.85
-                        character_a_wants_b: 0.88
-                        character_b_wants_a: 0.82
-                        deal_breaker_penalty: 0.94
-                        age_modifier: 1.0
+                        values: 0.89
+                        lifestyle: 0.81
+                        connection: 0.92
+                        personality: 0.75
+                        goals: 1
+                        age_modifier: 1
         '401':
           $ref: '#/components/responses/Unauthorized'
         '403':
@@ -2277,7 +2396,7 @@ paths:
                   applicantId: "64f1a2b3c4d5e6f7a8b9c0d1"
                   alias: "Blue Falcon"
                   status: "matched"
-                  scoreThreshold: 0.8
+                  scoreThreshold: 0.6
                   createdAt: "2026-06-01T12:00:00.000Z"
         '401':
           $ref: '#/components/responses/Unauthorized'
@@ -2323,7 +2442,8 @@ paths:
                     location: "Paris, France"
                     birth_date: "1997-06-15"
                     gender_identity: "Female"
-                    work: "Student"
+                    smoking: "never"
+                    top_values: ["family", "growth", "fun"]
         '401':
           $ref: '#/components/responses/Unauthorized'
         '404':
@@ -2345,8 +2465,8 @@ paths:
         `disclaimer_agreed` are rejected — changing the Instagram handle
         requires contacting an admin. `birth_date` and `gender_identity` are
         also rejected — these identity facts can only be changed by an admin.
-        Embeddings are refreshed in the background so the next matching run
-        uses the updated answers.
+        The next matching run uses the updated answers. Omitting the optional
+        `note_to_match` clears it.
       requestBody:
         required: true
         content:
@@ -2366,7 +2486,8 @@ paths:
             example:
               answers:
                 location: "Paris, France"
-                work: "Student"
+                smoking: "sometimes"
+                top_values: ["family", "adventure", "fun"]
       responses:
         '200':
           description: Answers updated
@@ -2416,10 +2537,10 @@ paths:
           schema:
             type: number
             format: float
-            minimum: 0.6
+            minimum: 0.5
             maximum: 1.0
-            default: 0.8
-          description: "Minimum score (clamped to [0.6, 1.0]). Defaults to the applicant's saved threshold."
+            default: 0.6
+          description: "Minimum score (clamped to [0.5, 1.0]). Defaults to the applicant's saved threshold."
         - name: limit
           in: query
           schema:
@@ -2546,6 +2667,8 @@ paths:
           responding applicant (the target) so the UI can show it without
           waiting for the next `GET /profile/matches` call; both parties will
           also see `partnerInstagram`/`partnerFullName` on every subsequent call.
+        - The initiator's optional note (`partnerNote`) becomes visible to the
+          target at the same moment and is returned here too.
 
         **Decline (`accept: false`):**
         - Match → `declined`
@@ -2585,7 +2708,7 @@ paths:
                     enum: [true]
                   data:
                     type: object
-                    required: [partnerInstagram, partnerFullName]
+                    required: [partnerInstagram, partnerFullName, partnerNote]
                     properties:
                       partnerInstagram:
                         type: string
@@ -2597,11 +2720,17 @@ paths:
                         nullable: true
                         description: "The initiator's full name, revealed alongside the handle. `null` on decline or if no name is on record."
                         example: "Alex Rivera"
+                      partnerNote:
+                        type: string
+                        nullable: true
+                        description: "The initiator's optional free-text note, now visible because the match is mutual. `null` on decline or if they wrote none."
+                        example: "I make a great couscous"
               example:
                 success: true
                 data:
                   partnerInstagram: "@horizon.swift"
                   partnerFullName: "Alex Rivera"
+                  partnerNote: "I make a great couscous"
         '401':
           $ref: '#/components/responses/Unauthorized'
         '403':
@@ -3010,7 +3139,7 @@ paths:
       description: |
         Immediately and irreversibly deletes the authenticated applicant's
         account, bypassing the 180-day grace period:
-        - The applicant document, identity record, and embeddings are deleted
+        - The applicant document and identity record are deleted
         - Any matches involving the applicant are removed
         - An audit log entry is written before deletion
         - Clears the `ons_applicant_session` cookie

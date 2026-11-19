@@ -789,7 +789,7 @@ describe("promoteAppliedToMatched", () => {
     expect(fakeApplicants.updateMany).not.toHaveBeenCalled();
   });
 
-  it("the portal floor is 0.5 (rule-based scores run lower than the old rerank scores)", () => {
+  it("the portal floor is 0.5", () => {
     expect(PORTAL_MIN_SCORE).toBe(0.5);
   });
 

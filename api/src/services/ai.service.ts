@@ -8,7 +8,7 @@ const DEFAULT_CHAT_MODEL = env.openaiChatModel;
  * prompt. Two jobs:
  *
  *  - Truncation (word-boundary cut at maxChars) so a verbose applicant
- *    (deal_breakers/dream_first_date can run to 1-2k chars) doesn't blow up
+ *    (location and the optional note are the only free text left) doesn't blow up
  *    input tokens on every match.
  *  - Fence stripping: every prompt wraps applicant text in <profile> tags
  *    and instructs the model to treat the contents as untrusted data, so an

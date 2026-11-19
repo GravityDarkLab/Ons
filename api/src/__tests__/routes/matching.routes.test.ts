@@ -77,7 +77,7 @@ function makeCandidates(n = 3) {
     alias: `Alias ${i}`,
     applicantId: `64b1234567890abcdef0000${i}`,
     score: 0.9 - i * 0.1,
-    breakdown: { numeric_compatibility: 0.8 },
+    breakdown: { values: 0.8, lifestyle: 0.7, connection: 0.9, personality: 0.6, goals: 1, age_modifier: 1 },
   }));
 }
 

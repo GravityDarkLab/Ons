@@ -6,7 +6,6 @@ import { buildProfileSnippet } from "./profile-snippet.util.js";
 import { buildSummaryResult } from "./match-summary-result.util.js";
 import { env } from "../config/env.js";
 import type { MatchSummary } from "../models/match.model.js";
-import type { ApplicantDoc } from "../models/applicant.model.js";
 
 const SUMMARY_MODEL = env.openaiChatModel;
 
