@@ -1,190 +1,238 @@
 /**
- * Ons Matching Scorer — Embedding-based Cosine Similarity
- * =========================================================
+ * Ons Matching Scorer — rule-based, deterministic
+ * ================================================
  *
- * Scores a pair of applicants using dense text embeddings + cosine similarity.
- * Semantic embeddings mean "driven" and "ambitious" score high because they
- * occupy nearby positions in vector space, unlike bag-of-words approaches.
+ * Scores a pair of applicants by comparing their tap answers directly.
+ * No network, no cache, no model: the same two answer sets always give the
+ * same score, and every dimension can be explained.
  *
- * ## Scoring components
+ *   values       25%  shared top values, faith in daily life, faith preference
+ *   lifestyle    25%  six day-to-day items + smoking fit + alcohol fit
+ *   connection   30%  attachment pairing, conflict style, affection, contact
+ *   personality  10%  four agreement items
+ *   goals        10%  relationship goal, children
  *
- *   1. NUMERIC (22%)
- *      cosine(A.numeric_vec, B.numeric_vec)
- *      Structural preferences encoded as a fixed vector:
- *      relationship type, long-distance willingness, affection level, religion openness.
+ * The weighted sum is multiplied by the age modifier (filters/age.filter.ts).
  *
- *   2. LIFESTYLE SIMILARITY (22%)
- *      cosine(embed(A.lifestyle + work), embed(B.lifestyle + work))
- *      Semantic similarity of how they live and what they do.
+ * Every component is symmetric and in [0, 1]. A missing, wrongly typed or
+ * unknown answer contributes a neutral 0.5 for that item — so legacy
+ * applicants and bad data degrade the score instead of breaking the run.
  *
- *   3. CHARACTER CROSS-MATCH (35%, 17.5% per direction)
- *      cosine(embed(A.preferred_char + preferred_phys + dream_first_date), embed(B.lifestyle + vibe + work))
- *      "Does B's self-described vibe match what A is looking for?" — bidirectional.
- *
- *   4. DEAL BREAKER PENALTY (21%)
- *      1 - cosine(embed(A.deal_breakers), embed(B.lifestyle + work))  (averaged both ways)
- *      High similarity = B's lifestyle matches A's deal breakers = bad.
- *
- *   5. AGE MODIFIER (multiplier, not a weight)
- *      Applied after the weighted sum. 1.0 within preferred gap, cosine decay
- *      up to 2× gap, then hard-filtered before reaching here.
- *
- * ## Performance
- *
- * prepare() must be called once before scoring begins. It batch-embeds all
- * applicants in O(N) API calls so score() can run synchronously from cache.
- * Without prepare(): N² × 4 text fields = thousands of API calls.
- * With prepare(): N × 4 text fields (3 batched requests per field set).
- *
- * prepare() returns its own cache rather than mutating shared module state —
- * a full matching pass and a candidate-detail lookup can run concurrently
- * (e.g. two admins in different tabs) without one call's cache.clear()
- * corrupting the other's in-flight scoring.
+ * Hard incompatibilities are not scored here; they are filtered out before
+ * scoring (see filters/). What a questionnaire can do is rank pairs by shared
+ * values, lifestyle and how they relate — it does not predict attraction.
  */
 
 import type { ApplicantDoc } from "../models/applicant.model.js";
-import type { QuestionnaireDoc } from "../models/questionnaire.model.js";
 import type { MatchScore } from "./engine.js";
-import { getEmbeddingProvider } from "./embeddings/provider.js";
-import { getOrComputeEmbeddings } from "../services/embedding.service.js";
-import { buildNumericVector, cosine, round } from "./scorers/numeric.scorer.js";
+import { NAMED_RELIGIONS, optionCount, optionIndex } from "../questionnaire/questions.js";
 import { WEIGHTS } from "./scoring/weights.js";
 import { ageModifier } from "./filters/age.filter.js";
 
-// ─── Per-applicant embedding cache ───────────────────────────────────────────
-//
-// One instance per prepare() call — see the module docstring above.
+type Answers = Record<string, unknown>;
 
-interface CachedEmbeddings {
-  profile: number[];      // lifestyle + vibe_words + work
-  preference: number[];   // preferred_character + preferred_physical + dream_first_date
-  dealBreakers: number[]; // deal_breakers
+const NEUTRAL = 0.5;
+
+export function round(n: number): number {
+  return Math.round(n * 100) / 100;
 }
 
-export interface ScoreContext {
-  cache: Map<string, CachedEmbeddings>;
+const mean = (xs: number[]): number => xs.reduce((a, b) => a + b, 0) / xs.length;
+
+// ─── Building blocks ──────────────────────────────────────────────────────────
+
+/** Similarity of two answers to an ordered question: 1 − distance ÷ (options − 1). */
+function ordinalSim(id: string, a: Answers, b: Answers): number {
+  const ia = optionIndex(id, a[id]);
+  const ib = optionIndex(id, b[id]);
+  if (ia < 0 || ib < 0) return NEUTRAL;
+  return 1 - Math.abs(ia - ib) / (optionCount(id) - 1);
 }
 
-// ─── Prepare step ─────────────────────────────────────────────────────────────
+/** A 1–5 agreement answer scaled to [0, 1], or null if missing/invalid. */
+function scale(answers: Answers, id: string): number | null {
+  const v = answers[id];
+  return typeof v === "number" && v >= 1 && v <= 5 ? (v - 1) / 4 : null;
+}
+
+function agreementSim(id: string, a: Answers, b: Answers): number {
+  const x = scale(a, id);
+  const y = scale(b, id);
+  return x === null || y === null ? NEUTRAL : 1 - Math.abs(x - y);
+}
+
+/** Looks up an unordered pair in a symmetric table keyed "x|y". */
+function pairFit(table: Record<string, number>, x: unknown, y: unknown): number {
+  return table[`${x}|${y}`] ?? table[`${y}|${x}`] ?? NEUTRAL;
+}
+
+/** Runs a one-directional fit both ways and averages it. */
+const bothWays = (fit: (holder: Answers, other: Answers) => number, a: Answers, b: Answers): number =>
+  (fit(a, b) + fit(b, a)) / 2;
+
+// ─── Values ───────────────────────────────────────────────────────────────────
+
+function sharedValues(a: Answers, b: Answers): number {
+  const va = a["top_values"];
+  const vb = b["top_values"];
+  if (!Array.isArray(va) || !Array.isArray(vb)) return NEUTRAL;
+  return va.filter((v) => vb.includes(v)).length / 3;
+}
+
+function religionFit(holder: Answers, other: Answers): number {
+  const preference = holder["religion_match"];
+  if (preference === "fine") return 1;
+  if (preference !== "rather_share" && preference !== "deal_breaker") return NEUTRAL;
+  const same = holder["religion"] === other["religion"] && NAMED_RELIGIONS.has(holder["religion"] as string);
+  return same ? 1 : 0;
+}
+
+function valuesScore(a: Answers, b: Answers): number {
+  return mean([sharedValues(a, b), ordinalSim("religion_practice", a, b), bothWays(religionFit, a, b)]);
+}
+
+// ─── Lifestyle ────────────────────────────────────────────────────────────────
+
+const LIFESTYLE_ITEMS = [
+  "social_energy", "sleep_rhythm", "activity_level", "planning_style", "money_style", "opposite_gender_friends",
+];
+
+const HABIT_FIT: Record<string, number> = { never: 1, sometimes: 0.5, regularly: 0 };
+
+/** How well `other`'s habit suits `holder`'s stated preference about a partner. */
+const habitFit = (habit: string) => (holder: Answers, other: Answers): number => {
+  const preference = holder[`partner_${habit}`];
+  if (preference === "fine") return 1;
+  if (preference !== "rather_not" && preference !== "deal_breaker") return NEUTRAL;
+  return HABIT_FIT[other[habit] as string] ?? NEUTRAL;
+};
+
+function lifestyleScore(a: Answers, b: Answers): number {
+  return mean([
+    ...LIFESTYLE_ITEMS.map((id) => ordinalSim(id, a, b)),
+    bothWays(habitFit("smoking"), a, b),
+    bothWays(habitFit("alcohol"), a, b),
+  ]);
+}
+
+// ─── Connection ───────────────────────────────────────────────────────────────
 
 /**
- * Called once by the engine before any pairwise scoring, and returns the
- * context that scoring call must pass to score()/hasEmbedding().
- *
- * Loads pre-computed embeddings from the DB (written at form submission time).
- * Only calls the embedding API for applicants whose embeddings are missing or
- * stale (model or text-version changed). In steady state: zero API calls.
- *
- * Never throws: getOrComputeEmbeddings() degrades internally on a provider
- * failure, and this is a second line of defense against any other unexpected
- * error — an applicant missing from the returned context is treated by
- * hasEmbedding()/callers as "not scorable this round", not as a reason to
- * abort matching for every other applicant.
+ * Pair-level only: the anxious-avoidant combination is penalised, a person's
+ * own answers are not. Nobody is ranked below everyone for being anxious.
  */
-export async function prepare(
-  applicants: ApplicantDoc[],
-  _questionnaire: QuestionnaireDoc
-): Promise<ScoreContext> {
-  const provider = getEmbeddingProvider();
-  console.log(
-    `[scorer] Loading embeddings for ${applicants.length} applicants ` +
-    `(provider: ${provider.name}, model: ${provider.model})...`
-  );
-
-  const cache = new Map<string, CachedEmbeddings>();
-
-  let stored: Awaited<ReturnType<typeof getOrComputeEmbeddings>>;
-  try {
-    stored = await getOrComputeEmbeddings(applicants);
-  } catch (err) {
-    console.error("[scorer] getOrComputeEmbeddings failed — proceeding with an empty cache:", err);
-    return { cache };
-  }
-
-  for (const applicant of applicants) {
-    const emb = stored.get(applicant._id.toHexString());
-    if (emb) {
-      cache.set(applicant._id.toHexString(), {
-        profile:      emb.profile,
-        preference:   emb.preference,
-        dealBreakers: emb.dealBreakers,
-      });
-    }
-  }
-
-  console.log(`[scorer] Ready — ${cache.size}/${applicants.length} embeddings loaded.`);
-  return { cache };
+function attachmentScore(a: Answers, b: Answers): number {
+  const items = [a, b].flatMap((x) => [
+    scale(x, "attach_anxiety_1"), scale(x, "attach_anxiety_2"),
+    scale(x, "attach_avoidance_1"), scale(x, "attach_avoidance_2"),
+  ]);
+  if (items.some((v) => v === null)) return NEUTRAL;
+  const [anxA1, anxA2, avoA1, avoA2, anxB1, anxB2, avoB1, avoB2] = items as number[];
+  const anxA = (anxA1! + anxA2!) / 2, avoA = (avoA1! + avoA2!) / 2;
+  const anxB = (anxB1! + anxB2!) / 2, avoB = (avoB1! + avoB2!) / 2;
+  return 1 - Math.max(anxA * avoB, anxB * avoA);
 }
 
-/** Whether `applicant` has a usable embedding in `context` — check before score(). */
-export function hasEmbedding(context: ScoreContext, applicant: ApplicantDoc): boolean {
-  return context.cache.has(applicant._id.toHexString());
+// Starting values, loosely following pursue/withdraw findings — not fitted to outcomes.
+const CONFLICT_FIT: Record<string, number> = {
+  "talk_now|talk_now": 1,
+  "cool_off|cool_off": 1,
+  "let_go|let_go": 0.7,
+  "avoid|avoid": 0.5,
+  "talk_now|cool_off": 0.7,
+  "talk_now|let_go": 0.4,
+  "talk_now|avoid": 0.1,
+  "cool_off|let_go": 0.6,
+  "cool_off|avoid": 0.3,
+  "let_go|avoid": 0.5,
+};
+
+function connectionScore(a: Answers, b: Answers): number {
+  return (
+    0.4 * attachmentScore(a, b) +
+    0.2 * pairFit(CONFLICT_FIT, a["conflict_style"], b["conflict_style"]) +
+    0.2 * ordinalSim("physical_affection", a, b) +
+    0.2 * ordinalSim("contact_frequency", a, b)
+  );
+}
+
+// ─── Personality ──────────────────────────────────────────────────────────────
+
+const PERSONALITY_ITEMS = ["p_calm", "p_trust", "p_thorough", "p_open"];
+
+function personalityScore(a: Answers, b: Answers): number {
+  return mean(PERSONALITY_ITEMS.map((id) => agreementSim(id, a, b)));
+}
+
+// ─── Goals ────────────────────────────────────────────────────────────────────
+
+// [long_term_affinity, short_term_affinity]; compared with cosine similarity.
+const REL_TYPE_ENCODING: Record<string, [number, number]> = {
+  "Long Term":    [1.0, 0.0],
+  "Short Term":   [0.0, 1.0],
+  "Open to Both": [0.7, 0.7],
+  "Casual":       [0.1, 0.9],
+  "Not Sure":     [0.4, 0.4],
+};
+
+function relationshipFit(a: Answers, b: Answers): number {
+  const x = REL_TYPE_ENCODING[a["relationship_type"] as string];
+  const y = REL_TYPE_ENCODING[b["relationship_type"] as string];
+  if (!x || !y) return NEUTRAL;
+  return (x[0] * y[0] + x[1] * y[1]) / (Math.hypot(...x) * Math.hypot(...y));
+}
+
+// want × dont_want never reaches the scorer — children.filter.ts removes it.
+const CHILDREN_FIT: Record<string, number> = {
+  "want|want": 1,
+  "open|open": 1,
+  "dont_want|dont_want": 1,
+  "not_sure|not_sure": 1,
+  "want|open": 0.7,
+  "want|not_sure": 0.5,
+  "open|not_sure": 0.8,
+  "dont_want|open": 0.5,
+  "dont_want|not_sure": 0.5,
+  "want|dont_want": 0,
+};
+
+function goalsScore(a: Answers, b: Answers): number {
+  return mean([relationshipFit(a, b), pairFit(CHILDREN_FIT, a["wants_children"], b["wants_children"])]);
 }
 
 // ─── Score ────────────────────────────────────────────────────────────────────
 
-/**
- * Scores applicant pair (a, b). Both must have an embedding in `context`
- * (check with hasEmbedding() first) — `context` comes from prepare().
- */
-export function score(
-  a: ApplicantDoc,
-  b: ApplicantDoc,
-  _questionnaire: QuestionnaireDoc,
-  context: ScoreContext
-): MatchScore {
-  const embA = context.cache.get(a._id.toHexString());
-  const embB = context.cache.get(b._id.toHexString());
+/** Scores the pair (a, b). Symmetric: score(a, b) equals score(b, a). */
+export function score(a: ApplicantDoc, b: ApplicantDoc): MatchScore {
+  const x = a.answers;
+  const y = b.answers;
 
-  if (!embA || !embB) {
-    throw new Error(
-      "[scorer] Embeddings not found in context. " +
-      "Call prepare() first and check hasEmbedding() before score()."
-    );
-  }
-
-  // 1. Numeric compatibility — structural preferences as a fixed vector
-  const numericScore = cosine(
-    buildNumericVector(a.answers),
-    buildNumericVector(b.answers)
-  );
-
-  // 2. Lifestyle semantic similarity (includes work field)
-  const lifestyleScore = cosine(embA.profile, embB.profile);
-
-  // 3. Character cross-match (bidirectional)
-  //    A wants B: does B's vibe match what A explicitly said they want?
-  //    B wants A: does A's vibe match what B explicitly said they want?
-  const crossAtoB = cosine(embA.preference, embB.profile);
-  const crossBtoA = cosine(embB.preference, embA.profile);
-  const characterScore = (crossAtoB + crossBtoA) / 2;
-
-  // 4. Deal breaker semantic penalty
-  //    High similarity between A's deal breakers and B's lifestyle = bad.
-  const penaltyAtoB = cosine(embA.dealBreakers, embB.profile);
-  const penaltyBtoA = cosine(embB.dealBreakers, embA.profile);
-  const dealBreakerScore = 1 - (penaltyAtoB + penaltyBtoA) / 2;
-
-  // Weighted compatibility score (sums to 1.0)
-  const compatibilityScore =
-    WEIGHTS.numeric               * numericScore    +
-    WEIGHTS.lifestyle             * lifestyleScore  +
-    WEIGHTS.character_cross_match * characterScore  +
-    WEIGHTS.deal_breakers         * dealBreakerScore;
-
-  // 5. Age modifier — multiplied onto the compatibility score
-  const ageMod = ageModifier(a, b);
-  const finalScore = compatibilityScore * ageMod;
-
-  const breakdown: Record<string, number> = {
-    numeric_compatibility: round(numericScore),
-    lifestyle_similarity:  round(lifestyleScore),
-    character_cross_match: round(characterScore),
-    character_a_wants_b:   round(crossAtoB),
-    character_b_wants_a:   round(crossBtoA),
-    deal_breaker_penalty:  round(dealBreakerScore),
-    age_modifier:          round(ageMod),
+  const dimensions = {
+    values:      valuesScore(x, y),
+    lifestyle:   lifestyleScore(x, y),
+    connection:  connectionScore(x, y),
+    personality: personalityScore(x, y),
+    goals:       goalsScore(x, y),
   };
 
-  return { score: round(finalScore), breakdown };
+  const compatibility =
+    WEIGHTS.values      * dimensions.values +
+    WEIGHTS.lifestyle   * dimensions.lifestyle +
+    WEIGHTS.connection  * dimensions.connection +
+    WEIGHTS.personality * dimensions.personality +
+    WEIGHTS.goals       * dimensions.goals;
+
+  const ageMod = ageModifier(a, b);
+
+  return {
+    score: round(compatibility * ageMod),
+    breakdown: {
+      values:       round(dimensions.values),
+      lifestyle:    round(dimensions.lifestyle),
+      connection:   round(dimensions.connection),
+      personality:  round(dimensions.personality),
+      goals:        round(dimensions.goals),
+      age_modifier: round(ageMod),
+    },
+  };
 }

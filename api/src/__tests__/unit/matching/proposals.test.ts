@@ -30,8 +30,6 @@ function candidate(of: ApplicantDoc, score: number, breakdown: Record<string, nu
     applicantId: of._id.toHexString(),
     score,
     breakdown,
-    embeddingScore: score,
-    llmReasoning: "",
   };
 }
 

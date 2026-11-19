@@ -2,12 +2,12 @@
 //  - getActiveContactApplicantIds — applicants in an in_progress contact must
 //    not be offered as candidates or receive new proposals on the next pass.
 //  - getCandidates / runFullMatchingPass — orchestration around the scorer:
-//    eligibility, embedding availability, ranking, rerank fallback, and
-//    per-applicant degradation (one applicant's missing embedding or scoring
-//    failure must never abort matching for everyone else).
+//    eligibility, hard filters, ranking, top-N, and per-applicant degradation
+//    (one applicant's scoring failure must never abort matching for the rest).
 //
-// The hard filters run for real (empty answers pass all four); the scorer,
-// the LLM rerank, the questionnaire lookup and the DB are mocked.
+// The hard filters run for real (empty answers pass all of them). The scorer
+// is replaced by a fake keyed on aliases so ordering is explicit; the real
+// scorer has its own tests. The DB is mocked. No network is involved.
 import { describe, it, expect, mock, beforeEach } from "bun:test";
 import { ObjectId } from "mongodb";
 import type { ApplicantDoc } from "../../../models/applicant.model.js";
@@ -49,48 +49,23 @@ mock.module("../../../db/collections.js", () => ({
   getQuestionnairesCollection: () => ({}),
   getIdentitiesCollection:     () => ({}),
   getAuditLogsCollection:      () => ({}),
-  getEmbeddingsCollection:     () => ({}),
   getAdminsCollection:         () => ({}),
   getAppConfigCollection:      () => ({}),
-  getMatchReranksCollection:   () => ({}),
   ensureIndexes:               async () => {},
 }));
 
-// ── Questionnaire / scorer / rerank ──────────────────────────────────────────
+// ── Scorer ────────────────────────────────────────────────────────────────────
 
-let activeQuestionnaire: unknown = { version: "1.2.0" };
-mock.module("../../../services/questionnaire.service.js", () => ({
-  getActiveQuestionnaire: async () => activeQuestionnaire,
-}));
-
-// Aliases (not ids) drive the scorer fakes so tests read naturally.
-let embedded = new Set<string>();
 let pairScores: Record<string, number> = {};
 let throwsFor = new Set<string>();
-// Applicants whose stored vectors can't be compared (e.g. wrong length from a
-// different embedding model): cosine() throws for ANY pair involving them.
-let badVectors = new Set<string>();
+let scoredPairs: string[] = [];
 
 mock.module("../../../matching/scorer.js", () => ({
-  prepare: mock(async (applicants: ApplicantDoc[]) => ({
-    cache: new Map(applicants.filter((a) => embedded.has(a.alias)).map((a) => [a._id.toHexString(), {}])),
-  })),
-  hasEmbedding: (context: { cache: Map<string, unknown> }, a: ApplicantDoc) =>
-    context.cache.has(a._id.toHexString()),
   score: (a: ApplicantDoc, b: ApplicantDoc) => {
+    scoredPairs.push(`${a.alias}>${b.alias}`);
     if (throwsFor.has(a.alias)) throw new Error(`scoring blew up for ${a.alias}`);
-    if (badVectors.has(a.alias) || badVectors.has(b.alias)) throw new Error("[cosine] Vector length mismatch");
-    return { score: pairScores[`${a.alias}>${b.alias}`] ?? 0.5, breakdown: { lifestyle_similarity: 0.5 } };
+    return { score: pairScores[`${a.alias}>${b.alias}`] ?? 0.5, breakdown: { values: 0.5 } };
   },
-}));
-
-// Default: the LLM agrees with the embedding stage and explains itself.
-type RerankInput = { doc: ApplicantDoc; embeddingScore: number }[];
-const agreeingRerank = async (_target: ApplicantDoc, candidates: RerankInput) =>
-  candidates.map((c) => ({ applicantId: c.doc._id.toHexString(), score: c.embeddingScore, reasoning: "llm" }));
-const mockRerank = mock(agreeingRerank);
-mock.module("../../../services/match-rerank.service.js", () => ({
-  rerankCandidates: mockRerank,
 }));
 
 // Dynamic so the engine is evaluated after the mocks above.
@@ -99,16 +74,16 @@ const { getActiveContactApplicantIds, getCandidates, runFullMatchingPass } =
 
 // ── Fixtures ──────────────────────────────────────────────────────────────────
 
-function applicant(alias: string): ApplicantDoc {
+function applicant(alias: string, answers: Record<string, unknown> = {}): ApplicantDoc {
   return {
     _id: new ObjectId(),
     alias,
-    questionnaireVersion: "1.2.0",
-    answers: {},
+    questionnaireVersion: "2.0.0",
+    answers,
     status: "applied",
     magicToken: "a".repeat(64),
     passwordHash: null,
-    scoreThreshold: 0.8,
+    scoreThreshold: 0.6,
     createdAt: new Date(),
     updatedAt: new Date(),
   };
@@ -121,14 +96,10 @@ function aliases(candidates: { alias: string }[]): string[] {
 beforeEach(() => {
   inProgressMatches = [];
   pool = [];
-  activeQuestionnaire = { version: "1.2.0" };
-  embedded = new Set();
   pairScores = {};
   throwsFor = new Set();
-  badVectors = new Set();
+  scoredPairs = [];
   fakeMatchesCol.find.mockClear();
-  mockRerank.mockReset();
-  mockRerank.mockImplementation(agreeingRerank);
 });
 
 // ── getActiveContactApplicantIds ──────────────────────────────────────────────
@@ -174,11 +145,6 @@ describe("getActiveContactApplicantIds", () => {
 // ── getCandidates ─────────────────────────────────────────────────────────────
 
 describe("getCandidates", () => {
-  it("throws 404 when there is no active questionnaire", async () => {
-    activeQuestionnaire = null;
-    await expect(getCandidates(new ObjectId().toHexString())).rejects.toMatchObject({ statusCode: 404 });
-  });
-
   it("throws 400 for a malformed applicant id", async () => {
     await expect(getCandidates("not-an-object-id")).rejects.toMatchObject({ statusCode: 400 });
   });
@@ -190,7 +156,6 @@ describe("getCandidates", () => {
   it.each(["dating", "inactive"] as const)("throws 404 when the target exists but is %s", async (status) => {
     const target = { ...applicant("Target"), status };
     pool = [target, applicant("Other")];
-    embedded = new Set(["Target", "Other"]);
 
     await expect(getCandidates(target._id.toHexString())).rejects.toMatchObject({ statusCode: 404 });
   });
@@ -204,38 +169,37 @@ describe("getCandidates", () => {
       { ...applicant("Dating"), status: "dating" },
       { ...applicant("Inactive"), status: "inactive" },
     ];
-    embedded = new Set(pool.map((p) => p.alias));
 
     expect(aliases(await getCandidates(target._id.toHexString())).sort()).toEqual(["Applied", "Matched"]);
   });
 
-  it("ranks scorable candidates by score, descending, and carries rerank reasoning", async () => {
+  it("ranks candidates by score, descending, with the scorer's breakdown", async () => {
     const target = applicant("Target");
     pool = [target, applicant("Low"), applicant("High"), applicant("Mid")];
-    embedded = new Set(["Target", "Low", "High", "Mid"]);
     pairScores = { "Target>Low": 0.2, "Target>High": 0.9, "Target>Mid": 0.6 };
 
     const result = await getCandidates(target._id.toHexString());
 
     expect(aliases(result)).toEqual(["High", "Mid", "Low"]);
-    expect(result[0]).toMatchObject({ score: 0.9, embeddingScore: 0.9, llmReasoning: "llm" });
+    expect(result[0]).toEqual({
+      alias: "High",
+      applicantId: pool[2]!._id.toHexString(),
+      score: 0.9,
+      breakdown: { values: 0.5 },
+    });
   });
 
   it("respects topN", async () => {
     const target = applicant("Target");
     pool = [target, applicant("A"), applicant("B"), applicant("C")];
-    embedded = new Set(["Target", "A", "B", "C"]);
     pairScores = { "Target>A": 0.3, "Target>B": 0.8, "Target>C": 0.5 };
 
-    const result = await getCandidates(target._id.toHexString(), 2);
-
-    expect(aliases(result)).toEqual(["B", "C"]);
+    expect(aliases(await getCandidates(target._id.toHexString(), 2))).toEqual(["B", "C"]);
   });
 
   it("returns [] when the target is in an active contact", async () => {
     const target = applicant("Target");
     pool = [target, applicant("Other")];
-    embedded = new Set(["Target", "Other"]);
     inProgressMatches = [{ applicantAId: target._id, applicantBId: new ObjectId() }];
 
     expect(await getCandidates(target._id.toHexString())).toEqual([]);
@@ -245,211 +209,107 @@ describe("getCandidates", () => {
     const target = applicant("Target");
     const busy = applicant("Busy");
     pool = [target, busy, applicant("Free")];
-    embedded = new Set(["Target", "Busy", "Free"]);
     inProgressMatches = [{ applicantAId: busy._id, applicantBId: new ObjectId() }];
 
     expect(aliases(await getCandidates(target._id.toHexString()))).toEqual(["Free"]);
   });
 
-  it("returns [] when the target's own embedding couldn't be computed", async () => {
-    const target = applicant("Target");
-    pool = [target, applicant("Other")];
-    embedded = new Set(["Other"]);
+  it.each([
+    ["orientation", { sexual_orientation: "Straight", gender_identity: "Male" }, { gender_identity: "Male" }, { gender_identity: "Female" }],
+    ["age", { birth_date: "1999-01-01", age_direction: "younger" }, { birth_date: "1990-01-01" }],
+    ["religion", { religion: "muslim", religion_match: "deal_breaker" }, { religion: "christian" }],
+    ["location", { location: "Tunis", open_to_long_distance: false }, { location: "Paris" }],
+    ["children", { wants_children: "want" }, { wants_children: "dont_want" }],
+    ["habits", { partner_smoking: "deal_breaker" }, { smoking: "regularly" }],
+  ] as [string, Record<string, unknown>, Record<string, unknown>, Record<string, unknown>?][])(
+    "drops a pair rejected by the %s filter before it is scored", async (_name, targetAnswers, otherAnswers, fineAnswers = {}) => {
+    const target = applicant("Target", targetAnswers);
+    pool = [target, applicant("Rejected", otherAnswers), applicant("Fine", fineAnswers)];
 
-    expect(await getCandidates(target._id.toHexString())).toEqual([]);
-  });
-
-  it("skips candidates without an embedding instead of failing", async () => {
-    const target = applicant("Target");
-    pool = [target, applicant("Embedded"), applicant("Missing")];
-    embedded = new Set(["Target", "Embedded"]);
-
-    expect(aliases(await getCandidates(target._id.toHexString()))).toEqual(["Embedded"]);
-  });
-
-  // Regression (review of #22): cosine() throws on mismatched vector lengths;
-  // one unscorable candidate used to 500 this endpoint for the whole target.
-  it("skips a single candidate whose pair can't be scored instead of failing the request", async () => {
-    const target = applicant("Target");
-    pool = [target, applicant("Good1"), applicant("Bad"), applicant("Good2")];
-    embedded = new Set(["Target", "Good1", "Bad", "Good2"]);
-    badVectors = new Set(["Bad"]);
-
-    expect(aliases(await getCandidates(target._id.toHexString())).sort()).toEqual(["Good1", "Good2"]);
-  });
-
-  it("excludes pairs rejected by a hard filter before scoring", async () => {
-    const target = { ...applicant("Target"), answers: { sexual_orientation: "Straight", gender_identity: "Male" } };
-    const woman = { ...applicant("Woman"), answers: { gender_identity: "Female" } };
-    const man = { ...applicant("Man"), answers: { gender_identity: "Male" } };
-    pool = [target, woman, man];
-    embedded = new Set(["Target", "Woman", "Man"]);
-
-    expect(aliases(await getCandidates(target._id.toHexString()))).toEqual(["Woman"]);
-  });
-
-  it("falls back to the embedding order and score when the rerank call throws", async () => {
-    const target = applicant("Target");
-    pool = [target, applicant("A"), applicant("B")];
-    embedded = new Set(["Target", "A", "B"]);
-    pairScores = { "Target>A": 0.4, "Target>B": 0.7 };
-    mockRerank.mockRejectedValue(new Error("LLM down"));
-
-    const result = await getCandidates(target._id.toHexString());
-
-    expect(aliases(result)).toEqual(["B", "A"]);
-    expect(result[0]).toMatchObject({ score: 0.7, llmReasoning: "" });
-  });
-
-  it("re-sorts by the reranked score when the LLM disagrees with the embedding stage", async () => {
-    const target = applicant("Target");
-    const a = applicant("A");
-    const b = applicant("B");
-    pool = [target, a, b];
-    embedded = new Set(["Target", "A", "B"]);
-    pairScores = { "Target>A": 0.9, "Target>B": 0.1 };
-    mockRerank.mockImplementation(async () => [
-      { applicantId: a._id.toHexString(), score: 0.2, reasoning: "weak" },
-      { applicantId: b._id.toHexString(), score: 0.95, reasoning: "strong" },
-    ]);
-
-    const result = await getCandidates(target._id.toHexString());
-
-    expect(aliases(result)).toEqual(["B", "A"]);
-    expect(result[0]).toMatchObject({ score: 0.95, embeddingScore: 0.1, llmReasoning: "strong" });
+    expect(aliases(await getCandidates(target._id.toHexString()))).toEqual(["Fine"]);
+    expect(scoredPairs).toEqual(["Target>Fine"]);
   });
 });
 
 // ── runFullMatchingPass ───────────────────────────────────────────────────────
 
 describe("runFullMatchingPass", () => {
-  it("throws 404 when there is no active questionnaire", async () => {
-    activeQuestionnaire = null;
-    await expect(runFullMatchingPass()).rejects.toMatchObject({ statusCode: 404 });
-  });
-
   it("returns {} with fewer than two active applicants", async () => {
     pool = [applicant("Solo")];
     expect(await runFullMatchingPass()).toEqual({});
   });
 
   it("returns {} when fewer than two applicants remain outside active contacts", async () => {
-    const a = applicant("A");
-    pool = [a, applicant("B")];
-    inProgressMatches = [{ applicantAId: a._id, applicantBId: new ObjectId() }];
+    const busy = applicant("Busy");
+    pool = [busy, applicant("Free")];
+    inProgressMatches = [{ applicantAId: busy._id, applicantBId: new ObjectId() }];
 
     expect(await runFullMatchingPass()).toEqual({});
   });
 
   it("scores every eligible applicant against every other one", async () => {
-    const a = applicant("A");
-    const b = applicant("B");
-    const c = applicant("C");
+    const [a, b, c] = [applicant("A"), applicant("B"), applicant("C")];
     pool = [a, b, c];
-    embedded = new Set(["A", "B", "C"]);
+    pairScores = { "A>B": 0.9, "A>C": 0.1 };
 
     const results = await runFullMatchingPass();
 
     expect(Object.keys(results).sort()).toEqual([a, b, c].map((x) => x._id.toHexString()).sort());
-    expect(aliases(results[a._id.toHexString()]).sort()).toEqual(["B", "C"]);
+    expect(aliases(results[a._id.toHexString()]!)).toEqual(["B", "C"]);
+    expect(aliases(results[b._id.toHexString()]!).sort()).toEqual(["A", "C"]);
   });
 
   it("includes only applied/matched applicants in the pass", async () => {
-    const a = applicant("A");
     const dating = { ...applicant("Dating"), status: "dating" as const };
-    const inactive = { ...applicant("Inactive"), status: "inactive" as const };
-    pool = [a, { ...applicant("M"), status: "matched" }, dating, inactive];
-    embedded = new Set(pool.map((p) => p.alias));
+    const [a, b] = [applicant("A"), { ...applicant("B"), status: "matched" as const }];
+    pool = [a, b, dating];
 
     const results = await runFullMatchingPass();
 
-    expect(results[dating._id.toHexString()]).toBeUndefined();
-    expect(results[inactive._id.toHexString()]).toBeUndefined();
-    expect(aliases(results[a._id.toHexString()])).toEqual(["M"]);
+    expect(Object.keys(results).sort()).toEqual([a, b].map((x) => x._id.toHexString()).sort());
+    expect(aliases(results[a._id.toHexString()]!)).toEqual(["B"]);
   });
 
   it("leaves applicants in an active contact out of the pass entirely", async () => {
-    const a = applicant("A");
     const busy = applicant("Busy");
-    pool = [a, applicant("B"), busy];
-    embedded = new Set(["A", "B", "Busy"]);
+    const [a, b] = [applicant("A"), applicant("B")];
+    pool = [a, b, busy];
     inProgressMatches = [{ applicantAId: busy._id, applicantBId: new ObjectId() }];
 
     const results = await runFullMatchingPass();
 
     expect(results[busy._id.toHexString()]).toBeUndefined();
-    expect(aliases(results[a._id.toHexString()])).toEqual(["B"]);
+    expect(aliases(results[a._id.toHexString()]!)).toEqual(["B"]);
   });
 
-  // Regression guard for the per-applicant degradation: a missing embedding
-  // used to throw out of score() and abort the whole admin-triggered pass.
-  it("gives an applicant without an embedding [] and leaves them out of everyone else's list", async () => {
-    const a = applicant("A");
-    const b = applicant("B");
-    const missing = applicant("Missing");
-    pool = [a, b, missing];
-    embedded = new Set(["A", "B"]);
+  it("applies the hard filters in the pass", async () => {
+    const wants = applicant("Wants", { wants_children: "want" });
+    const doesNot = applicant("DoesNot", { wants_children: "dont_want" });
+    const open = applicant("Open", { wants_children: "open" });
+    pool = [wants, doesNot, open];
 
     const results = await runFullMatchingPass();
 
-    expect(results[missing._id.toHexString()]).toEqual([]);
-    expect(aliases(results[a._id.toHexString()])).toEqual(["B"]);
-    expect(aliases(results[b._id.toHexString()])).toEqual(["A"]);
+    expect(aliases(results[wants._id.toHexString()]!)).toEqual(["Open"]);
+    expect(aliases(results[doesNot._id.toHexString()]!)).toEqual(["Open"]);
   });
 
-  it("gives an applicant whose scoring throws [] without affecting the rest of their batch", async () => {
-    const a = applicant("A");
-    const broken = applicant("Broken");
-    pool = [a, applicant("B"), broken];
-    embedded = new Set(["A", "B", "Broken"]);
+  it("gives an applicant whose scoring throws [] without affecting the others", async () => {
+    const [broken, a, b] = [applicant("Broken"), applicant("A"), applicant("B")];
+    pool = [broken, a, b];
     throwsFor = new Set(["Broken"]);
 
     const results = await runFullMatchingPass();
 
     expect(results[broken._id.toHexString()]).toEqual([]);
-    expect(aliases(results[a._id.toHexString()]).sort()).toEqual(["B", "Broken"]);
-  });
-
-  // Regression (review of #22): the per-applicant catch wrapped the whole
-  // ranking, so one unscorable candidate emptied every other target's list.
-  it("drops an unscorable candidate from other applicants' lists without emptying those lists", async () => {
-    const a = applicant("A");
-    const b = applicant("B");
-    const bad = applicant("Bad");
-    pool = [a, b, bad];
-    embedded = new Set(["A", "B", "Bad"]);
-    badVectors = new Set(["Bad"]);
-
-    const results = await runFullMatchingPass();
-
-    expect(aliases(results[a._id.toHexString()])).toEqual(["B"]);
-    expect(aliases(results[b._id.toHexString()])).toEqual(["A"]);
-    expect(results[bad._id.toHexString()]).toEqual([]);
-  });
-
-  it("isolates a failure across concurrency batches (more applicants than one batch)", async () => {
-    // RERANK_CONCURRENCY is 5 — seven applicants span two batches.
-    const people = ["A", "B", "C", "D", "E", "F", "G"].map(applicant);
-    pool = people;
-    embedded = new Set(people.map((p) => p.alias));
-    throwsFor = new Set(["C"]);
-
-    const results = await runFullMatchingPass();
-
-    expect(Object.keys(results)).toHaveLength(7);
-    expect(results[people[2]._id.toHexString()]).toEqual([]);
-    for (const p of people.filter((x) => x.alias !== "C")) {
-      expect(results[p._id.toHexString()]).toHaveLength(6);
-    }
+    expect(aliases(results[a._id.toHexString()]!).sort()).toEqual(["B", "Broken"]);
   });
 
   it("caps each applicant's list at 10 candidates", async () => {
-    const people = Array.from({ length: 13 }, (_, i) => applicant(`P${i}`));
-    pool = people;
-    embedded = new Set(people.map((p) => p.alias));
+    pool = Array.from({ length: 13 }, (_, i) => applicant(`P${i}`));
 
     const results = await runFullMatchingPass();
 
-    expect(results[people[0]._id.toHexString()]).toHaveLength(10);
+    for (const list of Object.values(results)) expect(list).toHaveLength(10);
   });
 });
