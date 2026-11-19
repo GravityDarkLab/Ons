@@ -14,6 +14,7 @@ import { usePagedFilter } from '../hooks/usePagedFilter'
 import { useDebouncedValue } from '../hooks/useDebouncedValue'
 import { Th, PageButton, TrashIcon } from '../components/Table'
 import type { Match, MatchStatus } from '../types'
+import { ScoreBreakdown } from '../components/ScoreBreakdown'
 
 const LIMIT = 20
 
@@ -190,7 +191,7 @@ export function Matches() {
             <tr className="border-b border-border">
               <Th>{t('admin.matches.colCouple')}</Th>
               <Th>{t('admin.matches.colScore')}</Th>
-              <Th>{t('admin.matches.colAlgorithm')}</Th>
+              <Th>{t('admin.matches.colBreakdown')}</Th>
               <Th>{t('admin.matches.colStatus')}</Th>
               <Th>{t('admin.matches.colActions')}</Th>
             </tr>
@@ -238,7 +239,7 @@ export function Matches() {
         title={t('admin.matches.delete')}
         description={t('admin.matches.deleteConfirm')}
         confirmLabel={t('admin.matches.delete')}
-        cancelLabel={t('admin.matches.cancelNotes')}
+        cancelLabel={t('admin.matching.cancel')}
         tone="danger"
         loading={deleteLoading}
         onConfirm={handleDelete}
@@ -359,9 +360,9 @@ function RowActions({ match, expanded, saving, onToggleExpand, onStatusChange, o
           {ACTION_LABEL[s]}
         </button>
       ))}
-      <button onClick={onToggleExpand}
+      <button onClick={onToggleExpand} aria-expanded={expanded}
         className="px-2 py-1 rounded-lg border border-border text-xs text-muted hover:text-primary hover:bg-bg transition-colors whitespace-nowrap shrink-0">
-        {expanded ? t('admin.matches.cancelNotes') : t('admin.matches.editNotes')}
+        {expanded ? t('admin.matches.hideDetails') : t('admin.matches.details')}
       </button>
       <button onClick={onDelete} disabled={saving}
         className="p-1.5 rounded-lg text-error hover:bg-error-light transition-colors disabled:opacity-40 shrink-0"
@@ -387,6 +388,20 @@ function NotesEditor({ notes, saving, onNotesChange, onSaveNotes }: Pick<RowProp
       <Button onClick={onSaveNotes} loading={saving} variant="primary">
         {t('admin.matches.saveNotes')}
       </Button>
+    </div>
+  )
+}
+
+/** The full per-dimension breakdown next to the notes editor. */
+function MatchDetails(props: RowProps) {
+  const { t } = useTranslation()
+  return (
+    <div className="grid gap-5 md:grid-cols-2">
+      <section aria-label={t('admin.matches.colBreakdown')}>
+        <p className="mb-2 text-xs font-medium uppercase tracking-wider text-muted">{t('admin.matches.colBreakdown')}</p>
+        <ScoreBreakdown breakdown={props.match.breakdown} />
+      </section>
+      <NotesEditor {...props} />
     </div>
   )
 }
@@ -435,9 +450,9 @@ function MatchRow(props: RowProps) {
           <ScoreBar score={match.score} />
         </td>
 
-        {/* Algorithm */}
+        {/* Per-dimension breakdown */}
         <td className="px-4 py-3.5">
-          <span className="text-xs font-mono text-muted">{match.algorithm}</span>
+          <ScoreBreakdown breakdown={match.breakdown} variant="compact" />
         </td>
 
         {/* Status badge with dropdown */}
@@ -451,11 +466,11 @@ function MatchRow(props: RowProps) {
         </td>
       </tr>
 
-      {/* Inline notes editor */}
+      {/* Details: full breakdown + notes editor */}
       {expanded && (
         <tr className="border-b border-border bg-bg">
-          <td colSpan={5} className="px-4 py-3">
-            <NotesEditor {...props} />
+          <td colSpan={5} className="px-4 py-4">
+            <MatchDetails {...props} />
           </td>
         </tr>
       )}
@@ -487,7 +502,7 @@ function MatchCard(props: RowProps) {
 
       <div className="flex items-center justify-between gap-3">
         <ScoreBar score={match.score} width="w-28" />
-        <span className="text-[11px] font-mono text-muted truncate">{match.algorithm}</span>
+        <ScoreBreakdown breakdown={match.breakdown} variant="compact" />
       </div>
 
       {match.notes && !expanded && (
@@ -496,7 +511,7 @@ function MatchCard(props: RowProps) {
 
       <RowActions {...props} />
 
-      {expanded && <NotesEditor {...props} />}
+      {expanded && <MatchDetails {...props} />}
     </div>
   )
 }

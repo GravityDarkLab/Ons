@@ -1,8 +1,6 @@
 {
   "brand": "أنس",
   "common": {
-    "yes": "نعم",
-    "no": "لا",
     "dismiss": "إغلاق",
     "timeAgo": {
       "justNow": "الآن",
@@ -66,7 +64,6 @@
     "back": "رجوع",
     "next": "متابعة",
     "submit": "إرسال",
-    "submitting": "جارٍ الإرسال…",
     "error": "حدث خطأ ما. يرجى المحاولة مجدداً.",
     "progress": "السؤال {{n}} من {{total}}",
     "progressIntro": "حوالي 4 دقائق",
@@ -109,11 +106,9 @@
     "copied": "تم النسخ!",
     "download": "تحميل .txt",
     "done": "تم ←",
-    "laterHint": "يمكنك أيضاً الوصول إلى ملفك الشخصي لاحقاً عبر /profile/login باستخدام رابطك السحري.",
-    "backHome": "العودة إلى الرئيسية"
+    "laterHint": "يمكنك أيضاً الوصول إلى ملفك الشخصي لاحقاً عبر /profile/login باستخدام رابطك السحري."
   },
   "admin": {
-    "subtitle": "المسؤول",
     "login": {
       "title": "وصول المسؤول",
       "tagline": "حيث تلتقي القلوب المتوافقة.",
@@ -136,15 +131,6 @@
     },
     "dashboard": {
       "title": "لوحة التحكم",
-      "subtitle": "نظرة عامة على المنصة",
-      "total": "الإجمالي",
-      "active": "نشط",
-      "matched": "متطابق",
-      "inactive": "غير نشط",
-      "quickActions": "إجراءات سريعة",
-      "runMatching": "تشغيل التطابق",
-      "viewApplicants": "عرض المتقدمين",
-      "auditLogs": "سجل التدقيق",
       "recentMatches": "أحدث الأزواج",
       "recentActivity": "النشاط الأخير",
       "noMatchesYet": "لا توجد أزواج حتى الآن.",
@@ -207,29 +193,27 @@
       "answers": "الإجابات",
       "matches": "الأزواج",
       "viewAllMatches": "عرض الكل ←",
-      "page": "الصفحة {{current}} من {{total}}",
-      "prev": "السابق →",
-      "next": "← التالي",
       "withdrawn": "تم سحب المتقدم",
       "magicLink": "الرابط السحري",
       "regenerateMagicLink": "إعادة إنشاء الرابط السحري",
       "regenerateMagicLinkConfirm": "سيؤدي هذا إلى إبطال الرابط السحري الحالي للمتقدم وإعادة تعيين كلمة مروره — سيحتاج إلى تعيين كلمة جديدة. هل تريد إنشاء رابط جديد لمشاركته معه مباشرة؟",
       "newMagicLinkHint": "رابط سحري جديد — شاركه مع المتقدم مباشرة. لن يتم عرضه مرة أخرى.",
       "copy": "نسخ",
-      "copied": "تم النسخ ✓"
+      "copied": "تم النسخ ✓",
+      "answersHint": "الإجابات المشتركة تظهر لمن يتوافق معهم وتُستخدم في ملخصات الذكاء الاصطناعي؛ الإجابات الخاصة تُستخدم للتقييم فقط.",
+      "shared": "مشتركة",
+      "private": "خاصة",
+      "otherAnswers": "إجابات أخرى",
+      "candidates": "أفضل المرشحين",
+      "candidatesHint": "محسوب مباشرة بالإجابات الحالية، بعد المرشّحات الصارمة.",
+      "noCandidates": "لا أحد في المجموعة يجتاز المرشّحات الصارمة لهذا الشخص حالياً."
     },
     "matching": {
       "title": "التطابق",
       "subtitle": "تشغيل جولة تطابق كاملة لجميع المتقدمين النشطين",
-      "algorithm": "الخوارزمية",
-      "recommended": "موصى به",
-      "baseline": "الأساسية",
-      "baselineHint": "تسجيل قائم على قواعد مرجحة",
-      "cosine": "جيب التمام",
-      "cosineHint": "تشابه جيب التمام على المتجهات العددية",
       "lastRunSummary": "آخر تشغيل: {{time}} · تم اقتراح {{count}} زوج",
       "neverRun": "لم يتم التشغيل أبداً",
-      "confirmTitle": "تشغيل التطابق باستخدام {{algorithm}}؟",
+      "confirmTitle": "تشغيل المطابقة الآن؟",
       "confirmBody": "سيؤدي هذا إلى إنشاء اقتراحات أزواج جديدة.",
       "cancel": "إلغاء",
       "confirmRun": "نعم، تشغيل التطابق",
@@ -244,8 +228,18 @@
       "statDuration": "المدة",
       "algorithmUsed": "الخوارزمية: {{algorithm}}",
       "viewMatches": "عرض الأزواج",
-      "rules": "بالقواعد",
-      "rulesHint": "يقارن الإجابات مباشرة: مجاني وفوري وقابل للتكرار"
+      "filtersTitle": "مرشّحات صارمة",
+      "filtersHint": "أي ثنائي لا يجتاز أحدها لا يُقترح أبداً.",
+      "filters": {
+        "orientation": "التوجّه",
+        "age": "فارق العمر، أكبر/أصغر",
+        "religion": "الدين كشرط لا تنازل عنه",
+        "distance": "العلاقة عن بُعد",
+        "children": "الأطفال (يريد / لا يريد)",
+        "habits": "التدخين والكحول كشرط لا تنازل عنه"
+      },
+      "scoreTitle": "التقييم",
+      "scoreHint": "تُقيَّم الثنائيات المتبقية على خمسة أبعاد، ثم تُضرب في عامل ملاءمة العمر."
     },
     "matches": {
       "title": "الأزواج",
@@ -261,7 +255,6 @@
       "expired": "منتهي",
       "colCouple": "الزوج",
       "colScore": "الدرجة",
-      "colAlgorithm": "الخوارزمية",
       "colStatus": "الحالة",
       "colActions": "الإجراءات",
       "searchPlaceholder": "البحث بالاسم المستعار…",
@@ -273,8 +266,6 @@
       "markFailed": "فشل",
       "markDeclined": "مرفوض",
       "markExpired": "منتهي",
-      "editNotes": "ملاحظات",
-      "cancelNotes": "إلغاء",
       "notesPlaceholder": "أضف ملاحظات حول هذا الزوج…",
       "saveNotes": "حفظ",
       "delete": "حذف",
@@ -285,23 +276,23 @@
       "statusUpdated": "تم تحديث الحالة",
       "notesSaved": "تم حفظ الملاحظات",
       "deleted": "تم حذف التوافق",
-      "updateError": "فشل التحديث"
+      "updateError": "فشل التحديث",
+      "colBreakdown": "التفصيل",
+      "details": "التفاصيل",
+      "hideDetails": "إخفاء"
     },
     "audit": {
       "title": "سجل التدقيق",
       "subtitle": "جميع إجراءات الإدارة والمتقدمين",
-      "events": "{{count}} أحداث",
-      "colAction": "الإجراء",
-      "colTarget": "الهدف",
-      "colAdmin": "المسؤول",
-      "colIp": "عنوان IP",
-      "colTime": "الوقت",
       "empty": "لا توجد أحداث بعد.",
       "page": "الصفحة {{current}} من {{total}}",
       "prev": "السابق →",
       "next": "← التالي",
       "by": "بواسطة {{id}}",
       "targetAlias": "الاسم المستعار: {{alias}}"
+    },
+    "breakdown": {
+      "ageModifier": "ملاءمة العمر (مُضاعِف)"
     }
   },
   "portal": {

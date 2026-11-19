@@ -20,6 +20,8 @@ export interface Question {
   min?: number
   max?: number
   maxSelect?: number
+  /** Opt-in: only shared answers are shown to a match or sent to OpenAI. */
+  shared?: boolean
 }
 
 export interface Section {

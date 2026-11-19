@@ -1,8 +1,6 @@
 {
   "brand": "Ons",
   "common": {
-    "yes": "Yes",
-    "no": "No",
     "dismiss": "Dismiss",
     "timeAgo": {
       "justNow": "just now",
@@ -54,7 +52,6 @@
     "back": "Back",
     "next": "Continue",
     "submit": "Submit",
-    "submitting": "Submitting…",
     "error": "Something went wrong. Please try again.",
     "progress": "Question {{n}} of {{total}}",
     "progressIntro": "About 4 minutes",
@@ -97,11 +94,9 @@
     "copied": "Copied!",
     "download": "Download .txt",
     "done": "Done →",
-    "laterHint": "You can also access your profile later at /profile/login with your magic link.",
-    "backHome": "Back to home"
+    "laterHint": "You can also access your profile later at /profile/login with your magic link."
   },
   "admin": {
-    "subtitle": "Admin",
     "login": {
       "title": "Admin access",
       "tagline": "Where compatible hearts meet.",
@@ -124,15 +119,6 @@
     },
     "dashboard": {
       "title": "Dashboard",
-      "subtitle": "Platform overview",
-      "total": "Total",
-      "active": "Active",
-      "matched": "Matched",
-      "inactive": "Inactive",
-      "quickActions": "Quick actions",
-      "runMatching": "Run matching",
-      "viewApplicants": "View applicants",
-      "auditLogs": "Audit logs",
       "recentMatches": "Recent Matches",
       "recentActivity": "Recent Activity",
       "noMatchesYet": "No matches yet.",
@@ -195,29 +181,27 @@
       "answers": "Answers",
       "matches": "Matches",
       "viewAllMatches": "View all →",
-      "page": "Page {{current}} of {{total}}",
-      "prev": "← Prev",
-      "next": "Next →",
       "withdrawn": "Applicant withdrawn",
       "magicLink": "Magic link",
       "regenerateMagicLink": "Regenerate magic link",
       "regenerateMagicLinkConfirm": "This invalidates the applicant's current magic link and clears their password — they'll set a new one. Generate a new link to share with them directly?",
       "newMagicLinkHint": "New magic link — share it with the applicant directly. It won't be shown again.",
       "copy": "Copy",
-      "copied": "Copied ✓"
+      "copied": "Copied ✓",
+      "answersHint": "Shared answers are shown to matches and used in AI summaries; private answers are only used for scoring.",
+      "shared": "Shared",
+      "private": "Private",
+      "otherAnswers": "Other answers",
+      "candidates": "Top candidates",
+      "candidatesHint": "Scored live with the current answers, after the hard filters.",
+      "noCandidates": "Nobody in the pool passes the hard filters for this applicant right now."
     },
     "matching": {
       "title": "Matching",
       "subtitle": "Run a full pairwise pass over all active applicants",
-      "algorithm": "Algorithm",
-      "recommended": "Recommended",
-      "baseline": "Baseline",
-      "baselineHint": "Weighted rule-based scoring",
-      "cosine": "Cosine",
-      "cosineHint": "Cosine similarity on numeric vectors",
       "lastRunSummary": "Last run: {{time}} · {{count}} pairs proposed",
       "neverRun": "Never run",
-      "confirmTitle": "Run matching with {{algorithm}}?",
+      "confirmTitle": "Run matching now?",
       "confirmBody": "This will create new match proposals.",
       "cancel": "Cancel",
       "confirmRun": "Yes, run matching",
@@ -232,8 +216,18 @@
       "statDuration": "Duration",
       "algorithmUsed": "Algorithm: {{algorithm}}",
       "viewMatches": "View Matches",
-      "rules": "Rule-based",
-      "rulesHint": "Compares tap answers directly: free, instant and repeatable"
+      "filtersTitle": "Hard filters",
+      "filtersHint": "A pair that fails any of these is never proposed.",
+      "filters": {
+        "orientation": "Orientation",
+        "age": "Age gap and older/younger",
+        "religion": "Faith as a deal breaker",
+        "distance": "Long distance",
+        "children": "Children (want vs. don't want)",
+        "habits": "Smoking and alcohol as deal breakers"
+      },
+      "scoreTitle": "Score",
+      "scoreHint": "Remaining pairs are scored on five dimensions, then multiplied by an age-fit factor."
     },
     "matches": {
       "title": "Matches",
@@ -249,7 +243,6 @@
       "expired": "Expired",
       "colCouple": "Couple",
       "colScore": "Score",
-      "colAlgorithm": "Algorithm",
       "colStatus": "Status",
       "colActions": "Actions",
       "searchPlaceholder": "Search by alias…",
@@ -261,8 +254,6 @@
       "markFailed": "Failed",
       "markDeclined": "Declined",
       "markExpired": "Expired",
-      "editNotes": "Notes",
-      "cancelNotes": "Cancel",
       "notesPlaceholder": "Add notes about this couple…",
       "saveNotes": "Save",
       "delete": "Delete",
@@ -273,23 +264,23 @@
       "statusUpdated": "Status updated",
       "notesSaved": "Notes saved",
       "deleted": "Match deleted",
-      "updateError": "Update failed"
+      "updateError": "Update failed",
+      "colBreakdown": "Breakdown",
+      "details": "Details",
+      "hideDetails": "Hide"
     },
     "audit": {
       "title": "Audit Logs",
       "subtitle": "All administrative and applicant actions",
-      "events": "{{count}} events",
-      "colAction": "Action",
-      "colTarget": "Target",
-      "colAdmin": "Admin",
-      "colIp": "IP",
-      "colTime": "Time",
       "empty": "No audit events yet.",
       "page": "Page {{current}} of {{total}}",
       "prev": "← Prev",
       "next": "Next →",
       "by": "by {{id}}",
       "targetAlias": "Alias: {{alias}}"
+    },
+    "breakdown": {
+      "ageModifier": "Age fit (multiplier)"
     }
   },
   "portal": {

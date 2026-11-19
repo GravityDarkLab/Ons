@@ -10,7 +10,8 @@ import { useToast } from '../../components/ui/Toast'
 import { applicantStatusTone, matchStatusTone } from '../../components/ui/statusTones'
 import { useOptionalAuth } from '../context/AuthContext'
 import type { Applicant, ApplicantStatus, Match } from '../types'
-import { formatAnswer } from '../../lib/questions'
+import { ApplicantAnswers } from '../components/ApplicantAnswers'
+import { TopCandidates } from '../components/TopCandidates'
 
 // ── Icons ──────────────────────────────────────────────────────────────────────
 
@@ -442,27 +443,6 @@ export function ApplicantDetail() {
             {/* Magic link regeneration */}
             <MagicLinkCard id={id!} />
 
-            {/* Divider */}
-            <div className="border-t border-border" />
-
-            {/* Answers */}
-            <div>
-              <p className="text-xs font-semibold text-muted uppercase tracking-wider mb-3">
-                {t('admin.detail.answers')}
-              </p>
-              <div className="space-y-2.5">
-                {Object.entries(applicant.answers).map(([key, raw]) => {
-                  const { label, value } = formatAnswer(t, key, raw)
-                  return (
-                    <div key={key} className="flex justify-between gap-3 text-sm">
-                      <span className="text-muted">{label}</span>
-                      <span className="text-primary text-end break-words max-w-[60%]">{value}</span>
-                    </div>
-                  )
-                })}
-              </div>
-            </div>
-
             {/* Withdraw action */}
             {applicant.status !== 'inactive' && (
               <>
@@ -496,6 +476,11 @@ export function ApplicantDetail() {
             <StatusStepper status={applicant.status} />
           </div>
 
+          {/* Live top candidates — only for applicants still in the matching pool */}
+          {(applicant.status === 'applied' || applicant.status === 'matched') && (
+            <TopCandidates applicantId={id!} />
+          )}
+
           {/* Match history card — only rendered when there are matches */}
           {matches.length > 0 && (
             <div className="bg-surface border border-border rounded-2xl p-6 shadow-card">
@@ -513,6 +498,8 @@ export function ApplicantDetail() {
               <MatchHistory matches={matches} applicantId={id!} />
             </div>
           )}
+
+          <ApplicantAnswers answers={applicant.answers} />
         </div>
       </div>
     </div>

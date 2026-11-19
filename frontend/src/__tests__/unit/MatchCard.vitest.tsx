@@ -630,45 +630,32 @@ describe('MatchCard AI match summary (Section E)', () => {
   })
 })
 
-// tested: PartnerProfileView adversarial input — non-standard field types
+// tested: PartnerProfileView adversarial input — shared answers with unexpected types or values
 describe('PartnerProfileView adversarial field types', () => {
   async function expandWith(partnerProfile: Record<string, unknown>) {
     render(<MatchCard match={{ ...base, partnerProfile }} />)
     await userEvent.click(screen.getByRole('button', { name: /Crescent River/i }))
   }
 
-  it('handles vibe_words as an empty array without crashing', async () => {
-    await expandWith({ location: 'Paris', vibe_words: [] })
+  it.each([
+    ['top_values as a number', { top_values: 42 }],
+    ['top_values as null', { top_values: null }],
+    ['an unknown option value', { smoking: 'typo', wants_children: 'maybe' }],
+    ['a select answer stored as an object', { relationship_type: { $ne: 1 } }],
+    ['a boolean where a select is expected', { social_energy: true }],
+  ])('renders the rest of the profile with %s', async (_name, odd) => {
+    await expandWith({ location: 'Paris', ...odd })
     expect(screen.getByText('Paris')).toBeInTheDocument()
   })
 
-  it('handles vibe_words as a number without crashing', async () => {
-    await expandWith({ location: 'Paris', vibe_words: 42 })
-    expect(screen.getByText('Paris')).toBeInTheDocument()
-  })
-
-  it('handles vibe_words as null without crashing', async () => {
-    await expandWith({ location: 'Paris', vibe_words: null })
-    expect(screen.getByText('Paris')).toBeInTheDocument()
-  })
-
-  it('handles all fields undefined/null without crashing', async () => {
-    await expandWith({ location: 'Only Location' })
-    expect(screen.getByText('Only Location')).toBeInTheDocument()
+  it('shows an unknown option value as-is rather than a missing translation key', async () => {
+    await expandWith({ location: 'Paris', smoking: 'typo' })
+    expect(screen.getByText('typo')).toBeInTheDocument()
+    expect(screen.queryByText('questions.smoking.options.typo')).not.toBeInTheDocument()
   })
 
   it('renders nothing for a completely empty partnerProfile (no toggle shown)', () => {
     render(<MatchCard match={{ ...base, partnerProfile: {} }} />)
     expect(screen.queryByRole('button', { name: /Crescent River/i })).not.toBeInTheDocument()
-  })
-
-  it('handles physical_affection_importance as a string without crashing', async () => {
-    await expandWith({ location: 'Berlin', physical_affection_importance: 'high' })
-    expect(screen.getByText('Berlin')).toBeInTheDocument()
-  })
-
-  it('handles open_to_long_distance as a string "yes" without crashing', async () => {
-    await expandWith({ location: 'Lyon', open_to_long_distance: 'yes' })
-    expect(screen.getByText('Lyon')).toBeInTheDocument()
   })
 })

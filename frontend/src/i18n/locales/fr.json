@@ -1,8 +1,6 @@
 {
   "brand": "Ons",
   "common": {
-    "yes": "Oui",
-    "no": "Non",
     "dismiss": "Fermer",
     "timeAgo": {
       "justNow": "à l'instant",
@@ -54,7 +52,6 @@
     "back": "Retour",
     "next": "Continuer",
     "submit": "Soumettre",
-    "submitting": "Envoi en cours…",
     "error": "Une erreur s'est produite. Veuillez réessayer.",
     "progress": "Question {{n}} sur {{total}}",
     "progressIntro": "Environ 4 minutes",
@@ -97,11 +94,9 @@
     "copied": "Copié !",
     "download": "Télécharger .txt",
     "done": "Terminé →",
-    "laterHint": "Vous pouvez également accéder à votre profil plus tard sur /profile/login avec votre lien magique.",
-    "backHome": "Retour à l'accueil"
+    "laterHint": "Vous pouvez également accéder à votre profil plus tard sur /profile/login avec votre lien magique."
   },
   "admin": {
-    "subtitle": "Admin",
     "login": {
       "title": "Accès administrateur",
       "tagline": "Là où les cœurs compatibles se rencontrent.",
@@ -124,15 +119,6 @@
     },
     "dashboard": {
       "title": "Tableau de bord",
-      "subtitle": "Vue d'ensemble de la plateforme",
-      "total": "Total",
-      "active": "Actifs",
-      "matched": "Matchés",
-      "inactive": "Inactifs",
-      "quickActions": "Actions rapides",
-      "runMatching": "Lancer le matching",
-      "viewApplicants": "Voir les candidats",
-      "auditLogs": "Journal d'audit",
       "recentMatches": "Couples récents",
       "recentActivity": "Activité récente",
       "noMatchesYet": "Aucun couple pour l'instant.",
@@ -195,29 +181,27 @@
       "answers": "Réponses",
       "matches": "Couples",
       "viewAllMatches": "Voir tout →",
-      "page": "Page {{current}} sur {{total}}",
-      "prev": "← Préc.",
-      "next": "Suiv. →",
       "withdrawn": "Candidat retiré",
       "magicLink": "Lien magique",
       "regenerateMagicLink": "Régénérer le lien magique",
       "regenerateMagicLinkConfirm": "Cela invalide le lien magique actuel du candidat et réinitialise son mot de passe — il devra en définir un nouveau. Générer un nouveau lien à partager directement avec lui ?",
       "newMagicLinkHint": "Nouveau lien magique — partagez-le directement avec le candidat. Il ne sera plus affiché.",
       "copy": "Copier",
-      "copied": "Copié ✓"
+      "copied": "Copié ✓",
+      "answersHint": "Les réponses partagées sont montrées aux matchs et utilisées dans les résumés IA ; les réponses privées servent uniquement au score.",
+      "shared": "Partagée",
+      "private": "Privée",
+      "otherAnswers": "Autres réponses",
+      "candidates": "Meilleurs candidats",
+      "candidatesHint": "Calculé en direct avec les réponses actuelles, après les filtres stricts.",
+      "noCandidates": "Personne dans le vivier ne passe les filtres stricts pour cette personne en ce moment."
     },
     "matching": {
       "title": "Matching",
       "subtitle": "Lancer un passage complet sur tous les candidats actifs",
-      "algorithm": "Algorithme",
-      "recommended": "Recommandé",
-      "baseline": "Baseline",
-      "baselineHint": "Scoring basé sur des règles pondérées",
-      "cosine": "Cosinus",
-      "cosineHint": "Similarité cosinus sur vecteurs numériques",
       "lastRunSummary": "Dernière exécution : {{time}} · {{count}} paires proposées",
       "neverRun": "Jamais exécuté",
-      "confirmTitle": "Lancer le matching avec {{algorithm}} ?",
+      "confirmTitle": "Lancer le matching maintenant ?",
       "confirmBody": "Cela créera de nouvelles propositions de couples.",
       "cancel": "Annuler",
       "confirmRun": "Oui, lancer le matching",
@@ -232,8 +216,18 @@
       "statDuration": "Durée",
       "algorithmUsed": "Algorithme : {{algorithm}}",
       "viewMatches": "Voir les couples",
-      "rules": "Par règles",
-      "rulesHint": "Compare directement les réponses : gratuit, instantané et reproductible"
+      "filtersTitle": "Filtres stricts",
+      "filtersHint": "Une paire qui échoue à l'un d'eux n'est jamais proposée.",
+      "filters": {
+        "orientation": "Orientation",
+        "age": "Écart d'âge, plus âgé / plus jeune",
+        "religion": "Foi rédhibitoire",
+        "distance": "Relation à distance",
+        "children": "Enfants (en veut / n'en veut pas)",
+        "habits": "Tabac et alcool rédhibitoires"
+      },
+      "scoreTitle": "Score",
+      "scoreHint": "Les paires restantes sont notées sur cinq dimensions, puis multipliées par un facteur d'âge."
     },
     "matches": {
       "title": "Couples",
@@ -249,7 +243,6 @@
       "expired": "Expiré",
       "colCouple": "Couple",
       "colScore": "Score",
-      "colAlgorithm": "Algorithme",
       "colStatus": "Statut",
       "colActions": "Actions",
       "searchPlaceholder": "Rechercher par alias…",
@@ -261,8 +254,6 @@
       "markFailed": "Échoué",
       "markDeclined": "Refusé",
       "markExpired": "Expiré",
-      "editNotes": "Notes",
-      "cancelNotes": "Annuler",
       "notesPlaceholder": "Ajouter des notes sur ce couple…",
       "saveNotes": "Enregistrer",
       "delete": "Supprimer",
@@ -273,23 +264,23 @@
       "statusUpdated": "Statut mis à jour",
       "notesSaved": "Notes enregistrées",
       "deleted": "Match supprimé",
-      "updateError": "Échec de la mise à jour"
+      "updateError": "Échec de la mise à jour",
+      "colBreakdown": "Détail",
+      "details": "Détails",
+      "hideDetails": "Masquer"
     },
     "audit": {
       "title": "Journal d'audit",
       "subtitle": "Toutes les actions administratives et des candidats",
-      "events": "{{count}} événements",
-      "colAction": "Action",
-      "colTarget": "Cible",
-      "colAdmin": "Admin",
-      "colIp": "IP",
-      "colTime": "Heure",
       "empty": "Aucun événement pour l'instant.",
       "page": "Page {{current}} sur {{total}}",
       "prev": "← Préc.",
       "next": "Suiv. →",
       "by": "par {{id}}",
       "targetAlias": "Alias : {{alias}}"
+    },
+    "breakdown": {
+      "ageModifier": "Compatibilité d'âge (multiplicateur)"
     }
   },
   "portal": {

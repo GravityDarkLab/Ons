@@ -1,8 +1,6 @@
 {
   "brand": "Ons",
   "common": {
-    "yes": "Ja",
-    "no": "Nein",
     "dismiss": "Schließen",
     "timeAgo": {
       "justNow": "gerade eben",
@@ -54,7 +52,6 @@
     "back": "Zurück",
     "next": "Weiter",
     "submit": "Absenden",
-    "submitting": "Wird gesendet…",
     "error": "Etwas ist schiefgelaufen. Bitte versuche es erneut.",
     "progress": "Frage {{n}} von {{total}}",
     "progressIntro": "Etwa 4 Minuten",
@@ -97,11 +94,9 @@
     "copied": "Kopiert!",
     "download": ".txt herunterladen",
     "done": "Fertig →",
-    "laterHint": "Du kannst später auch über /profile/login mit deinem Magic-Link auf dein Profil zugreifen.",
-    "backHome": "Zurück zur Startseite"
+    "laterHint": "Du kannst später auch über /profile/login mit deinem Magic-Link auf dein Profil zugreifen."
   },
   "admin": {
-    "subtitle": "Admin",
     "login": {
       "title": "Admin-Zugang",
       "tagline": "Wo passende Herzen sich treffen.",
@@ -124,15 +119,6 @@
     },
     "dashboard": {
       "title": "Dashboard",
-      "subtitle": "Plattformübersicht",
-      "total": "Gesamt",
-      "active": "Aktiv",
-      "matched": "Gematcht",
-      "inactive": "Inaktiv",
-      "quickActions": "Schnellaktionen",
-      "runMatching": "Matching starten",
-      "viewApplicants": "Bewerber anzeigen",
-      "auditLogs": "Audit-Protokoll",
       "recentMatches": "Neueste Paare",
       "recentActivity": "Letzte Aktivität",
       "noMatchesYet": "Noch keine Paare.",
@@ -195,29 +181,27 @@
       "answers": "Antworten",
       "matches": "Paare",
       "viewAllMatches": "Alle anzeigen →",
-      "page": "Seite {{current}} von {{total}}",
-      "prev": "← Zurück",
-      "next": "Weiter →",
       "withdrawn": "Bewerber zurückgezogen",
       "magicLink": "Magic-Link",
       "regenerateMagicLink": "Magic-Link erneuern",
       "regenerateMagicLinkConfirm": "Dies macht den aktuellen Magic-Link des Bewerbers ungültig und setzt sein Passwort zurück — er muss ein neues festlegen. Einen neuen Link generieren und direkt mit ihm teilen?",
       "newMagicLinkHint": "Neuer Magic-Link — teile ihn direkt mit dem Bewerber. Er wird nicht erneut angezeigt.",
       "copy": "Kopieren",
-      "copied": "Kopiert ✓"
+      "copied": "Kopiert ✓",
+      "answersHint": "Geteilte Antworten sehen Matches und KI-Zusammenfassungen; private Antworten fließen nur in die Bewertung ein.",
+      "shared": "Geteilt",
+      "private": "Privat",
+      "otherAnswers": "Weitere Antworten",
+      "candidates": "Beste Kandidaten",
+      "candidatesHint": "Live mit den aktuellen Antworten berechnet, nach den harten Filtern.",
+      "noCandidates": "Im Pool besteht gerade niemand die harten Filter für diese Person."
     },
     "matching": {
       "title": "Matching",
       "subtitle": "Vollständigen paarweisen Durchlauf für alle aktiven Bewerber starten",
-      "algorithm": "Algorithmus",
-      "recommended": "Empfohlen",
-      "baseline": "Baseline",
-      "baselineHint": "Gewichtetes regelbasiertes Scoring",
-      "cosine": "Kosinus",
-      "cosineHint": "Kosinus-Ähnlichkeit auf numerischen Vektoren",
       "lastRunSummary": "Letzter Lauf: {{time}} · {{count}} Paare vorgeschlagen",
       "neverRun": "Nie ausgeführt",
-      "confirmTitle": "Matching mit {{algorithm}} ausführen?",
+      "confirmTitle": "Matching jetzt starten?",
       "confirmBody": "Dies erstellt neue Paarvorschläge.",
       "cancel": "Abbrechen",
       "confirmRun": "Ja, Matching starten",
@@ -232,8 +216,18 @@
       "statDuration": "Dauer",
       "algorithmUsed": "Algorithmus: {{algorithm}}",
       "viewMatches": "Paare anzeigen",
-      "rules": "Regelbasiert",
-      "rulesHint": "Vergleicht die Antworten direkt: kostenlos, sofort und reproduzierbar"
+      "filtersTitle": "Harte Filter",
+      "filtersHint": "Ein Paar, das einen davon nicht erfüllt, wird nie vorgeschlagen.",
+      "filters": {
+        "orientation": "Orientierung",
+        "age": "Altersunterschied, älter/jünger",
+        "religion": "Glaube als Ausschlusskriterium",
+        "distance": "Fernbeziehung",
+        "children": "Kinder (möchte / möchte nicht)",
+        "habits": "Rauchen und Alkohol als Ausschlusskriterium"
+      },
+      "scoreTitle": "Bewertung",
+      "scoreHint": "Die übrigen Paare werden in fünf Dimensionen bewertet und mit einem Alters-Faktor multipliziert."
     },
     "matches": {
       "title": "Paare",
@@ -249,7 +243,6 @@
       "expired": "Abgelaufen",
       "colCouple": "Paar",
       "colScore": "Score",
-      "colAlgorithm": "Algorithmus",
       "colStatus": "Status",
       "colActions": "Aktionen",
       "searchPlaceholder": "Nach Alias suchen…",
@@ -261,8 +254,6 @@
       "markFailed": "Gescheitert",
       "markDeclined": "Abgelehnt",
       "markExpired": "Abgelaufen",
-      "editNotes": "Notizen",
-      "cancelNotes": "Abbrechen",
       "notesPlaceholder": "Notizen zu diesem Paar hinzufügen…",
       "saveNotes": "Speichern",
       "delete": "Löschen",
@@ -273,23 +264,23 @@
       "statusUpdated": "Status aktualisiert",
       "notesSaved": "Notizen gespeichert",
       "deleted": "Match gelöscht",
-      "updateError": "Aktualisierung fehlgeschlagen"
+      "updateError": "Aktualisierung fehlgeschlagen",
+      "colBreakdown": "Aufschlüsselung",
+      "details": "Details",
+      "hideDetails": "Ausblenden"
     },
     "audit": {
       "title": "Audit-Protokoll",
       "subtitle": "Alle administrativen und Bewerberaktionen",
-      "events": "{{count}} Ereignisse",
-      "colAction": "Aktion",
-      "colTarget": "Ziel",
-      "colAdmin": "Admin",
-      "colIp": "IP",
-      "colTime": "Zeit",
       "empty": "Noch keine Ereignisse.",
       "page": "Seite {{current}} von {{total}}",
       "prev": "← Zurück",
       "next": "Weiter →",
       "by": "von {{id}}",
       "targetAlias": "Alias: {{alias}}"
+    },
+    "breakdown": {
+      "ageModifier": "Alters-Passung (Faktor)"
     }
   },
   "portal": {

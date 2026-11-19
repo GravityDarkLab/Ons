@@ -42,33 +42,43 @@ async function clickRunAndConfirm() {
   await userEvent.click(screen.getByRole('button', { name: /admin\.matching\.confirmRun|yes, run matching/i }))
 }
 
-describe('Matching page — algorithm selector', () => {
-  it('renders only the rule-based algorithm option', () => {
+describe('Matching page — how matching works', () => {
+  it('has no algorithm picker: rule-based scoring is the only algorithm', () => {
     renderMatching()
-    expect(screen.getAllByRole('radio')).toHaveLength(1)
+    expect(screen.queryByRole('radio')).not.toBeInTheDocument()
   })
 
-  it('selects the rule-based algorithm by default', () => {
+  it('lists the six hard filters', () => {
     renderMatching()
-    const radio = screen.getByRole('radio', { name: /admin\.matching\.rules/i }) as HTMLInputElement
-    expect(radio).toBeChecked()
+    for (const f of ['orientation', 'age', 'religion', 'distance', 'children', 'habits']) {
+      expect(screen.getByText(`admin.matching.filters.${f}`)).toBeInTheDocument()
+    }
+  })
+
+  it('lists the five scored dimensions with their weights', () => {
+    renderMatching()
+    const weights = { values: 25, lifestyle: 25, connection: 30, personality: 10, goals: 10 }
+    for (const [dim, weight] of Object.entries(weights)) {
+      const row = screen.getByText(`portal.matches.breakdown.${dim}.label`).closest('li')!
+      expect(row).toHaveTextContent(`${weight}%`)
+    }
   })
 })
 
 describe('Matching page — run button', () => {
-  it('calls runMatching with rules-v1', async () => {
+  it('calls runMatching without choosing an algorithm', async () => {
     mockRunMatching.mockResolvedValue(RUN_RESULT)
     renderMatching()
     await clickRunAndConfirm()
-    expect(mockRunMatching).toHaveBeenCalledWith('rules-v1')
+    expect(mockRunMatching).toHaveBeenCalledWith()
   })
 
   it('shows error message when run fails', async () => {
-    mockRunMatching.mockRejectedValue(new Error('Embedding server unreachable'))
+    mockRunMatching.mockRejectedValue(new Error('Database unavailable'))
     renderMatching()
     await clickRunAndConfirm()
     await waitFor(() =>
-      expect(screen.getByText('Embedding server unreachable')).toBeInTheDocument(),
+      expect(screen.getByText('Database unavailable')).toBeInTheDocument(),
     )
   })
 
