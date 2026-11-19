@@ -15,6 +15,10 @@ A privacy-first couple matching platform. Applicants answer a short tap-only que
 
 ![Application form on a phone: the identity screen, a single-choice question, the pick-three values question and an agreement question with keyboard focus](./docs/screenshots/form-mobile.webp)
 
+**The applicant portal** — matches above a minimum score each person sets, with the answers their match chose to share and why the score is what it is.
+
+<img src="./docs/screenshots/portal-mobile.webp" alt="Applicant portal on a phone: the match list under the minimum-score slider, and an expanded match showing the partner's shared answers and the score breakdown" width="520">
+
 **On a laptop** — the same form, and the applicant portal where matches appear with the answers each person chose to share.
 
 | Application form | Applicant portal |
@@ -33,6 +37,10 @@ A privacy-first couple matching platform. Applicants answer a short tap-only que
 **Right-to-left and dark mode** — Arabic flips the whole layout. The portal and admin panel have a dark theme; the public form is light-only by design.
 
 <img src="./docs/screenshots/mobile-arabic-and-dark.webp" alt="The values question in Arabic with a right-to-left layout, and the applicant portal in dark mode on a phone" width="520">
+
+**The admin panel, on a phone too** — the menu is a drawer; matches open into the five-dimension breakdown and private notes; each applicant page shows who they would be matched with right now and every answer, marked shared or private.
+
+![Admin panel on a phone: the navigation drawer, a match with its breakdown and notes, an applicant's top candidates and match history, and their answers grouped by section with shared and private badges](./docs/screenshots/admin-mobile.webp)
 
 What the form is built to do:
 
