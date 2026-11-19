@@ -1,0 +1,65 @@
+name: Feature request
+description: Suggest a new capability or an improvement.
+title: "feat: "
+labels: ["type: feature", "status: needs triage"]
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem
+      description: Who is affected, and what is hard or impossible today? Describe the problem before the solution.
+    validations:
+      required: true
+
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed solution
+      description: What should happen instead? Sketches and screenshots welcome.
+    validations:
+      required: true
+
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives considered
+
+  - type: dropdown
+    id: area
+    attributes:
+      label: Area
+      multiple: true
+      options:
+        - Application form / questionnaire
+        - Applicant portal
+        - Admin panel
+        - Matching
+        - Privacy
+        - Translations
+        - Accessibility
+        - Infrastructure
+    validations:
+      required: true
+
+  - type: dropdown
+    id: privacy-impact
+    attributes:
+      label: Does this change what is stored, shared or revealed?
+      description: Anything shown to a match, sent to OpenAI, or revealed before mutual acceptance needs extra care.
+      options:
+        - "No"
+        - "Yes — new data is collected or stored"
+        - "Yes — data is shown to other applicants or sent to a third party"
+        - Not sure
+    validations:
+      required: true
+
+  - type: textarea
+    id: acceptance
+    attributes:
+      label: Acceptance criteria
+      description: How will we know it is done?
+      placeholder: |
+        - [ ] …
+        - [ ] Works in all four languages, including right-to-left
+        - [ ] Works on a phone and a laptop
