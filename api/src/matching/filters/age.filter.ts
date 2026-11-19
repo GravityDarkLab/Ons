@@ -4,14 +4,14 @@
  * Filter: isAgeCompatible() — hard binary check, called before scoring.
  *   - Directional check: age_direction ("either" | "older" | "younger"),
  *     independent of age_gap — enforced even with no gap limit
- *   - Hard outer limit: gap > 2 × age_gap → reject
+ *   - Hard outer limit: gap ≥ 2 × age_gap → reject
  *   - age_gap = "any" (or missing/unknown) → no gap limit, only direction applies
  *   - Missing birth_date → skip filter for that pair
  *
  * Modifier: ageModifier() — multiplied onto the final compatibility score.
  *   - Within age_gap: modifier = 1.0 (no penalty)
  *   - Between max_gap and 2× max_gap: cosine decay toward 0
- *   - Beyond 2× max_gap: should be filtered out before reaching here
+ *   - At or beyond 2× max_gap: filtered out before reaching here
  *   - Bidirectional: min(A's modifier, B's modifier)
  */
 
@@ -71,8 +71,9 @@ function _passesConstraints(
   // null = no gap preference → no outer limit to enforce
   if (maxGap === null) return true;
 
-  // Hard outer limit: gap > 2× max_gap → reject
-  if (gap > 2 * maxGap) return false;
+  // Hard outer limit, exclusive: the modifier reaches 0 at exactly 2× max_gap,
+  // so letting that pair through would store a proposal scored 0.
+  if (gap >= 2 * maxGap) return false;
 
   return true;
 }

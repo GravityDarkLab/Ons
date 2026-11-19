@@ -20,9 +20,21 @@ describe("isAgeCompatible", () => {
     expect(isAgeCompatible(person(born(1970), "any"), person(born(1999), "any"))).toBe(true);
   });
 
-  it("accepts a gap of exactly twice the limit and rejects one year more", () => {
-    expect(isAgeCompatible(person(born(1990), "5"), person(born(2000), "any"))).toBe(true);
-    expect(isAgeCompatible(person(born(1989), "5"), person(born(2000), "any"))).toBe(false);
+  // At exactly twice the limit the age modifier is cos(π/2) ≈ 0, so a pair that
+  // passed would be saved with a score of 0 (#39). The boundary is exclusive.
+  it("accepts a gap just under twice the limit and rejects exactly twice", () => {
+    expect(isAgeCompatible(person(born(1991), "5"), person(born(2000), "any"))).toBe(true);
+    expect(isAgeCompatible(person(born(1990), "5"), person(born(2000), "any"))).toBe(false);
+  });
+
+  it("every pair it accepts gets an age modifier above 0", () => {
+    for (let year = 1975; year <= 2000; year++) {
+      for (const gap of ["3", "5", "10"] as const) {
+        const a = person(born(year), gap);
+        const b = person(born(2000), "any");
+        if (isAgeCompatible(a, b)) expect(ageModifier(a, b)).toBeGreaterThan(1e-9);
+      }
+    }
   });
 
   it("is checked in both directions", () => {

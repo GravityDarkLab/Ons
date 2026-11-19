@@ -26,7 +26,7 @@ Both directions are checked. A missing answer skips that check.
 | Filter | Excludes a pair when |
 |---|---|
 | `orientation.filter.ts` | either person's orientation does not include the other's gender |
-| `age.filter.ts` | the gap is more than 2× either person's `age_gap`, or the partner is on the wrong side of their `age_direction` |
+| `age.filter.ts` | the gap is 2× either person's `age_gap` or more, or the partner is on the wrong side of their `age_direction` |
 | `religion.filter.ts` | either holds `religion_match = deal_breaker` and they do not share the same named religion |
 | `location.filter.ts` | they are in different cities and either is not open to long distance |
 | `children.filter.ts` | one answered `want` and the other `dont_want` |
