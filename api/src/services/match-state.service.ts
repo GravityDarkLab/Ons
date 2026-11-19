@@ -1,4 +1,5 @@
 import { ObjectId } from "mongodb";
+import { SHARED_QUESTION_IDS } from "../questionnaire/questions.js";
 import { env } from "../config/env.js";
 import { AppError } from "../errors.js";
 import { getDb } from "../db/connection.js";
@@ -29,21 +30,18 @@ export interface ApplicantMatchView {
   contactRequestedAt?: Date; // when the initiator clicked "contact" — shown to target
   iceBreakers?: string[];
   dateIdeas?: string[];
-  partnerProfile?: Record<string, unknown>; // partner's public questionnaire answers
+  partnerProfile?: Record<string, unknown>; // partner's shared answers + derived age
   partnerInstagram?: string; // only for in_progress/dating — see toMatchView
   partnerFullName?: string;
   datingStartedAt?: Date;
 }
 
-// Keys never shown to a partner: consent checkboxes carry no information,
-// instagram_handle is defense in depth — identity answers are stored encrypted
-// in a separate collection and should never appear in `answers` at all — and
-// birth_date is a precise identity fact, so partners only see the derived age
-const PARTNER_PROFILE_EXCLUDED_KEYS = new Set([
-  "disclaimer_agreed",
-  "instagram_handle",
-  "birth_date",
-]);
+/**
+ * Breakdown dimensions an applicant may see. `connection` and `personality`
+ * are computed from private answers (attachment, personality items) and
+ * could be worked backwards from a displayed value, so they stay admin-only.
+ */
+export const APPLICANT_BREAKDOWN_KEYS = ["values", "lifestyle", "goals"] as const;
 
 /**
  * Pure function — no DB calls. Projects a MatchDoc into the applicant-facing view
@@ -76,16 +74,24 @@ export function toMatchView(
     perspective,
   };
 
-  if (doc.breakdown) view.breakdown = doc.breakdown;
+  if (doc.breakdown) {
+    const visible = Object.fromEntries(
+      APPLICANT_BREAKDOWN_KEYS.filter((key) => key in doc.breakdown!).map((key) => [key, doc.breakdown![key]!])
+    );
+    if (Object.keys(visible).length > 0) view.breakdown = visible;
+  }
 
   if (partnerAnswers) {
-    const profile = Object.fromEntries(
-      Object.entries(partnerAnswers).filter(([key]) => !PARTNER_PROFILE_EXCLUDED_KEYS.has(key))
+    // Allow-list, not block-list: only answers marked `shared` in the question
+    // definitions are shown to a match. Everything else — identity, partner
+    // preferences, attachment and personality answers, the free-text note —
+    // stays private by default, including any field added later.
+    const profile: Record<string, unknown> = Object.fromEntries(
+      Object.entries(partnerAnswers).filter(([key]) => SHARED_QUESTION_IDS.has(key))
     );
-    // Partners see an age, not the exact birth date (legacy records carry a
-    // stored `age` answer instead, which passes through unchanged)
+    // Partners see an age, never the exact birth date
     const age = ageFromBirthDate(partnerAnswers["birth_date"]);
-    if (age !== null && !("age" in profile)) profile["age"] = age;
+    if (age !== null) profile["age"] = age;
     if (Object.keys(profile).length > 0) view.partnerProfile = profile;
   }
 

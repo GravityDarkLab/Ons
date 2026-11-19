@@ -6,6 +6,8 @@
 // recalcOrphanedStatuses), the conflicting-match expiry helper
 // (expireConflictingMatches), the applicant-facing view projection
 // (toMatchView), and the post-matching-pass promotion (promoteAppliedToMatched).
+import { validAnswers } from "../matching/_fixtures.js";
+import { SHARED_QUESTION_IDS } from "../../../questionnaire/questions.js";
 import { describe, it, expect, mock, beforeEach } from "bun:test";
 import { ObjectId } from "mongodb";
 import type { MatchDoc } from "../../../models/match.model.js";
@@ -461,11 +463,28 @@ describe("toMatchView – ice-breakers and date ideas", () => {
 });
 
 describe("toMatchView – partner profile", () => {
-  it("includes the partner's public answers when provided", () => {
+  it("includes only shared answers, plus the derived age", () => {
     const match = makeMatch();
-    const answers = { location: "Paris, France", age: 27, vibe_words: ["calm", "curious"] };
-    const view = toMatchView(match, match.applicantAId, answers);
-    expect(view.partnerProfile).toEqual(answers);
+    const view = toMatchView(match, match.applicantAId, validAnswers({ note_to_match: "call me" }));
+    const keys = Object.keys(view.partnerProfile ?? {});
+    expect(keys.sort()).toEqual([...SHARED_QUESTION_IDS, "age"].sort());
+    expect(view.partnerProfile).toMatchObject({ location: "Tunis, Tunisia", smoking: "never", top_values: ["family", "growth", "fun"] });
+  });
+
+  it.each([
+    "attach_anxiety_1", "attach_avoidance_2", "p_calm", "partner_smoking", "partner_alcohol", "religion_match",
+    "age_gap", "age_direction", "gender_identity", "sexual_orientation", "birth_date", "note_to_match",
+    "opposite_gender_friends", "open_to_long_distance", "disclaimer_agreed", "first_name",
+  ])("never exposes %s", (key) => {
+    const match = makeMatch();
+    const view = toMatchView(match, match.applicantAId, validAnswers({ note_to_match: "call me" }));
+    expect(view.partnerProfile).not.toHaveProperty(key);
+  });
+
+  it("does not leak the free-text note anywhere in the view", () => {
+    const match = makeMatch();
+    const view = toMatchView(match, match.applicantAId, validAnswers({ note_to_match: "my handle is @leak" }));
+    expect(JSON.stringify(view)).not.toContain("@leak");
   });
 
   it("omits partnerProfile when no answers are provided", () => {
@@ -474,18 +493,9 @@ describe("toMatchView – partner profile", () => {
     expect(view.partnerProfile).toBeUndefined();
   });
 
-  it("filters out consent-only keys like disclaimer_agreed", () => {
+  it("omits partnerProfile entirely when nothing shareable remains", () => {
     const match = makeMatch();
-    const view = toMatchView(match, match.applicantAId, {
-      work: "Student",
-      disclaimer_agreed: true,
-    });
-    expect(view.partnerProfile).toEqual({ work: "Student" });
-  });
-
-  it("omits partnerProfile entirely when only excluded keys remain", () => {
-    const match = makeMatch();
-    const view = toMatchView(match, match.applicantAId, { disclaimer_agreed: true });
+    const view = toMatchView(match, match.applicantAId, { disclaimer_agreed: true, p_calm: 3, work: "Student" });
     expect(view.partnerProfile).toBeUndefined();
   });
 
@@ -496,14 +506,7 @@ describe("toMatchView – partner profile", () => {
       location: "Paris, France",
       birth_date: `${birthYear}-01-01`, // birthday already passed this year
     });
-    expect(view.partnerProfile).not.toHaveProperty("birth_date");
-    expect(view.partnerProfile?.["age"]).toBe(28);
-  });
-
-  it("passes a legacy stored age through unchanged", () => {
-    const match = makeMatch();
-    const view = toMatchView(match, match.applicantAId, { age: 31 });
-    expect(view.partnerProfile).toEqual({ age: 31 });
+    expect(view.partnerProfile).toEqual({ location: "Paris, France", age: 28 });
   });
 
   it("strips instagram_handle even if it somehow appears in answers", () => {
@@ -516,6 +519,26 @@ describe("toMatchView – partner profile", () => {
     });
     expect(view.partnerProfile).toEqual({ location: "Tunis, Tunisia" });
     expect(JSON.stringify(view)).not.toContain("leaked_handle");
+  });
+});
+
+describe("toMatchView – breakdown", () => {
+  const full = { values: 0.9, lifestyle: 0.8, connection: 0.7, personality: 0.6, goals: 0.5, age_modifier: 1 };
+
+  it("shows applicants only the dimensions that cannot be worked back to private answers", () => {
+    const match = makeMatch({ breakdown: full });
+    const view = toMatchView(match, match.applicantAId);
+    expect(view.breakdown).toEqual({ values: 0.9, lifestyle: 0.8, goals: 0.5 });
+  });
+
+  it("omits the breakdown when the match has none", () => {
+    const match = makeMatch();
+    expect(toMatchView(match, match.applicantAId).breakdown).toBeUndefined();
+  });
+
+  it("omits the breakdown when only private dimensions are stored", () => {
+    const match = makeMatch({ breakdown: { connection: 0.7, personality: 0.6 } });
+    expect(toMatchView(match, match.applicantAId).breakdown).toBeUndefined();
   });
 });
 

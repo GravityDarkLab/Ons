@@ -1,23 +1,30 @@
 import { truncateForPrompt } from "./ai.service.js";
 import type { ApplicantDoc } from "../models/applicant.model.js";
+import { QUESTIONS, optionLabel } from "../questionnaire/questions.js";
+
+const SHARED_QUESTIONS = QUESTIONS.filter((q) => q.shared);
 
 /**
- * Builds a free-text summary of an applicant's answers for use in an LLM
- * prompt (match-summary, match-rerank). Shared so the field selection and
- * truncation behavior can't drift between callers.
+ * Builds the profile text sent to OpenAI (match summaries, ice-breakers):
+ * "<question>: <answer>" for every answer marked `shared` in the question
+ * definitions, in questionnaire order, with English labels.
+ *
+ * Default-deny by construction: identity, birth date, gender, orientation,
+ * partner preferences, attachment and personality answers and the free-text
+ * note are not shared, so they can never reach a prompt through here.
  */
 export function buildProfileSnippet(doc: ApplicantDoc): string {
-  const a = doc.answers as Record<string, unknown>;
-  const t = (v: unknown) => truncateForPrompt(String(v));
+  const answers = doc.answers as Record<string, unknown>;
   const parts: string[] = [];
-  if (a.location)                   parts.push(`Location: ${t(a.location)}`);
-  if (a.work)                       parts.push(`Work: ${t(a.work)}`);
-  if (a.religion)                   parts.push(`Religion: ${t(a.religion)}`);
-  if (a.relationship_type)          parts.push(`Looking for: ${t(a.relationship_type)}`);
-  if (a.vibe_words)                 parts.push(`Describes themselves as: ${t(a.vibe_words)}`);
-  if (a.lifestyle)                  parts.push(`Lifestyle: ${t(a.lifestyle)}`);
-  if (a.preferred_character_traits) parts.push(`Seeks in partner: ${t(a.preferred_character_traits)}`);
-  if (a.deal_breakers)              parts.push(`Deal breakers: ${t(a.deal_breakers)}`);
-  if (a.dream_first_date)           parts.push(`Dream first date: ${t(a.dream_first_date)}`);
+
+  for (const q of SHARED_QUESTIONS) {
+    const value = answers[q.id];
+    if (value === undefined || value === null || value === "") continue;
+    const text = Array.isArray(value)
+      ? value.map((v) => optionLabel(q.id, v)).join(", ")
+      : optionLabel(q.id, value);
+    parts.push(`${q.label}: ${truncateForPrompt(text)}`);
+  }
+
   return parts.join(". ") || "No profile details available.";
 }
