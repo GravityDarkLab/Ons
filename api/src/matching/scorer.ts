@@ -17,6 +17,8 @@
  * Every component is symmetric and in [0, 1]. A missing, wrongly typed or
  * unknown answer contributes a neutral 0.5 for that item — so legacy
  * applicants and bad data degrade the score instead of breaking the run.
+ * (Pinned by the "malformed stored answers" tests: lookups are own-property
+ * only and list answers are de-duplicated and capped.)
  *
  * Hard incompatibilities are not scored here; they are filtered out before
  * scoring (see filters/). What a questionnaire can do is rank pairs by shared
@@ -61,9 +63,17 @@ function agreementSim(id: string, a: Answers, b: Answers): number {
   return x === null || y === null ? NEUTRAL : 1 - Math.abs(x - y);
 }
 
+/**
+ * Own-property lookup. Answers come from the database, so a stored value such
+ * as "constructor" must not resolve to something on Object.prototype.
+ */
+function lookup<T>(table: Record<string, T>, key: unknown): T | undefined {
+  return typeof key === "string" && Object.hasOwn(table, key) ? table[key] : undefined;
+}
+
 /** Looks up an unordered pair in a symmetric table keyed "x|y". */
 function pairFit(table: Record<string, number>, x: unknown, y: unknown): number {
-  return table[`${x}|${y}`] ?? table[`${y}|${x}`] ?? NEUTRAL;
+  return lookup(table, `${x}|${y}`) ?? lookup(table, `${y}|${x}`) ?? NEUTRAL;
 }
 
 /** Runs a one-directional fit both ways and averages it. */
@@ -76,7 +86,9 @@ function sharedValues(a: Answers, b: Answers): number {
   const va = a["top_values"];
   const vb = b["top_values"];
   if (!Array.isArray(va) || !Array.isArray(vb)) return NEUTRAL;
-  return va.filter((v) => vb.includes(v)).length / 3;
+  // Distinct values only, capped at three — a malformed list must not score above 1.
+  const theirs = new Set(vb);
+  return Math.min(3, [...new Set(va)].filter((v) => theirs.has(v)).length) / 3;
 }
 
 function religionFit(holder: Answers, other: Answers): number {
@@ -91,11 +103,16 @@ function valuesScore(a: Answers, b: Answers): number {
   return mean([sharedValues(a, b), ordinalSim("religion_practice", a, b), bothWays(religionFit, a, b)]);
 }
 
+/** The part of `values` built from shared answers only — safe to show an applicant. */
+function valuesShared(a: Answers, b: Answers): number {
+  return mean([sharedValues(a, b), ordinalSim("religion_practice", a, b)]);
+}
+
 // ─── Lifestyle ────────────────────────────────────────────────────────────────
 
-const LIFESTYLE_ITEMS = [
-  "social_energy", "sleep_rhythm", "activity_level", "planning_style", "money_style", "opposite_gender_friends",
-];
+// Shared with a match; `opposite_gender_friends` and the habit preferences are private.
+const SHARED_LIFESTYLE_ITEMS = ["social_energy", "sleep_rhythm", "activity_level", "planning_style", "money_style"];
+const LIFESTYLE_ITEMS = [...SHARED_LIFESTYLE_ITEMS, "opposite_gender_friends"];
 
 const HABIT_FIT: Record<string, number> = { never: 1, sometimes: 0.5, regularly: 0 };
 
@@ -104,8 +121,13 @@ const habitFit = (habit: string) => (holder: Answers, other: Answers): number =>
   const preference = holder[`partner_${habit}`];
   if (preference === "fine") return 1;
   if (preference !== "rather_not" && preference !== "deal_breaker") return NEUTRAL;
-  return HABIT_FIT[other[habit] as string] ?? NEUTRAL;
+  return lookup(HABIT_FIT, other[habit]) ?? NEUTRAL;
 };
+
+/** The part of `lifestyle` built from shared answers only — safe to show an applicant. */
+function lifestyleShared(a: Answers, b: Answers): number {
+  return mean(SHARED_LIFESTYLE_ITEMS.map((id) => ordinalSim(id, a, b)));
+}
 
 function lifestyleScore(a: Answers, b: Answers): number {
   return mean([
@@ -176,8 +198,8 @@ const REL_TYPE_ENCODING: Record<string, [number, number]> = {
 };
 
 function relationshipFit(a: Answers, b: Answers): number {
-  const x = REL_TYPE_ENCODING[a["relationship_type"] as string];
-  const y = REL_TYPE_ENCODING[b["relationship_type"] as string];
+  const x = lookup(REL_TYPE_ENCODING, a["relationship_type"]);
+  const y = lookup(REL_TYPE_ENCODING, b["relationship_type"]);
   if (!x || !y) return NEUTRAL;
   return (x[0] * y[0] + x[1] * y[1]) / (Math.hypot(...x) * Math.hypot(...y));
 }
@@ -233,6 +255,11 @@ export function score(a: ApplicantDoc, b: ApplicantDoc): MatchScore {
       personality:  round(dimensions.personality),
       goals:        round(dimensions.goals),
       age_modifier: round(ageMod),
+      // What an applicant may see for values / lifestyle: the same dimension
+      // computed from shared answers only. The full numbers above include the
+      // partner's private preferences and could be worked backwards from a bar.
+      values_shared:    round(valuesShared(x, y)),
+      lifestyle_shared: round(lifestyleShared(x, y)),
     },
   };
 }

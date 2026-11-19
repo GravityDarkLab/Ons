@@ -41,7 +41,10 @@ describe("score", () => {
   it("identical answers score 1 on every dimension", () => {
     expect(pair()).toEqual({
       score: 1,
-      breakdown: { values: 1, lifestyle: 1, connection: 1, personality: 1, goals: 1, age_modifier: 1 },
+      breakdown: {
+        values: 1, lifestyle: 1, connection: 1, personality: 1, goals: 1, age_modifier: 1,
+        values_shared: 1, lifestyle_shared: 1,
+      },
     });
   });
 
@@ -194,6 +197,33 @@ describe("goals", () => {
   });
 });
 
+describe("applicant-facing breakdown", () => {
+  it("adds values_shared and lifestyle_shared alongside the full dimensions", () => {
+    expect(Object.keys(pair().breakdown).sort()).toEqual([
+      "age_modifier", "connection", "goals", "lifestyle", "lifestyle_shared", "personality", "values", "values_shared",
+    ]);
+  });
+
+  it.each([
+    ["religion_match", { religion_match: "rather_share" }, { religion: "christian" }],
+    ["partner_smoking", { partner_smoking: "rather_not" }, { smoking: "regularly" }],
+    ["partner_alcohol", { partner_alcohol: "rather_not" }, { alcohol: "regularly" }],
+    ["opposite_gender_friends", { opposite_gender_friends: "not_ok" }, {}],
+  ])("the shared bars do not move with the private answer %s", (_name, a, b) => {
+    const base = pair({}, b);
+    const changed = pair(a, b);
+    expect(changed.breakdown.values_shared).toBe(base.breakdown.values_shared);
+    expect(changed.breakdown.lifestyle_shared).toBe(base.breakdown.lifestyle_shared);
+    // …while the full dimensions (and so the score) do
+    expect(changed.score).toBeLessThan(base.score);
+  });
+
+  it("the shared bars still reflect shared answers", () => {
+    expect(pair({}, { top_values: ["helping", "career", "faith"] }).breakdown.values_shared).toBe(0.5);
+    expect(pair({ social_energy: "home" }, { social_energy: "big_crowd" }).breakdown.lifestyle_shared).toBe(0.8);
+  });
+});
+
 describe("robustness", () => {
   it("scores a legacy v1 applicant against a v2 one without NaN or throwing", () => {
     const result = score(makeApplicant(LEGACY_V1_ANSWERS), makeApplicant(validAnswers()));
@@ -206,6 +236,42 @@ describe("robustness", () => {
 
   it("two applicants with no answers at all score a neutral 0.5", () => {
     expect(score(makeApplicant({}), makeApplicant({})).score).toBe(0.5);
+  });
+
+  // These cannot get past the validator; they pin the scorer's promise to be
+  // total and bounded even for data written straight to the database.
+  const MALFORMED: Record<string, unknown>[] = [
+    { top_values: ["family", "family", "family", "family"] },
+    { top_values: ["family", "faith", "career", "fun", "growth", "helping"] },
+    { top_values: [] },
+    { top_values: [1, null, {}] },
+    { smoking: "constructor", alcohol: "toString" },
+    { relationship_type: "constructor" },
+    { relationship_type: "__proto__", wants_children: "hasOwnProperty" },
+    { conflict_style: "valueOf", physical_affection: "constructor" },
+    { partner_smoking: "__proto__", religion_match: "constructor", religion: "toString" },
+    { p_calm: 99, attach_anxiety_1: -3, attach_avoidance_1: Number.NaN, p_open: Infinity },
+    { age_gap: "constructor", age_direction: {}, birth_date: "not-a-date" },
+  ];
+
+  it.each(MALFORMED.map((m) => [JSON.stringify(m), m] as const))(
+    "malformed stored answers %s stay finite, bounded and symmetric", (_label, bad) => {
+      const picky = { partner_smoking: "rather_not", partner_alcohol: "rather_not", religion_match: "rather_share" };
+      for (const [x, y] of [[bad, picky], [bad, bad], [picky, bad]] as const) {
+        const a = makeApplicant(validAnswers(x));
+        const b = makeApplicant(validAnswers(y));
+        const forward = score(a, b);
+        expect(forward).toEqual(score(b, a));
+        for (const v of [forward.score, ...Object.values(forward.breakdown)]) {
+          expect(Number.isFinite(v)).toBe(true);
+          expect(v).toBeGreaterThanOrEqual(0);
+          expect(v).toBeLessThanOrEqual(1);
+        }
+      }
+    });
+
+  it("duplicate top values are counted once", () => {
+    expect(pair({ top_values: ["family", "family", "family"] }, {}).breakdown.values_shared).toBe(0.67); // (1/3 + 1) / 2
   });
 
   it("wrongly typed answers are treated as missing", () => {

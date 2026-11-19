@@ -1,6 +1,6 @@
 import type { ApplicantDoc } from "../models/applicant.model.js";
 import { buildProfileSnippet } from "./profile-snippet.util.js";
-import { generateChatCompletion, truncateForPrompt, UNTRUSTED_PROFILE_NOTICE } from "./ai.service.js";
+import { generateChatCompletion, UNTRUSTED_PROFILE_NOTICE } from "./ai.service.js";
 
 const FALLBACK_QUESTIONS = [
   "What's your favourite way to spend a weekend?",
@@ -22,27 +22,19 @@ export interface IceBreakerResult {
 }
 
 /**
- * The shared profile snippet plus the person's optional free-text note.
+ * Pure — the exact prompt sent for a pair, so its contents are testable
+ * without the network.
  *
- * The note is allowed here and only here: ice-breakers are generated when a
- * contact request moves a match to in_progress, i.e. after the Instagram
- * handle has already been revealed — so a handle or phone number typed into
- * the note cannot get around the mutual-reveal rule.
+ * Ice-breakers are generated when contact is requested and shown to the
+ * initiator while the match is in_progress — before the other person has
+ * accepted and before any identity is revealed. So only shared answers go
+ * in: never the free-text note, which could carry a handle or phone number.
  */
-function profileWithNote(doc: ApplicantDoc): string {
-  const note = (doc.answers as Record<string, unknown>)["note_to_match"];
-  const snippet = buildProfileSnippet(doc);
-  return typeof note === "string" && note.trim()
-    ? `${snippet}. Note to their match: ${truncateForPrompt(note.trim(), 280)}`
-    : snippet;
-}
-
-/** Pure — the exact prompt sent for a pair, so its contents are testable without the network. */
 export function buildIceBreakerPrompt(a: ApplicantDoc, b: ApplicantDoc): string {
   return `You are a thoughtful matchmaker. Two people have been matched based on compatibility. ${UNTRUSTED_PROFILE_NOTICE}
 
-Person A: <profile>${profileWithNote(a)}</profile>
-Person B: <profile>${profileWithNote(b)}</profile>
+Person A: <profile>${buildProfileSnippet(a)}</profile>
+Person B: <profile>${buildProfileSnippet(b)}</profile>
 
 Generate exactly 5 creative, personal ice-breaking questions (each under 15 words) that Person A can ask Person B via Instagram to start a meaningful conversation. Then generate exactly 3 specific date ideas (each under 12 words) that would suit both of them.
 

@@ -31,17 +31,28 @@ export interface ApplicantMatchView {
   iceBreakers?: string[];
   dateIdeas?: string[];
   partnerProfile?: Record<string, unknown>; // partner's shared answers + derived age
+  partnerNote?: string; // the partner's optional free-text note — dating only, see toMatchView
   partnerInstagram?: string; // only for in_progress/dating — see toMatchView
   partnerFullName?: string;
   datingStartedAt?: Date;
 }
 
 /**
- * Breakdown dimensions an applicant may see. `connection` and `personality`
- * are computed from private answers (attachment, personality items) and
- * could be worked backwards from a displayed value, so they stay admin-only.
+ * Breakdown bars an applicant may see, and the stored key each one reads.
+ *
+ * An applicant knows their own answers and their partner's shared ones, so
+ * any displayed number that also depends on a private answer can be worked
+ * backwards. `values` and `lifestyle` therefore read the `*_shared` variants
+ * the scorer computes from shared answers only; `goals` uses shared answers
+ * throughout. `connection` and `personality` are never shown.
  */
 export const APPLICANT_BREAKDOWN_KEYS = ["values", "lifestyle", "goals"] as const;
+
+const APPLICANT_BREAKDOWN_SOURCE: Record<(typeof APPLICANT_BREAKDOWN_KEYS)[number], string> = {
+  values: "values_shared",
+  lifestyle: "lifestyle_shared",
+  goals: "goals",
+};
 
 /**
  * Pure function — no DB calls. Projects a MatchDoc into the applicant-facing view
@@ -75,8 +86,11 @@ export function toMatchView(
   };
 
   if (doc.breakdown) {
+    const stored = doc.breakdown;
     const visible = Object.fromEntries(
-      APPLICANT_BREAKDOWN_KEYS.filter((key) => key in doc.breakdown!).map((key) => [key, doc.breakdown![key]!])
+      APPLICANT_BREAKDOWN_KEYS
+        .filter((key) => typeof stored[APPLICANT_BREAKDOWN_SOURCE[key]] === "number")
+        .map((key) => [key, stored[APPLICANT_BREAKDOWN_SOURCE[key]]!])
     );
     if (Object.keys(visible).length > 0) view.breakdown = visible;
   }
@@ -97,6 +111,14 @@ export function toMatchView(
 
   // Identity is only revealed after mutual acceptance (dating status).
   // Never attached while the match is proposed or in_progress.
+  // The partner's free-text note is shown only once the match is mutual — the
+  // same gate as the identity reveal. It is free text, so before that point it
+  // could carry a handle or phone number around the mutual-reveal rule.
+  const note = partnerAnswers?.["note_to_match"];
+  if (doc.status === "dating" && typeof note === "string" && note.trim()) {
+    view.partnerNote = note.trim();
+  }
+
   if (partnerInstagram && doc.status === "dating") {
     view.partnerInstagram = partnerInstagram;
     if (partnerFullName) view.partnerFullName = partnerFullName;
