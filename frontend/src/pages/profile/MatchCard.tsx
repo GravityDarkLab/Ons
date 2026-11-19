@@ -124,9 +124,14 @@ function MatchBreakdown({ breakdown }: { breakdown: Record<string, number> }) {
       <div className="space-y-3">
         {entries.map(({ key, value, label, description }) => (
           <div key={key}>
-            <p className="text-sm font-medium text-primary mb-1">{label}</p>
-            <ScoreBar score={value} />
-            {description && <p className="text-xs text-muted mt-1">{description}</p>}
+            <div className="flex items-baseline justify-between gap-3 mb-1.5">
+              <p className="text-sm font-medium text-primary">{label}</p>
+              <span className="text-sm text-muted tabular-nums">{Math.round(value * 100)}%</span>
+            </div>
+            <div className="bg-border rounded-full h-1.5" aria-hidden="true">
+              <div className="bg-accent rounded-full h-1.5" style={{ width: `${value * 100}%` }} />
+            </div>
+            {description && <p className="text-xs text-muted mt-1.5">{description}</p>}
           </div>
         ))}
       </div>

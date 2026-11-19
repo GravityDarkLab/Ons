@@ -59,11 +59,11 @@ function SectionCard({ children }: { children: React.ReactNode }) {
 function LockedRow({ label, value }: { label: string; value?: string }) {
   return (
     <div className="flex items-center justify-between gap-3 rounded-xl bg-bg border border-border px-4 py-3">
-      <div className="flex items-center gap-3 text-muted min-w-0">
+      <div className="flex items-center gap-3 text-muted shrink-0">
         <LockIcon />
         <span className="text-sm font-medium text-primary">{label}</span>
       </div>
-      {value && <span className="text-sm text-muted truncate">{value}</span>}
+      {value && <span className="text-sm text-muted text-end min-w-0">{value}</span>}
     </div>
   )
 }

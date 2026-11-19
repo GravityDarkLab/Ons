@@ -246,8 +246,6 @@ export default function ProfileDashboard() {
                       min={MIN_THRESHOLD * 100}
                       max={100}
                       step={5}
-                      lowLabel={`${MIN_THRESHOLD * 100}%`}
-                      highLabel="100%"
                       formatValue={v => `${v}%`}
                     />
                   </div>

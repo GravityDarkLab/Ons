@@ -125,8 +125,8 @@ describe('ProfileDashboard', () => {
     const slider = screen.getByRole('slider')
     expect(slider).toHaveAttribute('min', '50')
     expect(slider).toHaveAttribute('max', '100')
-    // the low end of the scale is labelled with the real minimum
-    expect(screen.getByText('50%')).toBeInTheDocument()
+    // the scale starts at the real minimum
+    expect(screen.getByRole('button', { name: '50' })).toBeInTheDocument()
     expect(slider).toHaveValue('60')
 
     // Lower the slider to 50% — the second match appears

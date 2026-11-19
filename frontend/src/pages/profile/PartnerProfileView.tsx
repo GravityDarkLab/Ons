@@ -95,8 +95,8 @@ export function PartnerProfileView({ profile, alias, matchId }: Props) {
           <dl className="space-y-2 text-sm">
             {rows.map(row => (
               <div key={row.id} className="flex justify-between gap-3">
-                <dt className="text-muted">{row.label}</dt>
-                <dd className="text-primary font-medium text-end">{row.value}</dd>
+                <dt className="text-muted min-w-0">{row.label}</dt>
+                <dd className="text-primary font-medium text-end shrink-0 max-w-[50%]">{row.value}</dd>
               </div>
             ))}
           </dl>
