@@ -1,3 +1,4 @@
+import { useTranslation } from 'react-i18next'
 import { useTheme } from './ThemeProvider'
 
 function SunIcon() {
@@ -19,15 +20,17 @@ function MoonIcon() {
 
 /** Cycles light ↔ dark (manual choice always wins over system). */
 export default function ThemeToggle({ className = '' }: { className?: string }) {
+  const { t } = useTranslation()
   const { resolved, setPreference } = useTheme()
   const next = resolved === 'dark' ? 'light' : 'dark'
+  const label = t(next === 'dark' ? 'common.themeToDark' : 'common.themeToLight')
 
   return (
     <button
       type="button"
       onClick={() => setPreference(next)}
-      aria-label={`Switch to ${next} mode`}
-      title={`Switch to ${next} mode`}
+      aria-label={label}
+      title={label}
       className={`flex items-center justify-center p-2 rounded-xl text-muted hover:text-primary hover:bg-bg transition-colors ${className}`}
     >
       {resolved === 'dark' ? <SunIcon /> : <MoonIcon />}

@@ -7,16 +7,23 @@ import ConfirmDialog from '../../components/ui/ConfirmDialog'
 import MatchingPulse, { type PulseState } from '../components/MatchingPulse'
 import { useTimeAgo } from '../../lib/timeAgo'
 import type { MatchingRun, MatchingLastRun } from '../types'
+import { DIMENSIONS } from '../components/ScoreBreakdown'
 
 const RUN_PHASES = ['phaseLoading', 'phaseScoring', 'phaseSaving'] as const
 const PHASE_INTERVAL_MS = 1700
+
+// Hard filters, in the order the engine applies them (api/src/matching/engine.ts)
+const FILTERS = ['orientation', 'age', 'religion', 'distance', 'children', 'habits'] as const
+// Mirrors api/src/matching/scoring/weights.ts — shown to admins, not used for scoring
+const WEIGHTS: Record<(typeof DIMENSIONS)[number], number> = {
+  values: 0.25, lifestyle: 0.25, connection: 0.3, personality: 0.1, goals: 0.1,
+}
 
 // ── Component ──────────────────────────────────────────────────────────────
 
 export function Matching() {
   const { t } = useTranslation()
   const timeAgo = useTimeAgo()
-  const [algorithm, setAlgorithm] = useState('embedding-cosine')
   const [loading, setLoading]     = useState(false)
   const [result, setResult]       = useState<MatchingRun | null>(null)
   const [error, setError]         = useState('')
@@ -36,20 +43,7 @@ export function Matching() {
     return () => clearInterval(id)
   }, [loading])
 
-  const ALGORITHMS = [
-    { value: 'embedding-cosine', label: t('admin.matching.embedding'), hint: t('admin.matching.embeddingHint'), recommended: true },
-  ]
-
-  const selectedAlgorithm = ALGORITHMS.find(a => a.value === algorithm)
-
   const pulseState: PulseState = loading ? 'running' : result ? 'done' : 'idle'
-
-  function handleAlgorithmChange(value: string) {
-    setAlgorithm(value)
-    setResult(null)
-    setConfirming(false)
-    setError('')
-  }
 
   async function handleConfirm() {
     if (loading) return
@@ -58,7 +52,7 @@ export function Matching() {
     setLoading(true)
     setResult(null)
     try {
-      const res = await runMatching(algorithm)
+      const res = await runMatching()
       setResult(res)
       setLastRun({
         at: new Date().toISOString(),
@@ -105,50 +99,36 @@ export function Matching() {
         </div>
 
         <div className="p-8 pt-6 space-y-6">
-          {/* Algorithm picker — radio cards instead of a native select */}
-          <div className="space-y-3">
-            <span id="matching-algorithm-label" className="text-xs font-medium uppercase tracking-wider text-muted block">
-              {t('admin.matching.algorithm')}
-            </span>
-            <div role="radiogroup" aria-labelledby="matching-algorithm-label" className="flex justify-center">
-              {ALGORITHMS.map(a => {
-                const selected = algorithm === a.value
-                return (
-                  <label
-                    key={a.value}
-                    className={`relative flex flex-col gap-1.5 rounded-xl border p-4 transition-all duration-200 w-72
-                      ${selected
-                        ? 'border-accent bg-accent-light/50 shadow-card'
-                        : 'border-border hover:border-accent/50 hover:bg-bg'}
-                      ${loading ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}
-                      has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-accent/40`}
-                  >
-                    <input
-                      type="radio"
-                      name="matching-algorithm"
-                      value={a.value}
-                      checked={selected}
-                      disabled={loading}
-                      onChange={() => handleAlgorithmChange(a.value)}
-                      className="sr-only"
-                    />
-                    {/* selection dot */}
-                    <span
-                      aria-hidden="true"
-                      className={`absolute top-3.5 end-3.5 h-3.5 w-3.5 rounded-full border-2 transition-all duration-200
-                        ${selected ? 'border-accent bg-accent' : 'border-border bg-transparent'}`}
-                    />
-                    <span className="text-sm font-semibold text-primary pe-6">{a.label}</span>
-                    {a.recommended && (
-                      <span className="self-start text-[10px] font-medium uppercase tracking-wide text-accent-ink bg-accent-light rounded-full px-2 py-0.5">
-                        {t('admin.matching.recommended')}
-                      </span>
-                    )}
-                    <span className="text-xs text-muted leading-relaxed">{a.hint}</span>
-                  </label>
-                )
-              })}
-            </div>
+          {/* How matching works — filters first, then the weighted score */}
+          <div className="grid gap-5 sm:grid-cols-2">
+            <section aria-labelledby="matching-filters-title" className="space-y-2.5">
+              <h2 id="matching-filters-title" className="text-xs font-medium uppercase tracking-wider text-muted">
+                {t('admin.matching.filtersTitle')}
+              </h2>
+              <p className="text-xs text-muted leading-relaxed">{t('admin.matching.filtersHint')}</p>
+              <ul className="space-y-1.5">
+                {FILTERS.map(f => (
+                  <li key={f} className="flex items-center gap-2 text-sm text-primary">
+                    <span aria-hidden="true" className="h-1.5 w-1.5 shrink-0 rounded-full bg-error" />
+                    {t(`admin.matching.filters.${f}`)}
+                  </li>
+                ))}
+              </ul>
+            </section>
+            <section aria-labelledby="matching-score-title" className="space-y-2.5">
+              <h2 id="matching-score-title" className="text-xs font-medium uppercase tracking-wider text-muted">
+                {t('admin.matching.scoreTitle')}
+              </h2>
+              <p className="text-xs text-muted leading-relaxed">{t('admin.matching.scoreHint')}</p>
+              <ul className="space-y-1.5">
+                {DIMENSIONS.map(d => (
+                  <li key={d} className="flex items-center justify-between gap-3 text-sm">
+                    <span className="text-primary">{t(`portal.matches.breakdown.${d}.label`)}</span>
+                    <span className="tabular-nums text-muted">{Math.round(WEIGHTS[d] * 100)}%</span>
+                  </li>
+                ))}
+              </ul>
+            </section>
           </div>
 
           {/* Error message */}
@@ -178,7 +158,7 @@ export function Matching() {
 
           <ConfirmDialog
             open={confirming}
-            title={t('admin.matching.confirmTitle', { algorithm: selectedAlgorithm?.label ?? algorithm })}
+            title={t('admin.matching.confirmTitle')}
             description={t('admin.matching.confirmBody')}
             confirmLabel={t('admin.matching.confirmRun')}
             cancelLabel={t('admin.matching.cancel')}

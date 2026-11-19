@@ -5,12 +5,11 @@
 // Also: buildChatRequestBody — the OpenAI request-shape logic
 // generateChatCompletion uses, kept as a pure function so each quirk can be
 // asserted directly. Every quirk was discovered empirically against real
-// OpenAI responses (HTTP 400s with explicit error messages), not guessed —
-// see docs/llm-listwise-rerank-matching-score.md §5.7.
+// OpenAI responses (HTTP 400s with explicit error messages), not guessed.
 //
 // And generateChatCompletion itself, with fetch stubbed: the request it
 // sends, and that it never throws — every failure mode returns "" so callers
-// (rerank, match summary, ice-breakers) fall back instead of erroring.
+// (match summary, ice-breakers) fall back instead of erroring.
 import { describe, it, expect, spyOn, afterEach } from "bun:test";
 import { truncateForPrompt, buildChatRequestBody, generateChatCompletion } from "../../../services/ai.service.js";
 

@@ -7,6 +7,8 @@ interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
   variant?: Variant
   loading?: boolean
   fullWidth?: boolean
+  /** `sm` for inline actions inside cards and panels. */
+  size?: 'md' | 'sm'
 }
 
 // text-bg = page-background token: near-white on dark buttons in light mode,
@@ -24,6 +26,7 @@ export default function Button({
   variant = 'primary',
   loading = false,
   fullWidth = false,
+  size = 'md',
   children,
   disabled,
   className = '',
@@ -34,7 +37,7 @@ export default function Button({
       disabled={disabled || loading}
       className={[
         'inline-flex items-center justify-center gap-2',
-        'rounded-xl px-6 py-3.5 font-medium text-[15px]',
+        size === 'sm' ? 'rounded-lg px-4 py-2 font-medium text-sm' : 'rounded-xl px-6 py-3.5 font-medium text-[15px]',
         'transition-all duration-200',
         'focus:outline-none focus-visible:ring-2 focus-visible:ring-accent/40',
         variantClasses[variant],

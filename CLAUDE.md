@@ -59,7 +59,8 @@ server.ts        ← Hono app, middleware, bootstrap (DB connect + indexes)
 config/          ← env loader (throws on misconfiguration), CORS
 routes/          ← Hono route definitions (form, admin, matching, match)
 controllers/     ← Request handlers, call services
-services/        ← Business logic (form, admin, questionnaire, embedding)
+services/        ← Business logic (form, admin, questionnaire, profile, match state)
+questionnaire/   ← The v2 question definitions — single source of truth (see below)
 models/          ← TypeScript interfaces for MongoDB documents
 validators/      ← Zod schemas for all request validation
 middleware/      ← JWT auth, rate limiting, audit logging
@@ -71,19 +72,27 @@ seeds/           ← Seed scripts for questionnaire, applicants, admin user
 
 The API mounts at `/api/v1`. `form` routes are public; `admin` and `matching` routes require Bearer JWT.
 
+### Question definitions (`api/src/questionnaire/questions.ts`)
+
+The single source of truth for the questionnaire: every question, its ordered options, and whether an answer is `shared`. The seed, the Zod validator (`validators/form.validator.ts` generates its tap-question rules from it), the scorer's ordinal lookups and the OpenAI prompt snippet all import it. The frontend does not define questions — it renders what `GET /form/questionnaire` returns and only owns the translations (`questions.*` in the locale files; an API test fails if a question or option lacks a translation in any of the four languages).
+
+- Option **order is meaningful**: ordered answers are compared by index in the scorer.
+- Stored values are language-independent: kept fields keep their old values (`"Long Term"`, `"Male"`), new selects store snake_case slugs, agreement items store integers 1–5, `top_values` an array of exactly three.
+- `shared` is opt-in and default-deny. Only `shared: true` answers may be shown to a match (`toMatchView`) or sent to OpenAI (`buildProfileSnippet`). Attachment, personality, partner-preference and identity answers are never shared. The optional free-text `note_to_match` is never scored and never sent to OpenAI; `toMatchView` returns it only once a match is mutual (`dating`), the same gate as the identity reveal — ice-breakers are generated at contact *request*, before the other person accepts, so it must not go into that prompt.
+
 ### Matching pipeline (`api/src/matching/`)
 
-Single pipeline, three stages: **filter → prepare → score**.
+Single deterministic pipeline, two stages: **filter → score**. No network calls, no model, no cache.
 
-- `engine.ts` — orchestrator; loads applicants, runs hard filters, calls `prepare()` once, then `score()` per pair
-- `filters/` — four hard, binary pass/fail filters (excluded pairs never get a low score, they get no result): `orientation.filter.ts`, `age.filter.ts`, `religion.filter.ts`, `location.filter.ts`
-- `scorer.ts` — the only scorer: cosine similarity over dense text embeddings (numeric compatibility, lifestyle, bidirectional character cross-match, deal-breaker penalty, age modifier). `prepare()` batch-embeds all applicants before pairwise scoring (O(N) API calls, not O(N²))
-- `embeddings/provider.ts` — OpenAI embeddings only (`OPENAI_API_KEY`); no local-model option for matching
-- `scorers/numeric.scorer.ts` — the fixed-vector numeric-preference cosine helper used by `scorer.ts`
+- `engine.ts` — orchestrator; loads applicants, skips those in an active contact, runs hard filters, calls `score(a, b)` per pair, returns the top N
+- `filters/` — six hard, binary pass/fail filters (excluded pairs never get a low score, they get no result): `orientation`, `age`, `religion`, `location`, `children`, `habits`
+- `scorer.ts` — the only scorer: five weighted dimensions (`values`, `lifestyle`, `connection`, `personality`, `goals`) times the age modifier. Synchronous and total: a missing or unknown answer scores a neutral 0.5 for that item
 - `scoring/weights.ts` — the per-dimension weights (sum to 1.0)
 - `proposals.ts` — derives unique couple proposals (canonicalized pair, symmetric score) from a full matching pass
 
-`services/match-rerank.service.ts` reranks each applicant's embedding-ranked shortlist with an LLM call (also OpenAI-only) before the top N are returned.
+Matches are stored with `algorithm: "rules-v1"`. Applicants only see three breakdown bars (`APPLICANT_BREAKDOWN_KEYS`): `values` and `lifestyle` read the scorer's `values_shared` / `lifestyle_shared` (computed from shared answers only, so a partner's private preferences cannot be worked backwards from a bar) and `goals`; `connection` and `personality` stay admin-only. Portal thresholds live in `services/match-state.service.ts` (`PORTAL_MIN_SCORE` 0.5, `DEFAULT_SCORE_THRESHOLD` 0.6).
+
+OpenAI (`OPENAI_API_KEY`) is used only for match summaries and ice-breakers (`services/ai.service.ts`), never for matching.
 
 ### Privacy model
 
@@ -99,9 +108,9 @@ Services throw `AppError(message, statusCode)` (`errors.ts`); controllers catch 
 
 Two independent sections in one React app:
 
-- **Public form** (`pages/`, `steps/`) — invite-gated via `InviteGate`. Multi-step wizard (`Apply.tsx` + `steps/Step1–5`). Questionnaire schema is fetched dynamically; `X-Submission-Key` from `GET /questionnaire` is sent with `POST /submit`. The post-submit Success page shows the applicant's `magicToken` for first portal login — the API never returns `plainPassword`.
+- **Public form** (`pages/Apply.tsx`) — invite-gated via `InviteGate`. One typed screen (`steps/Step1Identity`: name, Instagram, city, birth date), then one screen per tap question rendered by `components/QuestionField` from the questionnaire fetched from `GET /questionnaire`, then a final screen (optional note + consent). Single-choice taps auto-advance after 250 ms. `X-Submission-Key` from `GET /questionnaire` is sent with `POST /submit`. The post-submit Success page shows the applicant's `magicToken` for first portal login — the API never returns `plainPassword`.
 - **Admin panel** (`admin/`) — JWT session auth via `AuthProvider`. Routes: Dashboard, Applicants, ApplicantDetail, Matching, Matches, AuditLogs. `ProtectedRoute` guards all admin routes except `/admin/login`.
-- **Applicant portal** (`pages/profile/`) — session-cookie auth (`ons_applicant_session`, HttpOnly). `ProfileDashboard` has Matches and Profile tabs (edit answers, identity reveal, deletion countdown).
+- **Applicant portal** (`pages/profile/`) — session-cookie auth (`ons_applicant_session`, HttpOnly). `ProfileDashboard` has Matches and Profile tabs (edit answers with the same `QuestionField` components, identity reveal, deletion countdown).
 
 `App.tsx` keeps `AuthProvider` scoped to `/admin/*` — `getMe()` is never called on public pages.
 
@@ -113,7 +122,7 @@ Dark mode is a `.dark` class on `<html>` that swaps the `--t-*` values; `ThemePr
 
 Brand identity: warm gold accent (`--t-accent`), `Fraunces` serif for display headings (`.font-display`), `.cta-gold` gradient button class for primary CTAs on public pages.
 
-Reuse the shared primitives in `components/ui/` (Badge + `statusTones`, Button, ConfirmDialog, EmptyState, Skeleton, Spinner, Toast, Autocomplete, RadioCard, Slider, Toggle, ProgressBar, Input, Textarea, `useFocusTrap`) and shared types in `types/` (`ApplicantStatus`, `MatchStatus` in `status.ts`) instead of re-implementing them per page.
+Reuse the shared primitives in `components/ui/` (Badge + `statusTones`, Button, ConfirmDialog, EmptyState, Skeleton, Spinner, Toast, Autocomplete, RadioCard (a real radio / checkbox group — use it for any choice list), Slider, ProgressBar, Input, Textarea, `useFocusTrap`) and shared types in `types/` (`ApplicantStatus`, `MatchStatus` in `status.ts`) instead of re-implementing them per page.
 
 Every user-facing string goes through i18next (`i18n/locales/{en,fr,de,ar}.json`) — add a key to **all four** locale files for any new string. `ar` is RTL: use logical-direction utilities (`ms-`/`me-`/`ps-`/`pe-`), never `ml-`/`mr-`/`pl-`/`pr-`.
 
@@ -143,7 +152,7 @@ SMOKE_ADMIN_USER=... SMOKE_ADMIN_PASS=... \
 SMOKE_MONGO_URI='mongodb://.../ons?authSource=ons' \
 bun test ./tests/smoke/portal.smoke.ts ./tests/smoke/match-flow.smoke.ts
 ```
-Credentials are in `api/.env.dev`; `SMOKE_MONGO_URI` matches `MONGODB_URI` there.
+Credentials live in `tests/smoke/.env.smoke` (gitignored; `bun run test:smoke:all` loads it); `SMOKE_MONGO_URI` matches `MONGODB_URI` in `api/.env.dev`. The API under test must run with `TRUST_PROXY=true`: the helpers send a different `X-Forwarded-For` per request so the form's 3-per-hour-per-IP limit doesn't trip, and without it every submission counts against one IP (`429`).
 
 ## Conventions
 

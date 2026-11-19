@@ -6,6 +6,8 @@
 // recalcOrphanedStatuses), the conflicting-match expiry helper
 // (expireConflictingMatches), the applicant-facing view projection
 // (toMatchView), and the post-matching-pass promotion (promoteAppliedToMatched).
+import { validAnswers } from "../matching/_fixtures.js";
+import { SHARED_QUESTION_IDS } from "../../../questionnaire/questions.js";
 import { describe, it, expect, mock, beforeEach } from "bun:test";
 import { ObjectId } from "mongodb";
 import type { MatchDoc } from "../../../models/match.model.js";
@@ -30,7 +32,6 @@ mock.module("../../../db/collections.js", () => ({
   getApplicantsCollection:     () => fakeApplicants,
   getIdentitiesCollection:     () => fakeApplicants,
   getAuditLogsCollection:      () => fakeApplicants,
-  getEmbeddingsCollection:     () => fakeApplicants,
   getAdminsCollection:         () => fakeApplicants,
   getMatchesCollection:        () => fakeMatches,
   getAppConfigCollection:      () => fakeApplicants,
@@ -44,6 +45,7 @@ import {
   expireConflictingMatches,
   recalcOrphanedStatuses,
   toMatchView,
+  noteForPartner,
   DELETION_GRACE_MS,
   daysSince,
   getDatingAnchor,
@@ -73,7 +75,7 @@ function makeMatch(overrides: Partial<MatchDoc> = {}): MatchDoc {
     applicantBId: bId,
     applicantBAlias: "River Storm",
     score: 0.85,
-    algorithm: "embedding-cosine",
+    algorithm: "rules-v1",
     status: "proposed",
     createdAt: new Date(),
     updatedAt: new Date(),
@@ -462,11 +464,28 @@ describe("toMatchView – ice-breakers and date ideas", () => {
 });
 
 describe("toMatchView – partner profile", () => {
-  it("includes the partner's public answers when provided", () => {
+  it("includes only shared answers, plus the derived age", () => {
     const match = makeMatch();
-    const answers = { location: "Paris, France", age: 27, vibe_words: ["calm", "curious"] };
-    const view = toMatchView(match, match.applicantAId, answers);
-    expect(view.partnerProfile).toEqual(answers);
+    const view = toMatchView(match, match.applicantAId, validAnswers({ note_to_match: "call me" }));
+    const keys = Object.keys(view.partnerProfile ?? {});
+    expect(keys.sort()).toEqual([...SHARED_QUESTION_IDS, "age"].sort());
+    expect(view.partnerProfile).toMatchObject({ location: "Tunis, Tunisia", smoking: "never", top_values: ["family", "growth", "fun"] });
+  });
+
+  it.each([
+    "attach_anxiety_1", "attach_avoidance_2", "p_calm", "partner_smoking", "partner_alcohol", "religion_match",
+    "age_gap", "age_direction", "gender_identity", "sexual_orientation", "birth_date", "note_to_match",
+    "opposite_gender_friends", "open_to_long_distance", "disclaimer_agreed", "first_name",
+  ])("never exposes %s", (key) => {
+    const match = makeMatch();
+    const view = toMatchView(match, match.applicantAId, validAnswers({ note_to_match: "call me" }));
+    expect(view.partnerProfile).not.toHaveProperty(key);
+  });
+
+  it("does not leak the free-text note anywhere in the view", () => {
+    const match = makeMatch();
+    const view = toMatchView(match, match.applicantAId, validAnswers({ note_to_match: "my handle is @leak" }));
+    expect(JSON.stringify(view)).not.toContain("@leak");
   });
 
   it("omits partnerProfile when no answers are provided", () => {
@@ -475,18 +494,9 @@ describe("toMatchView – partner profile", () => {
     expect(view.partnerProfile).toBeUndefined();
   });
 
-  it("filters out consent-only keys like disclaimer_agreed", () => {
+  it("omits partnerProfile entirely when nothing shareable remains", () => {
     const match = makeMatch();
-    const view = toMatchView(match, match.applicantAId, {
-      work: "Student",
-      disclaimer_agreed: true,
-    });
-    expect(view.partnerProfile).toEqual({ work: "Student" });
-  });
-
-  it("omits partnerProfile entirely when only excluded keys remain", () => {
-    const match = makeMatch();
-    const view = toMatchView(match, match.applicantAId, { disclaimer_agreed: true });
+    const view = toMatchView(match, match.applicantAId, { disclaimer_agreed: true, p_calm: 3, work: "Student" });
     expect(view.partnerProfile).toBeUndefined();
   });
 
@@ -497,14 +507,7 @@ describe("toMatchView – partner profile", () => {
       location: "Paris, France",
       birth_date: `${birthYear}-01-01`, // birthday already passed this year
     });
-    expect(view.partnerProfile).not.toHaveProperty("birth_date");
-    expect(view.partnerProfile?.["age"]).toBe(28);
-  });
-
-  it("passes a legacy stored age through unchanged", () => {
-    const match = makeMatch();
-    const view = toMatchView(match, match.applicantAId, { age: 31 });
-    expect(view.partnerProfile).toEqual({ age: 31 });
+    expect(view.partnerProfile).toEqual({ location: "Paris, France", age: 28 });
   });
 
   it("strips instagram_handle even if it somehow appears in answers", () => {
@@ -517,6 +520,84 @@ describe("toMatchView – partner profile", () => {
     });
     expect(view.partnerProfile).toEqual({ location: "Tunis, Tunisia" });
     expect(JSON.stringify(view)).not.toContain("leaked_handle");
+  });
+});
+
+describe("toMatchView – the partner's note", () => {
+  const answers = validAnswers({ note_to_match: "I make a great couscous" });
+
+  it.each(["proposed", "in_progress", "declined", "expired", "failed", "success"] as const)(
+    "is withheld while the match is %s", (status) => {
+      const match = makeMatch({ status, initiatorId: undefined });
+      const view = toMatchView(match, match.applicantAId, answers, "partner_handle", "Partner Name");
+      expect(view.partnerNote).toBeUndefined();
+      expect(JSON.stringify(view)).not.toContain("couscous");
+    });
+
+  it("is withheld from the initiator of a pending contact request", () => {
+    const match = makeMatch({ status: "in_progress" });
+    match.initiatorId = match.applicantAId;
+    const view = toMatchView(match, match.applicantAId, answers);
+    expect(JSON.stringify(view)).not.toContain("couscous");
+  });
+
+  it("is shown once the match is mutual (dating), alongside the identity reveal", () => {
+    const match = makeMatch({ status: "dating" });
+    const view = toMatchView(match, match.applicantAId, answers, "partner_handle", "Partner Name");
+    expect(view.partnerNote).toBe("I make a great couscous");
+    expect(view.partnerProfile).not.toHaveProperty("note_to_match");
+  });
+
+  it("is omitted when the partner wrote nothing, or stored something that is not text", () => {
+    const match = makeMatch({ status: "dating" });
+    expect(toMatchView(match, match.applicantAId, validAnswers()).partnerNote).toBeUndefined();
+    expect(toMatchView(match, match.applicantAId, validAnswers({ note_to_match: "   " })).partnerNote).toBeUndefined();
+    expect(toMatchView(match, match.applicantAId, validAnswers({ note_to_match: { $ne: 1 } })).partnerNote).toBeUndefined();
+  });
+});
+
+describe("noteForPartner", () => {
+  it("returns the trimmed note, or nothing when empty or not text", () => {
+    expect(noteForPartner(validAnswers({ note_to_match: "  hi there " }))).toBe("hi there");
+    expect(noteForPartner(validAnswers({ note_to_match: "   " }))).toBeUndefined();
+    expect(noteForPartner(validAnswers({ note_to_match: { $ne: 1 } }))).toBeUndefined();
+    expect(noteForPartner(undefined)).toBeUndefined();
+  });
+});
+
+describe("toMatchView – breakdown", () => {
+  const full = {
+    values: 0.9, lifestyle: 0.8, connection: 0.7, personality: 0.6, goals: 0.5, age_modifier: 1,
+    values_shared: 0.95, lifestyle_shared: 0.85,
+  };
+
+  it("shows applicants bars computed from shared answers only", () => {
+    const match = makeMatch({ breakdown: full });
+    const view = toMatchView(match, match.applicantAId);
+    // values / lifestyle come from the *_shared variants: the full ones include
+    // the partner's private preferences and could be worked backwards
+    expect(view.breakdown).toEqual({ values: 0.95, lifestyle: 0.85, goals: 0.5 });
+  });
+
+  it("never exposes the full values / lifestyle numbers, connection or personality", () => {
+    const match = makeMatch({ breakdown: full });
+    const shown = Object.values(toMatchView(match, match.applicantAId).breakdown ?? {});
+    for (const hidden of [0.9, 0.8, 0.7, 0.6]) expect(shown).not.toContain(hidden);
+  });
+
+  it("omits a bar whose shared variant is missing rather than falling back to the full one", () => {
+    const match = makeMatch({ breakdown: { values: 0.9, lifestyle: 0.8, goals: 0.5 } });
+    expect(toMatchView(match, match.applicantAId).breakdown).toEqual({ goals: 0.5 });
+  });
+
+  it("omits the breakdown when the match has none", () => {
+    const match = makeMatch();
+    expect(toMatchView(match, match.applicantAId).breakdown).toBeUndefined();
+  });
+
+  it("omits the breakdown when only private dimensions are stored", () => {
+    const match = makeMatch({ breakdown: { connection: 0.7, personality: 0.6, values: 0.9 } });
+    expect(toMatchView(match, match.applicantAId).breakdown).toBeUndefined();
   });
 });
 
@@ -706,6 +787,10 @@ describe("promoteAppliedToMatched", () => {
 
     expect(await promoteAppliedToMatched()).toBe(0);
     expect(fakeApplicants.updateMany).not.toHaveBeenCalled();
+  });
+
+  it("the portal floor is 0.5", () => {
+    expect(PORTAL_MIN_SCORE).toBe(0.5);
   });
 
   it("only looks at proposed matches at or above PORTAL_MIN_SCORE", async () => {

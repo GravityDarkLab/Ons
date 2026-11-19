@@ -1,9 +1,9 @@
 {
   "brand": "Ons",
   "common": {
-    "yes": "Ja",
-    "no": "Nein",
     "dismiss": "Schließen",
+    "themeToDark": "Zum dunklen Modus wechseln",
+    "themeToLight": "Zum hellen Modus wechseln",
     "timeAgo": {
       "justNow": "gerade eben",
       "minutesAgo_one": "vor {{count}} Minute",
@@ -54,12 +54,22 @@
     "back": "Zurück",
     "next": "Weiter",
     "submit": "Absenden",
-    "submitting": "Wird gesendet…",
-    "error": "Etwas ist schiefgelaufen. Bitte versuche es erneut."
+    "error": "Etwas ist schiefgelaufen. Bitte versuche es erneut.",
+    "progress": "Frage {{n}} von {{total}}",
+    "progressIntro": "Etwa 4 Minuten",
+    "progressLast": "Letzter Schritt",
+    "chooseMore": "Noch {{count}} auswählen",
+    "final": {
+      "title": "Fast geschafft",
+      "subtitle": "Eine optionale Zeile, dann bist du dabei.",
+      "noteLabel": "Etwas, das ein Match über dich wissen sollte?",
+      "noteHint": "Optional. Wird einem Match erst angezeigt, wenn ihr beide dem Kontakt zugestimmt habt. Fließt nie in die Bewertung ein.",
+      "notePlaceholder": "z. B. Ich mache ein großartiges Couscous",
+      "disclaimer": "Ich verstehe, dass meine Daten nur für das Matchmaking verwendet, sicher gespeichert und niemals an Dritte verkauft oder weitergegeben werden.",
+      "disclaimerRequired": "Du musst zustimmen, um fortzufahren."
+    }
   },
   "steps": {
-    "wordCount": "{{count}} Wörter",
-    "writeMoreHint": "Etwas mehr Detail verbessert deine Matches",
     "s1": {
       "title": "Wer bist du?",
       "subtitle": "Nur die Grundlagen — wir lernen dich in den nächsten Schritten besser kennen.",
@@ -70,61 +80,8 @@
       "instagram": "Instagram-Handle",
       "location": "Aktueller Wohnort",
       "locationPlaceholder": "Stadt, Land",
-      "privacy": "Dein Instagram-Handle ist Ende-zu-Ende verschlüsselt. Nur verifizierte Admins können ihn sehen. Du erhältst einen Codenamen."
-    },
-    "s2": {
-      "title": "Über dich",
-      "subtitle": "Hilf uns, dich besser zu verstehen.",
-      "birthDate": "Geburtsdatum",
-      "height": "Größe (cm)",
-      "heightPlaceholder": "175",
-      "heightHint": "Optional",
-      "work": "Beruf / Tätigkeit",
-      "workPlaceholder": "z.B. Softwareentwickler, Lehrer...",
-      "gender": "Geschlechtsidentität",
-      "orientation": "Sexuelle Orientierung",
-      "religion": "Religion",
-      "religionPlaceholder": "z.B. Muslim, Christ, Atheist..."
-    },
-    "s3": {
-      "title": "Dein Vibe",
-      "subtitle": "Hier lernen wir dich wirklich kennen. Sei ehrlich — so finden wir dein Match.",
-      "vibe": "Beschreibe dich in 3 Wörtern",
-      "vibePlaceholder": "z.B. neugierig, ruhig, lustig",
-      "lifestyle": "Erzähl uns von deinem Lebensstil",
-      "lifestylePlaceholder": "Gelegentlicher Trinker? Nachtmensch? Sportler? Erzähl es uns.",
-      "tip": "Denke daran, wie deine engsten Freunde dich beschreiben würden. Authentizität führt zu besseren Matches."
-    },
-    "s4": {
-      "title": "Was du suchst",
-      "subtitle": "Sei konkret — je mehr Details, desto besser das Match.",
-      "relationshipType": "Art der Beziehung",
-      "longDistance": "Offen für Fernbeziehung?",
-      "longDistanceHint": "Würdest du eine Beziehung über Städte oder Länder hinweg in Betracht ziehen?",
-      "maxAgeGap": "Maximaler Altersunterschied (Jahre)",
-      "maxAgeGapPlaceholder": "Leer lassen für keine Präferenz",
-      "openToOlder": "Offen für jemanden, der älter ist als ich",
-      "openToYounger": "Offen für jemanden, der jünger ist als ich",
-      "physicalTraits": "Bevorzugte körperliche Eigenschaften",
-      "physicalTraitsPlaceholder": "Beschreibe, was du körperlich ansprechend findest...",
-      "characterTraits": "Bevorzugte Charaktereigenschaften",
-      "characterTraitsPlaceholder": "Welche Persönlichkeitsmerkmale sind dir am wichtigsten?",
-      "dealBreakers": "Ausschlusskriterien",
-      "dealBreakersPlaceholder": "Was sind absolute No-Gos für dich?",
-      "oppGenderFriends": "Okay damit, dass der Partner viele Freunde des anderen Geschlechts hat?",
-      "religionDealBreaker": "Ist die Religion des Partners ein Ausschlusskriterium?",
-      "religionDealBreakerHint": "Würdest du jemanden mit einem anderen Glauben nicht daten?"
-    },
-    "s5": {
-      "title": "Letzte Worte",
-      "subtitle": "Fast fertig. Nur noch ein paar Dinge.",
-      "affection": "Wie wichtig ist dir körperliche Zuneigung?",
-      "affectionLow": "unwichtig",
-      "affectionHigh": "sehr wichtig",
-      "firstDate": "Beschreibe dein Traumerstes Date",
-      "firstDatePlaceholder": "Ein Spaziergang im Park, Abendessen auf einer Dachterrasse...",
-      "disclaimer": "Ich verstehe, dass meine Daten nur für das Matchmaking verwendet, sicher gespeichert und niemals an Dritte verkauft oder weitergegeben werden.",
-      "disclaimerRequired": "Du musst zustimmen, um fortzufahren."
+      "privacy": "Dein Instagram-Handle ist Ende-zu-Ende verschlüsselt. Nur verifizierte Admins können ihn sehen. Du erhältst einen Codenamen.",
+      "birthDate": "Geburtsdatum"
     }
   },
   "success": {
@@ -139,11 +96,9 @@
     "copied": "Kopiert!",
     "download": ".txt herunterladen",
     "done": "Fertig →",
-    "laterHint": "Du kannst später auch über /profile/login mit deinem Magic-Link auf dein Profil zugreifen.",
-    "backHome": "Zurück zur Startseite"
+    "laterHint": "Du kannst später auch über /profile/login mit deinem Magic-Link auf dein Profil zugreifen."
   },
   "admin": {
-    "subtitle": "Admin",
     "login": {
       "title": "Admin-Zugang",
       "tagline": "Wo passende Herzen sich treffen.",
@@ -166,15 +121,6 @@
     },
     "dashboard": {
       "title": "Dashboard",
-      "subtitle": "Plattformübersicht",
-      "total": "Gesamt",
-      "active": "Aktiv",
-      "matched": "Gematcht",
-      "inactive": "Inaktiv",
-      "quickActions": "Schnellaktionen",
-      "runMatching": "Matching starten",
-      "viewApplicants": "Bewerber anzeigen",
-      "auditLogs": "Audit-Protokoll",
       "recentMatches": "Neueste Paare",
       "recentActivity": "Letzte Aktivität",
       "noMatchesYet": "Noch keine Paare.",
@@ -237,31 +183,27 @@
       "answers": "Antworten",
       "matches": "Paare",
       "viewAllMatches": "Alle anzeigen →",
-      "page": "Seite {{current}} von {{total}}",
-      "prev": "← Zurück",
-      "next": "Weiter →",
       "withdrawn": "Bewerber zurückgezogen",
       "magicLink": "Magic-Link",
       "regenerateMagicLink": "Magic-Link erneuern",
       "regenerateMagicLinkConfirm": "Dies macht den aktuellen Magic-Link des Bewerbers ungültig und setzt sein Passwort zurück — er muss ein neues festlegen. Einen neuen Link generieren und direkt mit ihm teilen?",
       "newMagicLinkHint": "Neuer Magic-Link — teile ihn direkt mit dem Bewerber. Er wird nicht erneut angezeigt.",
       "copy": "Kopieren",
-      "copied": "Kopiert ✓"
+      "copied": "Kopiert ✓",
+      "answersHint": "Geteilte Antworten sehen Matches und KI-Zusammenfassungen; private Antworten fließen nur in die Bewertung ein.",
+      "shared": "Geteilt",
+      "private": "Privat",
+      "otherAnswers": "Weitere Antworten",
+      "candidates": "Beste Kandidaten",
+      "candidatesHint": "Live mit den aktuellen Antworten berechnet, nach den harten Filtern.",
+      "noCandidates": "Im Pool besteht gerade niemand die harten Filter für diese Person."
     },
     "matching": {
       "title": "Matching",
       "subtitle": "Vollständigen paarweisen Durchlauf für alle aktiven Bewerber starten",
-      "algorithm": "Algorithmus",
-      "recommended": "Empfohlen",
-      "baseline": "Baseline",
-      "baselineHint": "Gewichtetes regelbasiertes Scoring",
-      "cosine": "Kosinus",
-      "cosineHint": "Kosinus-Ähnlichkeit auf numerischen Vektoren",
-      "embedding": "Embedding",
-      "embeddingHint": "Semantische Ähnlichkeit via Texteinbettungen",
       "lastRunSummary": "Letzter Lauf: {{time}} · {{count}} Paare vorgeschlagen",
       "neverRun": "Nie ausgeführt",
-      "confirmTitle": "Matching mit {{algorithm}} ausführen?",
+      "confirmTitle": "Matching jetzt starten?",
       "confirmBody": "Dies erstellt neue Paarvorschläge.",
       "cancel": "Abbrechen",
       "confirmRun": "Ja, Matching starten",
@@ -276,7 +218,18 @@
       "statDuration": "Dauer",
       "algorithmUsed": "Algorithmus: {{algorithm}}",
       "viewMatches": "Paare anzeigen",
-      "multilingualWarning": "Baseline- und Kosinus-Algorithmen verwenden Stichwortübereinstimmung für Freitextfelder. Sie können schlechte Ergebnisse liefern, wenn Bewerber das Formular in verschiedenen Sprachen ausgefüllt haben. Verwende <bold>Embedding</bold> für mehrsprachige Genauigkeit."
+      "filtersTitle": "Harte Filter",
+      "filtersHint": "Ein Paar, das einen davon nicht erfüllt, wird nie vorgeschlagen.",
+      "filters": {
+        "orientation": "Orientierung",
+        "age": "Altersunterschied, älter/jünger",
+        "religion": "Glaube als Ausschlusskriterium",
+        "distance": "Fernbeziehung",
+        "children": "Kinder (möchte / möchte nicht)",
+        "habits": "Rauchen und Alkohol als Ausschlusskriterium"
+      },
+      "scoreTitle": "Bewertung",
+      "scoreHint": "Die übrigen Paare werden in fünf Dimensionen bewertet und mit einem Alters-Faktor multipliziert."
     },
     "matches": {
       "title": "Paare",
@@ -292,7 +245,6 @@
       "expired": "Abgelaufen",
       "colCouple": "Paar",
       "colScore": "Score",
-      "colAlgorithm": "Algorithmus",
       "colStatus": "Status",
       "colActions": "Aktionen",
       "searchPlaceholder": "Nach Alias suchen…",
@@ -304,8 +256,7 @@
       "markFailed": "Gescheitert",
       "markDeclined": "Abgelehnt",
       "markExpired": "Abgelaufen",
-      "editNotes": "Notizen",
-      "cancelNotes": "Abbrechen",
+      "notes": "Notizen",
       "notesPlaceholder": "Notizen zu diesem Paar hinzufügen…",
       "saveNotes": "Speichern",
       "delete": "Löschen",
@@ -316,23 +267,23 @@
       "statusUpdated": "Status aktualisiert",
       "notesSaved": "Notizen gespeichert",
       "deleted": "Match gelöscht",
-      "updateError": "Aktualisierung fehlgeschlagen"
+      "updateError": "Aktualisierung fehlgeschlagen",
+      "colBreakdown": "Aufschlüsselung",
+      "details": "Details",
+      "hideDetails": "Ausblenden"
     },
     "audit": {
       "title": "Audit-Protokoll",
       "subtitle": "Alle administrativen und Bewerberaktionen",
-      "events": "{{count}} Ereignisse",
-      "colAction": "Aktion",
-      "colTarget": "Ziel",
-      "colAdmin": "Admin",
-      "colIp": "IP",
-      "colTime": "Zeit",
       "empty": "Noch keine Ereignisse.",
       "page": "Seite {{current}} von {{total}}",
       "prev": "← Zurück",
       "next": "Weiter →",
       "by": "von {{id}}",
       "targetAlias": "Alias: {{alias}}"
+    },
+    "breakdown": {
+      "ageModifier": "Alters-Passung (Faktor)"
     }
   },
   "portal": {
@@ -401,6 +352,12 @@
         "yes": "Ja, öffne mich dafür",
         "no": "Nein, so lassen",
         "ackFailed": "Deine Wahl konnte nicht gespeichert werden. Bitte versuche es erneut."
+      },
+      "statusLabel": {
+        "applied": "Beworben",
+        "matched": "Gematcht",
+        "dating": "Beim Dating",
+        "inactive": "Inaktiv"
       }
     },
     "matches": {
@@ -464,77 +421,35 @@
       "confirmContactNo": "Nein, passen",
       "withdrawNotice": "Match geschlossen. Neue Matches gibt es in der nächsten Matching-Phase — schau morgen wieder vorbei.",
       "viewOnInstagram": "@{{handle}} auf Instagram ansehen",
-      "vibe": "Ihre Ausstrahlung",
-      "lookingFor": "Was sie suchen",
-      "relationship": "Beziehung",
-      "ageGap": "Altersunterschied",
-      "ageGapValue": "Bis zu {{n}} Jahre",
-      "openOlder": "offen für Ältere",
-      "openYounger": "offen für Jüngere",
-      "longDistance": "Fernbeziehung",
-      "affection": "Körperliche Zuneigung",
-      "oppGenderFriends": "OK mit andersgeschlechtlichen Freunden",
-      "religionDB": "Religion ist ein No-Go",
-      "inTheirWords": "In eigenen Worten",
-      "physicalTraits": "Körperliche Vorlieben",
-      "characterTraits": "Charakterliche Vorlieben",
-      "dealBreakers": "No-Gos",
-      "dreamDate": "Traumerstes Date",
       "generatingSummary": "Zusammenfassung wird erstellt…",
       "summaryError": "Zusammenfassung konnte nicht erstellt werden.",
       "summaryRetry": "Erneut versuchen",
       "strengths": "Stärken",
       "keepInMind": "Zu bedenken",
       "breakdown": {
-        "relationship_type": {
-          "label": "Beziehungsziele",
-          "description": "Wie gut eure Beziehungsziele (langfristig, kurzfristig usw.) übereinstimmen."
-        },
-        "deal_breakers": {
-          "label": "Ausschlusskriterien",
-          "description": "Ob die Ausschlusskriterien einer Person im Lebensstil der anderen vorkommen."
-        },
-        "religion_compatibility": {
-          "label": "Religion",
-          "description": "Wie kompatibel eure religiösen Hintergründe und eure Offenheit sind."
-        },
-        "affection_importance": {
-          "label": "Zärtlichkeit",
-          "description": "Wie nah eure Vorstellungen von körperlicher Zuneigung beieinander liegen."
-        },
-        "long_distance": {
-          "label": "Fernbeziehung",
-          "description": "Ob ihr beide offen für eine Fernbeziehung seid."
+        "values": {
+          "label": "Werte",
+          "description": "Gemeinsame Prioritäten und wie sehr der Glaube zum Alltag gehört"
         },
         "lifestyle": {
           "label": "Lebensstil",
-          "description": "Wie ähnlich eure Alltagsgestaltung ist."
+          "description": "Alltagsrhythmus: soziale Energie, Schlaf, Aktivität, Planung und Geld"
         },
-        "numeric_compatibility": {
-          "label": "Kernpräferenzen",
-          "description": "Wie gut eure Beziehungspräferenzen strukturell zusammenpassen."
+        "goals": {
+          "label": "Ziele",
+          "description": "Wonach ihr jeweils sucht, und Kinder"
         },
-        "lifestyle_similarity": {
-          "label": "Lebensstil",
-          "description": "Wie ähnlich eure Lebensstile laut euren Angaben sind."
+        "connection": {
+          "label": "Verbindung",
+          "description": "Wie ihr mit Nähe, Konflikten, Zuneigung und Kontakt umgeht"
         },
-        "character_cross_match": {
+        "personality": {
           "label": "Persönlichkeit",
-          "description": "Wie gut eure Persönlichkeiten zu dem passen, was ihr jeweils sucht."
-        },
-        "character_a_wants_b": {
-          "label": "Ihre Art vs. was du suchst",
-          "description": "Wie gut die Persönlichkeit der anderen Person zu dem passt, was du suchst."
-        },
-        "character_b_wants_a": {
-          "label": "Deine Art vs. was sie suchen",
-          "description": "Wie gut deine Persönlichkeit zu dem passt, was die andere Person sucht."
-        },
-        "deal_breaker_penalty": {
-          "label": "Ausschlusskriterien",
-          "description": "Ob die Ausschlusskriterien einer Person im Lebensstil der anderen vorkommen."
+          "description": "Wie ähnlich eure Temperamente sind"
         }
-      }
+      },
+      "answers": "Die Antworten",
+      "partnerNote": "{{alias}} möchte, dass du weißt"
     },
     "settings": {
       "title": "Einstellungen",
@@ -575,6 +490,261 @@
       "adminLockedNote": "Diese Angaben können nur von einem Admin geändert werden — melde dich, falls etwas korrigiert werden muss.",
       "savedButton": "Gespeichert",
       "yearsOld": "{{age}} Jahre alt"
+    }
+  },
+  "questions": {
+    "sections": {
+      "identity": "Über dich",
+      "basics": "Grundlegendes",
+      "essentials": "Das Wichtigste",
+      "values": "Werte",
+      "lifestyle": "Lebensstil",
+      "connection": "Wie du Nähe lebst",
+      "personality": "Persönlichkeit",
+      "final": "Letzter Schritt"
+    },
+    "yes": "Ja",
+    "no": "Nein",
+    "scale": {
+      "1": "Stimme gar nicht zu",
+      "2": "Stimme nicht zu",
+      "3": "Neutral",
+      "4": "Stimme zu",
+      "5": "Stimme voll zu"
+    },
+    "scaleHint": "Wie sehr stimmst du zu?",
+    "chooseExactly": "Wähle genau {{count}}.",
+    "gender_identity": {
+      "label": "Wie identifizierst du dich?",
+      "options": {
+        "Male": "Mann",
+        "Female": "Frau",
+        "Non-binary": "Nicht-binär",
+        "Other": "Andere"
+      }
+    },
+    "sexual_orientation": {
+      "label": "Zu wem fühlst du dich hingezogen?",
+      "options": {
+        "Straight": "Heterosexuell",
+        "Gay": "Homosexuell",
+        "Bisexual": "Bisexuell",
+        "Other": "Andere"
+      }
+    },
+    "religion": {
+      "label": "Welche Religion hast du?",
+      "options": {
+        "muslim": "Muslimisch",
+        "christian": "Christlich",
+        "jewish": "Jüdisch",
+        "spiritual": "Spirituell, nicht religiös",
+        "not_religious": "Nicht religiös",
+        "other": "Andere",
+        "prefer_not_to_say": "Möchte ich nicht sagen"
+      }
+    },
+    "religion_practice": {
+      "label": "Wie sehr gehört der Glaube zu deinem Alltag?",
+      "options": {
+        "not_at_all": "Gar nicht",
+        "a_little": "Ein wenig",
+        "quite_a_lot": "Ziemlich stark",
+        "central": "Er steht im Mittelpunkt"
+      }
+    },
+    "relationship_type": {
+      "label": "Wonach suchst du?",
+      "options": {
+        "Long Term": "Etwas Langfristiges",
+        "Short Term": "Etwas Kurzfristiges",
+        "Open to Both": "Offen für beides",
+        "Casual": "Etwas Lockeres",
+        "Not Sure": "Noch unsicher"
+      }
+    },
+    "wants_children": {
+      "label": "Möchtest du Kinder?",
+      "options": {
+        "want": "Ich möchte Kinder",
+        "open": "Ich bin offen dafür",
+        "dont_want": "Ich möchte keine Kinder",
+        "not_sure": "Noch unsicher"
+      }
+    },
+    "smoking": {
+      "label": "Rauchst du?",
+      "options": {
+        "never": "Nie",
+        "sometimes": "Manchmal",
+        "regularly": "Regelmäßig"
+      }
+    },
+    "partner_smoking": {
+      "label": "Ein Partner, der raucht, ist …",
+      "options": {
+        "fine": "Für mich okay",
+        "rather_not": "Lieber nicht",
+        "deal_breaker": "Ein Ausschlusskriterium"
+      }
+    },
+    "alcohol": {
+      "label": "Trinkst du Alkohol?",
+      "options": {
+        "never": "Nie",
+        "sometimes": "Manchmal",
+        "regularly": "Regelmäßig"
+      }
+    },
+    "partner_alcohol": {
+      "label": "Ein Partner, der trinkt, ist …",
+      "options": {
+        "fine": "Für mich okay",
+        "rather_not": "Lieber nicht",
+        "deal_breaker": "Ein Ausschlusskriterium"
+      }
+    },
+    "religion_match": {
+      "label": "Ein Partner mit anderem Glauben ist …",
+      "options": {
+        "fine": "Für mich okay",
+        "rather_share": "Lieber derselbe Glaube",
+        "deal_breaker": "Ein Ausschlusskriterium"
+      }
+    },
+    "open_to_long_distance": {
+      "label": "Bist du offen für eine Fernbeziehung?"
+    },
+    "age_gap": {
+      "label": "Welcher Altersunterschied ist für dich höchstens okay?",
+      "options": {
+        "3": "3 Jahre",
+        "5": "5 Jahre",
+        "10": "10 Jahre",
+        "any": "Keine Grenze"
+      }
+    },
+    "age_direction": {
+      "label": "Älter oder jünger?",
+      "options": {
+        "either": "Beides",
+        "older": "Älter als ich",
+        "younger": "Jünger als ich"
+      }
+    },
+    "top_values": {
+      "label": "Wähle die drei, die dir am wichtigsten sind",
+      "options": {
+        "family": "Familie",
+        "faith": "Glaube",
+        "career": "Karriere und Ehrgeiz",
+        "adventure": "Abenteuer und Freiheit",
+        "stability": "Stabilität und Sicherheit",
+        "growth": "Lernen und Wachsen",
+        "helping": "Anderen helfen",
+        "fun": "Spaß und Genuss"
+      }
+    },
+    "social_energy": {
+      "label": "Dein ideales Wochenende?",
+      "options": {
+        "home": "Ruhig zu Hause",
+        "small_circle": "Ein kleiner Freundeskreis",
+        "mix": "Eine Mischung aus beidem",
+        "big_crowd": "Unterwegs mit vielen Leuten"
+      }
+    },
+    "sleep_rhythm": {
+      "label": "Frühaufsteher oder Nachteule?",
+      "options": {
+        "early": "Frühaufsteher",
+        "between": "Irgendwo dazwischen",
+        "night": "Nachteule"
+      }
+    },
+    "activity_level": {
+      "label": "Wie aktiv bist du?",
+      "options": {
+        "rarely": "Ich mache selten Sport",
+        "weekly": "Ein- bis zweimal pro Woche",
+        "most_days": "An den meisten Tagen"
+      }
+    },
+    "planning_style": {
+      "label": "Planen oder spontan sein?",
+      "options": {
+        "plan_all": "Ich plane alles",
+        "mostly_plan": "Ich plane meistens",
+        "mostly_spontaneous": "Meistens spontan",
+        "spontaneous": "Völlig spontan"
+      }
+    },
+    "money_style": {
+      "label": "Beim Geld bist du eher …",
+      "options": {
+        "saver": "Sparsam",
+        "between": "Irgendwo dazwischen",
+        "spender": "Ausgabefreudig"
+      }
+    },
+    "opposite_gender_friends": {
+      "label": "Ein Partner mit engen Freunden des anderen Geschlechts ist …",
+      "options": {
+        "fine": "Für mich okay",
+        "depends": "Kommt darauf an",
+        "not_ok": "Nicht okay"
+      }
+    },
+    "attach_anxiety_1": {
+      "label": "Ich mache mir Sorgen, dass ich einem Partner weniger bedeute als er mir."
+    },
+    "attach_anxiety_2": {
+      "label": "Ich brauche viel Bestätigung, dass ich geliebt werde."
+    },
+    "attach_avoidance_1": {
+      "label": "Ich verlasse mich lieber nicht auf einen Partner."
+    },
+    "attach_avoidance_2": {
+      "label": "Mir wird unwohl, wenn mir jemand sehr nahe sein möchte."
+    },
+    "conflict_style": {
+      "label": "Wenn du dich mit einem Partner nicht einig bist, dann …",
+      "options": {
+        "talk_now": "Sprichst du es sofort an",
+        "cool_off": "Kühlst du erst ab und redest dann",
+        "let_go": "Lässt du es gut sein, um den Frieden zu wahren",
+        "avoid": "Meidest du das Thema"
+      }
+    },
+    "physical_affection": {
+      "label": "Wie wichtig ist dir körperliche Zuneigung?",
+      "options": {
+        "not_important": "Nicht wichtig",
+        "a_little": "Ein wenig",
+        "quite": "Ziemlich wichtig",
+        "essential": "Unverzichtbar"
+      }
+    },
+    "contact_frequency": {
+      "label": "Wie oft möchtest du in Kontakt sein?",
+      "options": {
+        "all_day": "Den ganzen Tag über",
+        "few_times": "Ein paar Mal am Tag",
+        "once": "Einmal am Tag",
+        "when_needed": "Wenn es etwas zu sagen gibt"
+      }
+    },
+    "p_calm": {
+      "label": "Ich bleibe unter Stress ruhig."
+    },
+    "p_trust": {
+      "label": "Ich vertraue anderen Menschen leicht."
+    },
+    "p_thorough": {
+      "label": "Ich bringe zu Ende, was ich anfange."
+    },
+    "p_open": {
+      "label": "Ich probiere gern Neues aus."
     }
   }
 }

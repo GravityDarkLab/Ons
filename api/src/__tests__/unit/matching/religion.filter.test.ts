@@ -1,65 +1,44 @@
 import { describe, it, expect } from "bun:test";
-import { ObjectId } from "mongodb";
 import { isReligionCompatible } from "../../../matching/filters/religion.filter.js";
-import type { ApplicantDoc } from "../../../models/applicant.model.js";
+import { makeApplicant } from "./_fixtures.js";
 
-function makeApplicant(religion: string | undefined, dealBreaker: boolean | null): ApplicantDoc {
-  return {
-    _id: new ObjectId(),
-    alias: "Test",
-    questionnaireVersion: "1.1.0",
-    answers: {
-      ...(religion !== undefined ? { religion } : {}),
-      ...(dealBreaker !== null ? { religion_deal_breaker: dealBreaker } : {}),
-    },
-    status: "applied",
-    magicToken: "tok",
-    scoreThreshold: 0.7,
-    createdAt: new Date(),
-    updatedAt: new Date(),
-  } as ApplicantDoc;
-}
+const person = (religion: string | undefined, match?: string) =>
+  makeApplicant({ ...(religion ? { religion } : {}), ...(match ? { religion_match: match } : {}) });
 
 describe("isReligionCompatible", () => {
-  it("passes when religions match regardless of deal breaker", () => {
-    const a = makeApplicant("Muslim", true);
-    const b = makeApplicant("Muslim", true);
-    expect(isReligionCompatible(a, b)).toBe(true);
+  it("passes when both share a named religion, whatever the preference", () => {
+    expect(isReligionCompatible(person("muslim", "deal_breaker"), person("muslim", "deal_breaker"))).toBe(true);
   });
 
-  it("passes when religions differ and neither has a deal breaker", () => {
-    const a = makeApplicant("Muslim", false);
-    const b = makeApplicant("Christian", false);
-    expect(isReligionCompatible(a, b)).toBe(true);
+  it("fails when a deal-breaker holder meets a different religion, in either order", () => {
+    expect(isReligionCompatible(person("muslim", "deal_breaker"), person("christian", "fine"))).toBe(false);
+    expect(isReligionCompatible(person("christian", "fine"), person("muslim", "deal_breaker"))).toBe(false);
   });
 
-  it("fails when A has deal breaker and religions differ", () => {
-    const a = makeApplicant("Muslim", true);
-    const b = makeApplicant("Christian", false);
-    expect(isReligionCompatible(a, b)).toBe(false);
+  it("passes when religions differ and nobody holds a deal breaker", () => {
+    expect(isReligionCompatible(person("muslim", "rather_share"), person("christian", "fine"))).toBe(true);
   });
 
-  it("fails when B has deal breaker and religions differ", () => {
-    const a = makeApplicant("Agnostic", false);
-    const b = makeApplicant("Muslim", true);
-    expect(isReligionCompatible(a, b)).toBe(false);
+  it("a named deal-breaker holder is never paired with other or prefer_not_to_say", () => {
+    expect(isReligionCompatible(person("muslim", "deal_breaker"), person("other", "fine"))).toBe(false);
+    expect(isReligionCompatible(person("muslim", "deal_breaker"), person("prefer_not_to_say", "fine"))).toBe(false);
   });
 
-  it("fails when both have deal breaker and religions differ", () => {
-    const a = makeApplicant("Jewish", true);
-    const b = makeApplicant("Muslim", true);
-    expect(isReligionCompatible(a, b)).toBe(false);
+  it("a deal breaker held by someone whose own religion is not named is ignored", () => {
+    expect(isReligionCompatible(person("other", "deal_breaker"), person("muslim", "fine"))).toBe(true);
+    expect(isReligionCompatible(person("prefer_not_to_say", "deal_breaker"), person("other", "deal_breaker"))).toBe(true);
   });
 
-  it("passes when either religion is missing (skip filter)", () => {
-    const a = makeApplicant(undefined, true);
-    const b = makeApplicant("Muslim", true);
-    expect(isReligionCompatible(a, b)).toBe(true);
+  it("two 'other' answers are not the same religion for a named holder's deal breaker", () => {
+    expect(isReligionCompatible(person("other", "fine"), person("christian", "deal_breaker"))).toBe(false);
   });
 
-  it("is case-insensitive for religion comparison", () => {
-    const a = makeApplicant("muslim", true);
-    const b = makeApplicant("Muslim", false);
-    expect(isReligionCompatible(a, b)).toBe(true);
+  it("not_religious is a named choice that can be a deal breaker", () => {
+    expect(isReligionCompatible(person("not_religious", "deal_breaker"), person("muslim", "fine"))).toBe(false);
+    expect(isReligionCompatible(person("not_religious", "deal_breaker"), person("not_religious", "fine"))).toBe(true);
+  });
+
+  it("passes when a religion answer is missing", () => {
+    expect(isReligionCompatible(person(undefined, "deal_breaker"), person("muslim", "deal_breaker"))).toBe(true);
   });
 });

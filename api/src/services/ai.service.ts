@@ -8,7 +8,7 @@ const DEFAULT_CHAT_MODEL = env.openaiChatModel;
  * prompt. Two jobs:
  *
  *  - Truncation (word-boundary cut at maxChars) so a verbose applicant
- *    (deal_breakers/dream_first_date can run to 1-2k chars) doesn't blow up
+ *    (location and the optional note are the only free text left) doesn't blow up
  *    input tokens on every match.
  *  - Fence stripping: every prompt wraps applicant text in <profile> tags
  *    and instructs the model to treat the contents as untrusted data, so an
@@ -62,7 +62,7 @@ export interface ChatCompletionOptions {
   reasoningEffort?: "low" | "medium" | "high";
   /**
    * Overrides DEFAULT_TIMEOUT_MS. A reasoning model doing real chain-of-
-   * thought across a large prompt (e.g. a 15-candidate listwise rerank) can
+   * thought across a large prompt can
    * genuinely take longer than a quick pairwise prompt — raise this for
    * calls with a lot of content to get through, rather than raising the
    * global default and making every call wait longer than it needs to.
@@ -85,7 +85,7 @@ const DEFAULT_TIMEOUT_MS = 30000;
  * Pure — no env/network access — so the request-shape logic is unit-testable
  * directly. Encodes OpenAI's reasoning-model request shape, discovered
  * empirically against real API responses (HTTP 400s with explicit error
- * messages), not guessed — see docs/llm-listwise-rerank-matching-score.md §5.7:
+ * messages), not guessed:
  *   - temperature omitted entirely (o-series/gpt-5.x reject any non-default value)
  *   - max_completion_tokens, not max_tokens (newer models reject max_tokens outright)
  */

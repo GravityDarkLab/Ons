@@ -1,23 +1,9 @@
-// Maps the per-dimension keys produced by the matching algorithms
-// (api/src/matching/algorithms/{baseline,cosine,embedding-cosine}.ts) to
-// i18n keys for display in the match card "why this score" breakdown.
+// Maps the per-dimension keys produced by the rule-based scorer
+// (api/src/matching/scorer.ts) to i18n keys for the "why this score" breakdown.
+// Applicants only ever receive values / lifestyle / goals; connection and
+// personality are admin-only because they derive from private answers.
 
-const KNOWN_DIMENSIONS = [
-  // baseline.ts
-  'relationship_type',
-  'deal_breakers',
-  'religion_compatibility',
-  'affection_importance',
-  'long_distance',
-  'lifestyle',
-  // cosine.ts / embedding-cosine.ts
-  'numeric_compatibility',
-  'lifestyle_similarity',
-  'character_cross_match',
-  'character_a_wants_b',
-  'character_b_wants_a',
-  'deal_breaker_penalty',
-] as const
+const KNOWN_DIMENSIONS = ['values', 'lifestyle', 'goals', 'connection', 'personality'] as const
 
 const KNOWN_DIMENSION_SET: Set<string> = new Set(KNOWN_DIMENSIONS)
 

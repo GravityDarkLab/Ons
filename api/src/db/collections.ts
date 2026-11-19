@@ -3,22 +3,18 @@ import type { QuestionnaireDoc } from "../models/questionnaire.model.js";
 import type { ApplicantDoc } from "../models/applicant.model.js";
 import type { IdentityDoc } from "../models/identity.model.js";
 import type { AuditLogDoc } from "../models/auditLog.model.js";
-import type { EmbeddingDoc } from "../models/embedding.model.js";
 import type { AdminDoc } from "../models/admin.model.js";
 import type { MatchDoc } from "../models/match.model.js";
 import type { AppConfigDoc } from "../models/appConfig.model.js";
-import type { MatchRerankDoc } from "../models/match-rerank.model.js";
 
 export const COLLECTION_NAMES = {
   questionnaires: "questionnaires",
   applicants:     "applicants",
   identities:     "identities",
   auditLogs:      "audit_logs",
-  embeddings:     "embeddings",
   admins:         "admins",
   matches:        "matches",
   appConfig:      "app_config",
-  matchReranks:   "match_reranks",
 } as const;
 
 export function getQuestionnairesCollection(
@@ -39,10 +35,6 @@ export function getAuditLogsCollection(db: Db): Collection<AuditLogDoc> {
   return db.collection<AuditLogDoc>(COLLECTION_NAMES.auditLogs);
 }
 
-export function getEmbeddingsCollection(db: Db): Collection<EmbeddingDoc> {
-  return db.collection<EmbeddingDoc>(COLLECTION_NAMES.embeddings);
-}
-
 export function getAdminsCollection(db: Db): Collection<AdminDoc> {
   return db.collection<AdminDoc>(COLLECTION_NAMES.admins);
 }
@@ -53,10 +45,6 @@ export function getMatchesCollection(db: Db): Collection<MatchDoc> {
 
 export function getAppConfigCollection(db: Db): Collection<AppConfigDoc> {
   return db.collection<AppConfigDoc>(COLLECTION_NAMES.appConfig);
-}
-
-export function getMatchReranksCollection(db: Db): Collection<MatchRerankDoc> {
-  return db.collection<MatchRerankDoc>(COLLECTION_NAMES.matchReranks);
 }
 
 /**
@@ -83,10 +71,6 @@ export async function ensureIndexes(db: Db): Promise<void> {
   await _createIndexIfNotExists(auditLogs, { adminId: 1 });
   await _createIndexIfNotExists(auditLogs, { targetApplicantId: 1 });
 
-  const embeddings = getEmbeddingsCollection(db);
-  await _createIndexIfNotExists(embeddings, { applicantId: 1 }, { unique: true });
-  await _createIndexIfNotExists(embeddings, { model: 1 });
-
   const admins = getAdminsCollection(db);
   await _createIndexIfNotExists(admins, { username: 1 }, { unique: true });
 
@@ -98,9 +82,6 @@ export async function ensureIndexes(db: Db): Promise<void> {
   await _createIndexIfNotExists(matches, { applicantAId: 1 });
   await _createIndexIfNotExists(matches, { applicantBId: 1 });
   await _createIndexIfNotExists(matches, { initiatorId: 1 }, { sparse: true });
-
-  const matchReranks = getMatchReranksCollection(db);
-  await _createIndexIfNotExists(matchReranks, { applicantId: 1 }, { unique: true });
 
   console.info("[DB] Indexes verification done");
 

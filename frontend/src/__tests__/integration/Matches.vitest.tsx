@@ -27,7 +27,8 @@ const MATCH_A = {
   applicantBId: 'bid-2',
   applicantBAlias: 'Pearl Lantern',
   score: 0.87,
-  algorithm: 'baseline',
+  algorithm: 'rules-v1',
+  breakdown: { values: 0.89, lifestyle: 0.81, connection: 0.92, personality: 0.75, goals: 1, age_modifier: 1 },
   status: 'proposed' as const,
   createdAt: new Date().toISOString(),
   updatedAt: new Date().toISOString(),
@@ -40,7 +41,7 @@ const MATCH_B = {
   applicantBId: 'bid-4',
   applicantBAlias: 'Zenith Blazing',
   score: 0.72,
-  algorithm: 'baseline',
+  algorithm: 'rules-v1',
   status: 'in_progress' as const,
   createdAt: new Date().toISOString(),
   updatedAt: new Date().toISOString(),
@@ -93,6 +94,20 @@ describe('Matches page — initial render', () => {
     expect(screen.getAllByText('admin.matches.proposed').length).toBeGreaterThanOrEqual(2)
   })
 
+  // The five-column table needs ~710px (German). With the sidebar open at 768px
+  // only ~500px is left, so tablets keep the card list and the table starts at lg.
+  it('switches from cards to the table at the lg breakpoint, not md', async () => {
+    mockFetchMatches.mockResolvedValue({ data: [MATCH_A], total: 1, page: 1, limit: 20, totalPages: 1 })
+    renderMatches()
+    await waitFor(() => table().getByText('Lunar Ocean'))
+    const tableBox = screen.getByRole('table').parentElement!
+    expect(tableBox.className).toContain('lg:block')
+    expect(tableBox.className).not.toContain('md:block')
+    const cardList = screen.getAllByText('Lunar Ocean').find(el => !el.closest('table'))!.closest('.shadow-card')!.parentElement!
+    expect(cardList.className).toContain('lg:hidden')
+    expect(cardList.className).not.toContain('md:hidden')
+  })
+
   it('shows total count in subtitle', async () => {
     mockFetchMatches.mockResolvedValue({ data: [MATCH_A], total: 1, page: 1, limit: 20, totalPages: 1 })
     renderMatches()
@@ -101,11 +116,22 @@ describe('Matches page — initial render', () => {
     )
   })
 
-  it('renders algorithm for each match', async () => {
+  it('shows a compact score breakdown instead of the algorithm', async () => {
     mockFetchMatches.mockResolvedValue({ data: [MATCH_A], total: 1, page: 1, limit: 20, totalPages: 1 })
     renderMatches()
-    await waitFor(() => table().getByText('baseline'))
+    await waitFor(() => table().getByText('Lunar Ocean'))
+    expect(table().getByRole('img', { name: /portal\.matches\.breakdown\.connection\.label 92%/ })).toBeInTheDocument()
+    expect(table().queryByText('rules-v1')).not.toBeInTheDocument()
+    expect(screen.queryByText('admin.matches.colAlgorithm')).not.toBeInTheDocument()
   })
+
+  it('shows a dash for a match without a breakdown', async () => {
+    mockFetchMatches.mockResolvedValue({ data: [MATCH_B], total: 1, page: 1, limit: 20, totalPages: 1 })
+    renderMatches()
+    await waitFor(() => table().getByText('Echo Blue'))
+    expect(table().getByText('—')).toBeInTheDocument()
+  })
+
 })
 
 describe('Matches page — status filter tabs', () => {
@@ -219,24 +245,24 @@ describe('Matches page — status transitions', () => {
   })
 })
 
-describe('Matches page — notes', () => {
-  it('expands notes editor when Notes button is clicked', async () => {
+describe('Matches page — details', () => {
+  it('opens the full breakdown and the notes editor when Details is clicked', async () => {
     mockFetchMatches.mockResolvedValue({ data: [MATCH_A], total: 1, page: 1, limit: 20, totalPages: 1 })
     renderMatches()
-    await waitFor(() => table().getByRole('button', { name: 'admin.matches.editNotes' }))
+    await waitFor(() => table().getByRole('button', { name: 'admin.matches.details' }))
 
-    await userEvent.click(table().getByRole('button', { name: 'admin.matches.editNotes' }))
-    expect(table().getByPlaceholderText('admin.matches.notesPlaceholder')).toBeInTheDocument()
-    expect(table().getByRole('button', { name: 'admin.matches.cancelNotes' })).toBeInTheDocument()
+    await userEvent.click(table().getByRole('button', { name: 'admin.matches.details' }))
+    expect(table().getByRole('textbox', { name: 'admin.matches.notes' })).toBeInTheDocument()
+    expect(table().getByRole('button', { name: 'admin.matches.hideDetails' })).toBeInTheDocument()
   })
 
-  it('collapses notes editor when Cancel is clicked', async () => {
+  it('collapses the details when Hide is clicked', async () => {
     mockFetchMatches.mockResolvedValue({ data: [MATCH_A], total: 1, page: 1, limit: 20, totalPages: 1 })
     renderMatches()
-    await waitFor(() => table().getByRole('button', { name: 'admin.matches.editNotes' }))
+    await waitFor(() => table().getByRole('button', { name: 'admin.matches.details' }))
 
-    await userEvent.click(table().getByRole('button', { name: 'admin.matches.editNotes' }))
-    await userEvent.click(table().getByRole('button', { name: 'admin.matches.cancelNotes' }))
+    await userEvent.click(table().getByRole('button', { name: 'admin.matches.details' }))
+    await userEvent.click(table().getByRole('button', { name: 'admin.matches.hideDetails' }))
     expect(table().queryByPlaceholderText('admin.matches.notesPlaceholder')).not.toBeInTheDocument()
   })
 })
@@ -276,7 +302,7 @@ describe('Matches page — delete', () => {
     renderMatches()
 
     const dialog = await openDeleteDialog()
-    await userEvent.click(within(dialog).getByRole('button', { name: 'admin.matches.cancelNotes' }))
+    await userEvent.click(within(dialog).getByRole('button', { name: 'admin.matching.cancel' }))
     expect(mockRemoveMatch).not.toHaveBeenCalled()
     expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument()
   })

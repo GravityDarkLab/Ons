@@ -21,7 +21,9 @@ const mockGetMyAnswers        = mock(async () => null as any);
 const mockUpdateMyAnswers     = mock(async () => {});
 const mockGetMyMatches        = mock(async () => [] as any[]);
 const mockRequestContact      = mock(async () => ({ iceBreakers: [] as string[], dateIdeas: [] as string[] }));
-const mockRespondToContact    = mock(async () => ({ partnerInstagram: null as string | null }));
+const mockRespondToContact    = mock(async () => ({
+  partnerInstagram: null as string | null, partnerFullName: null as string | null, partnerNote: null as string | null,
+}));
 const mockWithdrawContact     = mock(async () => {});
 const mockReportOutcome       = mock(async () => {});
 const mockDeactivateMyAccount = mock(async () => {});
@@ -67,6 +69,7 @@ const { profileRoutes } = await import("../../routes/profile.routes.js");
 import { signApplicantToken } from "../../middleware/applicant.auth.middleware.js";
 import { signAdminToken } from "../../middleware/auth.middleware.js";
 import { ObjectId } from "mongodb";
+import { validAnswers } from "../unit/matching/_fixtures.js";
 import { AppError } from "../../errors.js";
 
 const app = new Hono();
@@ -122,7 +125,7 @@ beforeEach(() => {
   mockSetPassword.mockResolvedValue(null);
   mockGetMyMatches.mockResolvedValue([]);
   mockRequestContact.mockResolvedValue({ iceBreakers: ["Q1"], dateIdeas: ["D1"] });
-  mockRespondToContact.mockResolvedValue({ partnerInstagram: null });
+  mockRespondToContact.mockResolvedValue({ partnerInstagram: null, partnerFullName: null, partnerNote: null });
 });
 
 // ── POST /profile/login ───────────────────────────────────────────────────────
@@ -327,23 +330,11 @@ describe("GET /profile/me", () => {
 
 // ── GET /profile/answers ──────────────────────────────────────────────────────
 
-const VALID_ANSWERS_UPDATE = {
-  location: "Paris, France",
-  work: "Student",
-  sexual_orientation: "Straight",
-  religion: "Islam",
-  vibe_words: "calm, curious",
-  lifestyle: "Early riser, gym, reading",
-  relationship_type: "Long Term",
-  open_to_long_distance: true,
-  preferred_physical_traits: "Tall",
-  preferred_character_traits: "Kind",
-  deal_breakers: "Smoking",
-  okay_with_opposite_gender_friends: true,
-  religion_deal_breaker: false,
-  physical_affection_importance: 7,
-  dream_first_date: "A walk by the sea",
-};
+const VALID_ANSWERS_UPDATE = (() => {
+  const a = validAnswers({ location: "Paris, France" });
+  for (const k of ["first_name", "last_name", "instagram_handle", "disclaimer_agreed", "birth_date", "gender_identity"]) delete a[k];
+  return a;
+})();
 
 describe("GET /profile/answers", () => {
   it("returns 401 without a token", async () => {
@@ -440,18 +431,18 @@ describe("PUT /profile/answers", () => {
     expect(mockUpdateMyAnswers).not.toHaveBeenCalled();
   });
 
-  it("rejects invalid field values with 422 (affection out of range)", async () => {
+  it("rejects invalid field values with 422 (agreement answer out of range)", async () => {
     const token = await applicantToken();
     const res = await put(
       "/profile/answers",
-      { answers: { ...VALID_ANSWERS_UPDATE, physical_affection_importance: 20 } },
+      { answers: { ...VALID_ANSWERS_UPDATE, p_calm: 20 } },
       token,
     );
     expect(res.status).toBe(422);
     expect(mockUpdateMyAnswers).not.toHaveBeenCalled();
   });
 
-  it("accepts a payload without the optional height_cm", async () => {
+  it("accepts a payload without the optional note_to_match", async () => {
     mockUpdateMyAnswers.mockResolvedValue(undefined);
     const token = await applicantToken();
     const res = await put("/profile/answers", { answers: VALID_ANSWERS_UPDATE }, token);
@@ -533,6 +524,18 @@ describe("POST /profile/matches/:id/respond", () => {
     const token = await applicantToken();
     const res = await post("/profile/matches/abc123/respond", { accept: true }, token);
     expect(res.status).toBe(200);
+  });
+
+  it("returns the partner's identity and note on accept, so the card updates without a reload", async () => {
+    mockRespondToContact.mockResolvedValueOnce({
+      partnerInstagram: "partner.handle", partnerFullName: "Partner Name", partnerNote: "I make a great couscous",
+    });
+    const token = await applicantToken();
+    const res = await post("/profile/matches/abc123/respond", { accept: true }, token);
+    expect(res.status).toBe(200);
+    expect((await res.json()).data).toEqual({
+      partnerInstagram: "partner.handle", partnerFullName: "Partner Name", partnerNote: "I make a great couscous",
+    });
   });
 
   it("returns 200 on decline", async () => {
@@ -903,6 +906,22 @@ describe("Adversarial: malformed / oversized payloads", () => {
     const token = await applicantToken();
     const res = await get("/profile/matches?threshold=-1", token);
     expect(res.status).toBe(200);
+  });
+
+  it.each([
+    ["", 0.6],
+    ["?threshold=0.5", 0.5],
+    ["?threshold=0.49", 0.5],
+    ["?threshold=-1", 0.5],
+    ["?threshold=not-a-number", 0.6],
+    ["?threshold=2.5", 1],
+  ])("GET /profile/matches%s passes threshold %p to the service", async (query, expected) => {
+    mockGetMyMatches.mockClear();
+    mockGetMyMatches.mockResolvedValue([]);
+    const token = await applicantToken();
+    await get(`/profile/matches${query}`, token);
+    const [, threshold] = mockGetMyMatches.mock.calls[0] as any[];
+    expect(threshold).toBe(expected);
   });
 
   it("GET /profile/matches with threshold > 1 still returns 200 (service clamps)", async () => {

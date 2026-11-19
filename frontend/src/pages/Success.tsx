@@ -93,7 +93,7 @@ export default function Success() {
 
         {/* Warning banner */}
         <div
-          className="flex items-start gap-3 w-full rounded-xl px-4 py-3.5 text-left"
+          className="flex items-start gap-3 w-full rounded-xl px-4 py-3.5 text-start"
           style={{ backgroundColor: '#F5ECD7', borderWidth: 1, borderColor: '#C9A96E', borderStyle: 'solid' }}
         >
           <svg

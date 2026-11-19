@@ -31,7 +31,7 @@
   --t-border:         #E5E0DA;
 
   --t-ink:        #1A1815;
-  --t-ink-muted:  #8B8178;
+  --t-ink-muted:  #6F665D; /* 5.3:1 on --t-bg, 5.6:1 on --t-surface (WCAG AA) */
   --t-ink-faint:  #B0AFAD;
 
   --t-accent:       #C9A96E;

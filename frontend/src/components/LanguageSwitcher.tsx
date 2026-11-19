@@ -36,11 +36,11 @@ export default function LanguageSwitcher({ className = '' }: Props) {
     <div ref={ref} className={`relative ${className}`}>
       <button
         onClick={() => setOpen(o => !o)}
-        className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-sm text-muted hover:text-primary hover:bg-border/50 transition-colors"
+        className="flex items-center gap-1 sm:gap-1.5 min-h-9 px-2 sm:px-3 py-1.5 rounded-xl text-sm text-muted hover:text-primary hover:bg-border/50 transition-colors"
         aria-haspopup="listbox"
         aria-expanded={open}
       >
-        <svg className="w-3.5 h-3.5" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+        <svg className="hidden sm:block w-3.5 h-3.5" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
           <circle cx="12" cy="12" r="10" />
           <path d="M2 12h20M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z" />
         </svg>

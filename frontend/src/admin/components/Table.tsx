@@ -1,7 +1,7 @@
 /** Shared table primitives for admin list pages (Applicants, Matches). */
 
 export function Th({ children }: { children?: React.ReactNode }) {
-  return <th className="px-4 py-3 text-left text-xs font-medium text-muted uppercase tracking-wider">{children}</th>
+  return <th className="px-4 py-3 text-start text-xs font-medium text-muted uppercase tracking-wider">{children}</th>
 }
 
 export function PageButton({ children, onClick, disabled }: { children: React.ReactNode; onClick: () => void; disabled: boolean }) {

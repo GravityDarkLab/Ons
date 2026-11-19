@@ -55,13 +55,9 @@ export const env = {
   // Generate with: openssl rand -hex 32
   formSecret: required("FORM_SECRET"),
 
-  // ── OpenAI (embeddings + chat: matching, rerank, summaries, ice-breakers) ───
-  // Matching always calls OpenAI directly — no local-model option here. A
-  // local/self-hosted model may still power some *other*, non-matching
-  // feature in the future; that would get its own client, not a branch of
-  // this one (see api/src/matching/embeddings/provider.ts).
+  // ── OpenAI (chat only: match summaries, ice-breakers, date ideas) ───────────
+  // Matching itself is rule-based and never calls OpenAI.
   openaiApiKey: required("OPENAI_API_KEY"),
-  embeddingModel: optional("EMBEDDING_MODEL", "text-embedding-3-small"),
   openaiChatModel: optional("OPENAI_CHAT_MODEL", "gpt-4o-mini"),
 
   // Scheduled matching job — disabled unless a positive interval is set

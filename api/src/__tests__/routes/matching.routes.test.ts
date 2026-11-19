@@ -77,7 +77,7 @@ function makeCandidates(n = 3) {
     alias: `Alias ${i}`,
     applicantId: `64b1234567890abcdef0000${i}`,
     score: 0.9 - i * 0.1,
-    breakdown: { numeric_compatibility: 0.8 },
+    breakdown: { values: 0.8, lifestyle: 0.7, connection: 0.9, personality: 0.6, goals: 1, age_modifier: 1 },
   }));
 }
 
@@ -158,20 +158,26 @@ describe("POST /matching/run", () => {
     expect(res.status).toBe(401);
   });
 
-  it("returns 200 with embedding-cosine algorithm", async () => {
+  it("returns 200 with rules-v1 algorithm", async () => {
     const token = await adminToken();
     const res = await post("/matching/run", {}, token);
     expect(res.status).toBe(200);
     const body = await res.json() as any;
     expect(body.success).toBe(true);
-    expect(body.algorithm).toBe("embedding-cosine");
+    expect(body.algorithm).toBe("rules-v1");
     expect(typeof body.totalApplicants).toBe("number");
     expect(typeof body.durationMs).toBe("number");
   });
 
-  it("accepts explicit embedding-cosine algorithm", async () => {
+  it("rejects the retired embedding-cosine algorithm", async () => {
     const token = await adminToken();
     const res = await post("/matching/run", { algorithm: "embedding-cosine" }, token);
+    expect(res.status).toBe(422);
+  });
+
+  it("accepts explicit rules-v1 algorithm", async () => {
+    const token = await adminToken();
+    const res = await post("/matching/run", { algorithm: "rules-v1" }, token);
     expect(res.status).toBe(200);
   });
 
@@ -236,7 +242,7 @@ describe("GET /matching/last-run", () => {
   it("returns the stored last-run summary", async () => {
     const stored = {
       at: new Date().toISOString(),
-      algorithm: "embedding-cosine",
+      algorithm: "rules-v1",
       totalApplicants: 12,
       couplesProposed: 4,
       durationMs: 850,
@@ -248,13 +254,13 @@ describe("GET /matching/last-run", () => {
     expect(body.data).toEqual(stored);
   });
 
-  it("POST /matching/run persists the last-run summary with embedding-cosine", async () => {
+  it("POST /matching/run persists the last-run summary with rules-v1", async () => {
     const token = await adminToken();
     await post("/matching/run", {}, token);
     expect(mockSetConfig).toHaveBeenCalledTimes(1);
     const [key, value] = mockSetConfig.mock.calls[0] as unknown as [string, any];
     expect(key).toBe("matching.lastRun");
-    expect(value.algorithm).toBe("embedding-cosine");
+    expect(value.algorithm).toBe("rules-v1");
     expect(value.triggeredBy).toBe("admin");
     expect(typeof value.durationMs).toBe("number");
   });

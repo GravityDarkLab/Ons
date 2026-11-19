@@ -1,35 +1,31 @@
 import type { ApplicantDoc } from "../../models/applicant.model.js";
-import { normalizeAnswer } from "./answer.util.js";
+import { NAMED_RELIGIONS } from "../../questionnaire/questions.js";
 
 /**
- * Returns false if either applicant has marked religion as a deal breaker
- * and the two applicants have different religions. Both directions are checked.
+ * Returns false when a deal-breaker holder would be paired with someone who
+ * is not confirmably of the same religion. Both directions are checked.
  *
- * Missing or blank religion strings skip the check (pass through).
- *
- * Unlike location.filter.ts, this deliberately does NOT fuzzy-match beyond
- * trim/lowercase (e.g. collapsing "Christian" with "Christian (Catholic)", or
- * "Muslim" with "Islam"). This is a hard deal-breaker: the risk of two
- * strings meaning the same religion but comparing unequal (a missed match)
- * is far safer than the risk of collapsing two answers a user considered
- * meaningfully different (e.g. denomination) and matching them anyway. The
- * curated suggestion list (frontend/src/data/religions.ts) already offers
- * denomination-level entries as distinct choices on purpose.
+ * - "Same religion" requires both to have picked the same *named* religion.
+ *   `other` and `prefer_not_to_say` never count as the same, so a named
+ *   deal-breaker holder is never paired with them.
+ * - A deal breaker only applies when the holder's own religion is named.
+ *   Someone who chose `other` / `prefer_not_to_say` cannot be matched on it,
+ *   so enforcing theirs would leave them with zero candidates.
+ * - A missing religion answer on either side skips the check.
  */
 export function isReligionCompatible(a: ApplicantDoc, b: ApplicantDoc): boolean {
-  const aAnswers = a.answers as Record<string, unknown>;
-  const bAnswers = b.answers as Record<string, unknown>;
-
-  const aReligion = normalizeAnswer(aAnswers, "religion");
-  const bReligion = normalizeAnswer(bAnswers, "religion");
+  const aReligion = a.answers["religion"];
+  const bReligion = b.answers["religion"];
 
   if (!aReligion || !bReligion) return true;
+  if (aReligion === bReligion && NAMED_RELIGIONS.has(aReligion as string)) return true;
 
-  const religionsMatch = aReligion === bReligion;
-  if (religionsMatch) return true;
+  return !holdsDealBreaker(a) && !holdsDealBreaker(b);
+}
 
-  if (aAnswers["religion_deal_breaker"] === true) return false;
-  if (bAnswers["religion_deal_breaker"] === true) return false;
-
-  return true;
+function holdsDealBreaker(applicant: ApplicantDoc): boolean {
+  return (
+    applicant.answers["religion_match"] === "deal_breaker" &&
+    NAMED_RELIGIONS.has(applicant.answers["religion"] as string)
+  );
 }

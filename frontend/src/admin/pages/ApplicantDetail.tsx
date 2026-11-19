@@ -10,6 +10,8 @@ import { useToast } from '../../components/ui/Toast'
 import { applicantStatusTone, matchStatusTone } from '../../components/ui/statusTones'
 import { useOptionalAuth } from '../context/AuthContext'
 import type { Applicant, ApplicantStatus, Match } from '../types'
+import { ApplicantAnswers } from '../components/ApplicantAnswers'
+import { TopCandidates } from '../components/TopCandidates'
 
 // ── Icons ──────────────────────────────────────────────────────────────────────
 
@@ -283,7 +285,6 @@ function MatchHistory({ matches, applicantId }: MatchHistoryProps) {
     <div className="space-y-3">
       {matches.map(m => {
         const isA          = m.applicantAId === applicantId
-        const ownAlias     = isA ? m.applicantAAlias : m.applicantBAlias
         const partnerId    = isA ? m.applicantBId    : m.applicantAId
         const partnerAlias = isA ? m.applicantBAlias : m.applicantAAlias
         const scorePercent = Math.round(m.score * 100)
@@ -291,16 +292,12 @@ function MatchHistory({ matches, applicantId }: MatchHistoryProps) {
         return (
           <div key={m.id} className="flex items-center justify-between gap-3">
             <div className="min-w-0">
-              <div className="flex items-center gap-1.5 text-sm font-mono text-primary">
-                <span className="text-muted shrink-0">{ownAlias}</span>
-                <span className="text-muted shrink-0">↔</span>
-                <Link
-                  to={`/admin/applicants/${partnerId}`}
-                  className="text-accent hover:underline truncate"
-                >
-                  {partnerAlias}
-                </Link>
-              </div>
+              <Link
+                to={`/admin/applicants/${partnerId}`}
+                className="block truncate text-sm font-mono text-accent hover:underline"
+              >
+                {partnerAlias}
+              </Link>
               <div className="flex items-center gap-2 mt-1.5">
                 <div className="bg-border rounded-full h-1.5 w-24">
                   <div
@@ -409,18 +406,18 @@ export function ApplicantDetail() {
             <dl className="space-y-2.5 text-sm">
               <div className="flex justify-between gap-3">
                 <dt className="text-muted">{t('admin.detail.submitted', { date: '' }).replace(':', '').trim()}</dt>
-                <dd className="text-primary text-right">
+                <dd className="text-primary text-end">
                   {new Date(applicant.createdAt).toLocaleDateString()}
                 </dd>
               </div>
               <div className="flex justify-between gap-3">
                 <dt className="text-muted">{t('admin.detail.version')}</dt>
-                <dd className="text-primary font-mono text-right">{applicant.questionnaireVersion}</dd>
+                <dd className="text-primary font-mono text-end">{applicant.questionnaireVersion}</dd>
               </div>
               {applicant.submissionIp && (
                 <div className="flex justify-between gap-3">
                   <dt className="text-muted">{t('admin.detail.submissionIp')}</dt>
-                  <dd className="text-primary font-mono text-right text-xs">{applicant.submissionIp}</dd>
+                  <dd className="text-primary font-mono text-end text-xs">{applicant.submissionIp}</dd>
                 </div>
               )}
             </dl>
@@ -440,26 +437,6 @@ export function ApplicantDetail() {
 
             {/* Magic link regeneration */}
             <MagicLinkCard id={id!} />
-
-            {/* Divider */}
-            <div className="border-t border-border" />
-
-            {/* Answers */}
-            <div>
-              <p className="text-xs font-semibold text-muted uppercase tracking-wider mb-3">
-                {t('admin.detail.answers')}
-              </p>
-              <div className="space-y-2.5">
-                {Object.entries(applicant.answers).map(([key, value]) => (
-                  <div key={key} className="flex justify-between gap-3 text-sm">
-                    <span className="text-muted capitalize">{key.replace(/_/g, ' ')}</span>
-                    <span className="text-primary text-right break-words max-w-[60%]">
-                      {typeof value === 'boolean' ? (value ? t('common.yes') : t('common.no')) : String(value ?? '—')}
-                    </span>
-                  </div>
-                ))}
-              </div>
-            </div>
 
             {/* Withdraw action */}
             {applicant.status !== 'inactive' && (
@@ -494,6 +471,11 @@ export function ApplicantDetail() {
             <StatusStepper status={applicant.status} />
           </div>
 
+          {/* Live top candidates — only for applicants still in the matching pool */}
+          {(applicant.status === 'applied' || applicant.status === 'matched') && (
+            <TopCandidates applicantId={id!} />
+          )}
+
           {/* Match history card — only rendered when there are matches */}
           {matches.length > 0 && (
             <div className="bg-surface border border-border rounded-2xl p-6 shadow-card">
@@ -511,6 +493,8 @@ export function ApplicantDetail() {
               <MatchHistory matches={matches} applicantId={id!} />
             </div>
           )}
+
+          <ApplicantAnswers answers={applicant.answers} />
         </div>
       </div>
     </div>

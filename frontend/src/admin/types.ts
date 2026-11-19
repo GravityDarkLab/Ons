@@ -65,6 +65,8 @@ export interface Match {
   applicantBId: string
   applicantBAlias: string
   score: number
+  /** Per-dimension scores from the rule-based scorer; admins see all five */
+  breakdown?: Record<string, number>
   algorithm: string
   status: MatchStatus
   notes?: string

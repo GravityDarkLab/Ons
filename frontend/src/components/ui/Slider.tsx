@@ -21,8 +21,8 @@ export default function Slider({
   min = 1,
   max = 10,
   step = 1,
-  lowLabel = 'not important',
-  highLabel = 'very important',
+  lowLabel,
+  highLabel,
   formatValue,
   error,
 }: SliderProps) {
@@ -87,19 +87,21 @@ export default function Slider({
 
         {/* Custom thumb */}
         <div
-          className="absolute top-1/2 -translate-y-1/2 w-5 h-5 rounded-full bg-accent shadow-md border-2 border-white pointer-events-none transition-all duration-150"
+          className="absolute top-1/2 -translate-y-1/2 w-5 h-5 rounded-full bg-accent shadow-md border-2 border-surface pointer-events-none transition-all duration-150"
           style={thumbStyle}
         />
       </div>
 
       {/* Low / high labels — flex order naturally flips in RTL */}
-      <div className="flex justify-between">
-        <span className="text-xs text-muted">{lowLabel}</span>
-        <span className="text-xs text-muted">{highLabel}</span>
-      </div>
+      {(lowLabel || highLabel) && (
+        <div className="flex justify-between">
+          <span className="text-xs text-muted">{lowLabel}</span>
+          <span className="text-xs text-muted">{highLabel}</span>
+        </div>
+      )}
 
       {/* Tick marks */}
-      <div className="flex justify-between px-0.5 -mt-2">
+      <div className="flex justify-between px-0.5">
         {ticks.map((tick) => (
           <button
             key={tick}

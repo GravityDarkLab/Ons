@@ -30,10 +30,10 @@ const STATUS_DOTS: Record<string, string> = {
 }
 
 const STATUS_BORDER: Record<string, string> = {
-  applied:  'border-l-info',
-  matched:  'border-l-accent',
-  dating:   'border-l-success',
-  inactive: 'border-l-faint',
+  applied:  'border-s-info',
+  matched:  'border-s-accent',
+  dating:   'border-s-success',
+  inactive: 'border-s-faint',
 }
 
 const STATUS_NUMBER_COLOR: Record<string, string> = {
@@ -55,7 +55,7 @@ function auditActionColor(action: string): string {
 
 function StatCardSkeleton() {
   return (
-    <div className="bg-surface border border-border border-l-4 rounded-2xl px-5 py-4 shadow-card">
+    <div className="bg-surface border border-border border-s-4 rounded-2xl px-5 py-4 shadow-card">
       <Skeleton className="h-9 w-12 mb-2" />
       <Skeleton className="h-4 w-20" />
     </div>
@@ -144,7 +144,7 @@ export function Dashboard() {
           counts ? (
             <div
               key={key}
-              className={`bg-surface border border-border border-l-4 ${STATUS_BORDER[key]} rounded-2xl px-5 py-4 shadow-card transition-card hover-card`}
+              className={`bg-surface border border-border border-s-4 ${STATUS_BORDER[key]} rounded-2xl px-5 py-4 shadow-card transition-card hover-card`}
             >
               <p className={`text-4xl font-semibold tabular-nums ${STATUS_NUMBER_COLOR[key]}`}>
                 {counts[key]}

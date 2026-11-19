@@ -30,8 +30,6 @@ function candidate(of: ApplicantDoc, score: number, breakdown: Record<string, nu
     applicantId: of._id.toHexString(),
     score,
     breakdown,
-    embeddingScore: score,
-    llmReasoning: "",
   };
 }
 
@@ -120,8 +118,8 @@ describe("generateCoupleProposals", () => {
     const first = a._id.toHexString() === firstId ? a : b;
     const second = first === a ? b : a;
 
-    const breakdownAB = { numeric_compatibility: 0.9 };
-    const breakdownBA = { numeric_compatibility: 0.5 };
+    const breakdownAB = { values: 0.9 };
+    const breakdownBA = { values: 0.5 };
     const results = {
       [first._id.toHexString()]:  [candidate(second, 0.8, breakdownAB)],
       [second._id.toHexString()]: [candidate(first, 0.6, breakdownBA)],
@@ -134,7 +132,7 @@ describe("generateCoupleProposals", () => {
   it("falls back to the only available direction's breakdown", () => {
     const a = makeApplicant("Alpha One");
     const b = makeApplicant("Beta Two");
-    const breakdown = { lifestyle_similarity: 0.7 };
+    const breakdown = { lifestyle: 0.7 };
     const results = {
       [a._id.toHexString()]: [candidate(b, 0.9, breakdown)],
     };

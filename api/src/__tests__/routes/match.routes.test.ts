@@ -62,7 +62,7 @@ const MATCH_FIXTURE = {
   applicantBId: "64b0000000000000000000b2",
   applicantBAlias: "Pearl Lantern",
   score: 0.87,
-  algorithm: "baseline",
+  algorithm: "rules-v1",
   status: "proposed",
   notes: "",
   createdAt: new Date().toISOString(),

@@ -16,13 +16,19 @@ import ThemeToggle from '../../theme/ThemeToggle'
 import LanguageSwitcher from '../../components/LanguageSwitcher'
 import { applicantStatusTone } from '../../components/ui/statusTones'
 
+// Mirror the API (match-state.service.ts): the portal never shows matches below
+// the floor, and a new applicant starts at the default.
+const MIN_THRESHOLD = 0.5
+const DEFAULT_THRESHOLD = 0.6
+
 // ── Sub-components ────────────────────────────────────────────────────────────
 
 function StatusBadge({ status }: { status: ApplicantStatus | undefined }) {
+  const { t } = useTranslation()
   if (!status) return null
   return (
-    <Badge tone={applicantStatusTone(status)} size="sm">
-      {status}
+    <Badge tone={applicantStatusTone(status)} size="sm" className="shrink-0">
+      {t(`portal.dashboard.statusLabel.${status}`)}
     </Badge>
   )
 }
@@ -64,7 +70,7 @@ export default function ProfileDashboard() {
 
   const [profile, setProfile] = useState<ProfileView | null>(null)
   const [matches, setMatches] = useState<MatchView[]>([])
-  const [threshold, setThreshold] = useState<number>(0.8)
+  const [threshold, setThreshold] = useState<number>(DEFAULT_THRESHOLD)
   const [tab, setTab] = useState<PortalTab>('matches')
   const [drawerOpen, setDrawerOpen] = useState(false)
   const [loading, setLoading] = useState(true)
@@ -76,10 +82,10 @@ export default function ProfileDashboard() {
       // lower-scored matches client-side without refetching
       const [prof, matchList] = await Promise.all([
         getMyProfile(),
-        getMyMatches(0.6, 50),
+        getMyMatches(MIN_THRESHOLD, 50),
       ])
       setProfile(prof)
-      setThreshold(prof.scoreThreshold ?? 0.8)
+      setThreshold(prof.scoreThreshold ?? DEFAULT_THRESHOLD)
       setMatches(matchList)
     } catch (err) {
       const message = err instanceof Error ? err.message : t('portal.dashboard.loadError')
@@ -130,16 +136,25 @@ export default function ProfileDashboard() {
   return (
     <div className="min-h-screen bg-bg">
       {/* Status bar */}
-      <header className="h-14 flex items-center justify-between px-6 bg-surface border-b border-border">
-        <div className="flex items-center gap-3">
-          <span className="font-semibold text-primary">Ons</span>
-          <div className="flex flex-col leading-tight">
-            <span className="text-sm text-primary">{profile?.fullName ?? profile?.alias}</span>
-            {profile?.fullName && <span className="text-xs text-muted">{profile.alias}</span>}
+      {/* Fixed height on every screen: the name and codename each keep to one
+          truncated line (full text in the tooltip), and the status sits next to
+          the codename so a long name never pushes the controls off the bar. */}
+      <header className="h-14 flex items-center justify-between gap-3 px-4 sm:px-6 bg-surface border-b border-border">
+        <div className="flex items-center gap-3 min-w-0 flex-1">
+          <span className="font-semibold text-primary shrink-0">Ons</span>
+          <div className="flex flex-col justify-center gap-0.5 min-w-0 flex-1 leading-tight">
+            <span className="block truncate text-sm font-medium text-primary" title={profile?.fullName ?? profile?.alias}>
+              {profile?.fullName ?? profile?.alias}
+            </span>
+            <div className="flex items-center gap-1.5 min-w-0">
+              {profile?.fullName && (
+                <span className="block truncate text-xs text-muted" title={profile.alias}>{profile.alias}</span>
+              )}
+              <StatusBadge status={profile?.status} />
+            </div>
           </div>
-          <StatusBadge status={profile?.status} />
         </div>
-        <div className="flex items-center gap-1.5">
+        <div className="flex items-center gap-0.5 sm:gap-1.5 shrink-0">
         <LanguageSwitcher />
         <ThemeToggle />
         <button
@@ -200,7 +215,7 @@ export default function ProfileDashboard() {
               </p>
               <div className="flex items-center justify-center gap-3 text-xs text-muted">
                 <span className="bg-accent-light text-accent-ink rounded-full px-2.5 py-1">
-                  {t('portal.dashboard.threshold', { percent: Math.round((profile.scoreThreshold ?? 0.8) * 100) })}
+                  {t('portal.dashboard.threshold', { percent: Math.round((profile.scoreThreshold ?? DEFAULT_THRESHOLD) * 100) })}
                 </span>
                 <span>·</span>
                 <span>{t('portal.dashboard.submitted', { date: new Date(profile.createdAt).toLocaleDateString() })}</span>
@@ -228,11 +243,9 @@ export default function ProfileDashboard() {
                       label={t('portal.dashboard.minScore')}
                       value={Math.round(threshold * 100)}
                       onChange={pct => setThreshold(pct / 100)}
-                      min={60}
+                      min={MIN_THRESHOLD * 100}
                       max={100}
                       step={5}
-                      lowLabel="60%"
-                      highLabel="100%"
                       formatValue={v => `${v}%`}
                     />
                   </div>

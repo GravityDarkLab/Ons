@@ -1,4 +1,5 @@
 import { ObjectId } from "mongodb";
+import { SHARED_QUESTION_IDS } from "../questionnaire/questions.js";
 import { env } from "../config/env.js";
 import { AppError } from "../errors.js";
 import { getDb } from "../db/connection.js";
@@ -24,27 +25,44 @@ export interface ApplicantMatchView {
   partnerAlias: string;
   score: number;
   breakdown?: Record<string, number>;
-  llmReasoning?: string;
   status: MatchStatus;
   perspective: MatchPerspective;
   contactRequestedAt?: Date; // when the initiator clicked "contact" — shown to target
   iceBreakers?: string[];
   dateIdeas?: string[];
-  partnerProfile?: Record<string, unknown>; // partner's public questionnaire answers
+  partnerProfile?: Record<string, unknown>; // partner's shared answers + derived age
+  partnerNote?: string; // the partner's optional free-text note — dating only, see toMatchView
   partnerInstagram?: string; // only for in_progress/dating — see toMatchView
   partnerFullName?: string;
   datingStartedAt?: Date;
 }
 
-// Keys never shown to a partner: consent checkboxes carry no information,
-// instagram_handle is defense in depth — identity answers are stored encrypted
-// in a separate collection and should never appear in `answers` at all — and
-// birth_date is a precise identity fact, so partners only see the derived age
-const PARTNER_PROFILE_EXCLUDED_KEYS = new Set([
-  "disclaimer_agreed",
-  "instagram_handle",
-  "birth_date",
-]);
+/**
+ * Breakdown bars an applicant may see, and the stored key each one reads.
+ *
+ * An applicant knows their own answers and their partner's shared ones, so
+ * any displayed number that also depends on a private answer can be worked
+ * backwards. `values` and `lifestyle` therefore read the `*_shared` variants
+ * the scorer computes from shared answers only; `goals` uses shared answers
+ * throughout. `connection` and `personality` are never shown.
+ */
+export const APPLICANT_BREAKDOWN_KEYS = ["values", "lifestyle", "goals"] as const;
+
+const APPLICANT_BREAKDOWN_SOURCE: Record<(typeof APPLICANT_BREAKDOWN_KEYS)[number], string> = {
+  values: "values_shared",
+  lifestyle: "lifestyle_shared",
+  goals: "goals",
+};
+
+/**
+ * The partner-facing form of an applicant's optional note: trimmed text, or
+ * undefined. Callers decide *when* it may be shown — only once a match is
+ * mutual (toMatchView, and the accept response in respondToContact).
+ */
+export function noteForPartner(answers: Record<string, unknown> | undefined): string | undefined {
+  const note = answers?.["note_to_match"];
+  return typeof note === "string" && note.trim() ? note.trim() : undefined;
+}
 
 /**
  * Pure function — no DB calls. Projects a MatchDoc into the applicant-facing view
@@ -77,22 +95,38 @@ export function toMatchView(
     perspective,
   };
 
-  if (doc.breakdown) view.breakdown = doc.breakdown;
-  if (doc.llmReasoning) view.llmReasoning = doc.llmReasoning;
+  if (doc.breakdown) {
+    const stored = doc.breakdown;
+    const visible = Object.fromEntries(
+      APPLICANT_BREAKDOWN_KEYS
+        .filter((key) => typeof stored[APPLICANT_BREAKDOWN_SOURCE[key]] === "number")
+        .map((key) => [key, stored[APPLICANT_BREAKDOWN_SOURCE[key]]!])
+    );
+    if (Object.keys(visible).length > 0) view.breakdown = visible;
+  }
 
   if (partnerAnswers) {
-    const profile = Object.fromEntries(
-      Object.entries(partnerAnswers).filter(([key]) => !PARTNER_PROFILE_EXCLUDED_KEYS.has(key))
+    // Allow-list, not block-list: only answers marked `shared` in the question
+    // definitions are shown to a match. Everything else — identity, partner
+    // preferences, attachment and personality answers, the free-text note —
+    // stays private by default, including any field added later.
+    const profile: Record<string, unknown> = Object.fromEntries(
+      Object.entries(partnerAnswers).filter(([key]) => SHARED_QUESTION_IDS.has(key))
     );
-    // Partners see an age, not the exact birth date (legacy records carry a
-    // stored `age` answer instead, which passes through unchanged)
+    // Partners see an age, never the exact birth date
     const age = ageFromBirthDate(partnerAnswers["birth_date"]);
-    if (age !== null && !("age" in profile)) profile["age"] = age;
+    if (age !== null) profile["age"] = age;
     if (Object.keys(profile).length > 0) view.partnerProfile = profile;
   }
 
   // Identity is only revealed after mutual acceptance (dating status).
   // Never attached while the match is proposed or in_progress.
+  // The partner's free-text note is shown only once the match is mutual — the
+  // same gate as the identity reveal. It is free text, so before that point it
+  // could carry a handle or phone number around the mutual-reveal rule.
+  const note = noteForPartner(partnerAnswers);
+  if (doc.status === "dating" && note) view.partnerNote = note;
+
   if (partnerInstagram && doc.status === "dating") {
     view.partnerInstagram = partnerInstagram;
     if (partnerFullName) view.partnerFullName = partnerFullName;
@@ -211,7 +245,10 @@ export async function expireConflictingMatches(
 }
 
 /** Portal slider floor — matches below this score are never shown to applicants. */
-export const PORTAL_MIN_SCORE = 0.6;
+export const PORTAL_MIN_SCORE = 0.5;
+
+/** Default per-applicant threshold for which matches the portal shows. */
+export const DEFAULT_SCORE_THRESHOLD = 0.6;
 
 /** Day count after which a "didn't work" outcome can be reported. */
 export const CANCEL_ELIGIBLE_DAYS: number = 3;

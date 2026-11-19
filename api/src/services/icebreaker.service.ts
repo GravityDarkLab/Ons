@@ -1,5 +1,6 @@
 import type { ApplicantDoc } from "../models/applicant.model.js";
-import { generateChatCompletion, truncateForPrompt, UNTRUSTED_PROFILE_NOTICE } from "./ai.service.js";
+import { buildProfileSnippet } from "./profile-snippet.util.js";
+import { generateChatCompletion, UNTRUSTED_PROFILE_NOTICE } from "./ai.service.js";
 
 const FALLBACK_QUESTIONS = [
   "What's your favourite way to spend a weekend?",
@@ -20,30 +21,32 @@ export interface IceBreakerResult {
   dateIdeas: string[];
 }
 
-function profileSnippet(doc: ApplicantDoc): string {
-  const a = doc.answers as Record<string, unknown>;
-  const t = (v: unknown) => truncateForPrompt(String(v));
-  const parts: string[] = [];
-  if (a.vibe_words)       parts.push(`Vibes: ${t(a.vibe_words)}`);
-  if (a.lifestyle)        parts.push(`Lifestyle: ${t(a.lifestyle)}`);
-  if (a.dream_first_date) parts.push(`Dream first date: ${t(a.dream_first_date)}`);
-  if (a.location)         parts.push(`Location: ${t(a.location)}`);
-  return parts.join(". ") || "No profile details available.";
+/**
+ * Pure — the exact prompt sent for a pair, so its contents are testable
+ * without the network.
+ *
+ * Ice-breakers are generated when contact is requested and shown to the
+ * initiator while the match is in_progress — before the other person has
+ * accepted and before any identity is revealed. So only shared answers go
+ * in: never the free-text note, which could carry a handle or phone number.
+ */
+export function buildIceBreakerPrompt(a: ApplicantDoc, b: ApplicantDoc): string {
+  return `You are a thoughtful matchmaker. Two people have been matched based on compatibility. ${UNTRUSTED_PROFILE_NOTICE}
+
+Person A: <profile>${buildProfileSnippet(a)}</profile>
+Person B: <profile>${buildProfileSnippet(b)}</profile>
+
+Generate exactly 5 creative, personal ice-breaking questions (each under 15 words) that Person A can ask Person B via Instagram to start a meaningful conversation. Then generate exactly 3 specific date ideas (each under 12 words) that would suit both of them.
+
+Respond in this exact JSON format (no markdown, no extra text):
+{"questions":["q1","q2","q3","q4","q5"],"dateIdeas":["d1","d2","d3"]}`;
 }
 
 export async function generateIceBreakers(
   a: ApplicantDoc,
   b: ApplicantDoc
 ): Promise<IceBreakerResult> {
-  const prompt = `You are a thoughtful matchmaker. Two people have been matched based on compatibility. ${UNTRUSTED_PROFILE_NOTICE}
-
-Person A: <profile>${profileSnippet(a)}</profile>
-Person B: <profile>${profileSnippet(b)}</profile>
-
-Generate exactly 5 creative, personal ice-breaking questions (each under 15 words) that Person A can ask Person B via Instagram to start a meaningful conversation. Then generate exactly 3 specific date ideas (each under 12 words) that would suit both of them.
-
-Respond in this exact JSON format (no markdown, no extra text):
-{"questions":["q1","q2","q3","q4","q5"],"dateIdeas":["d1","d2","d3"]}`;
+  const prompt = buildIceBreakerPrompt(a, b);
 
   const raw = await generateChatCompletion(prompt, {
     maxTokens: 1500, // headroom for reasoning-model chain-of-thought before the short final answer

@@ -2,30 +2,38 @@
  * Age preference filter and scoring modifier.
  *
  * Filter: isAgeCompatible() — hard binary check, called before scoring.
- *   - Directional checks: open_to_older / open_to_younger flags
- *     (independent of max_age_gap — enforced even when the gap is blank)
- *   - Hard outer limit: gap > 2 × max_age_gap → reject
- *   - max_age_gap = null → no gap preference, only directional checks apply
+ *   - Directional check: age_direction ("either" | "older" | "younger"),
+ *     independent of age_gap — enforced even with no gap limit
+ *   - Hard outer limit: gap ≥ 2 × age_gap → reject
+ *   - age_gap = "any" (or missing/unknown) → no gap limit, only direction applies
  *   - Missing birth_date → skip filter for that pair
  *
  * Modifier: ageModifier() — multiplied onto the final compatibility score.
- *   - Within max_age_gap: modifier = 1.0 (no penalty)
+ *   - Within age_gap: modifier = 1.0 (no penalty)
  *   - Between max_gap and 2× max_gap: cosine decay toward 0
- *   - Beyond 2× max_gap: should be filtered out before reaching here
+ *   - At or beyond 2× max_gap: filtered out before reaching here
  *   - Bidirectional: min(A's modifier, B's modifier)
  */
 
 import type { ApplicantDoc } from "../../models/applicant.model.js";
 import { ageFromBirthDate } from "../../utils/age.js";
 
-function num(answers: Record<string, unknown>, key: string): number | null {
-  const v = answers[key];
-  return typeof v === "number" ? v : null;
+interface AgePrefs {
+  /** Preferred maximum gap in years; null = no limit. */
+  maxGap: number | null;
+  openToOlder: boolean;
+  openToYounger: boolean;
 }
 
-function bool(answers: Record<string, unknown>, key: string): boolean | null {
-  const v = answers[key];
-  return typeof v === "boolean" ? v : null;
+/** Reads the two v2 age answers. Anything missing or unrecognised means "no preference". */
+function agePrefs(answers: Record<string, unknown>): AgePrefs {
+  const gap = Number(answers["age_gap"]);
+  const direction = answers["age_direction"];
+  return {
+    maxGap: Number.isFinite(gap) && gap > 0 ? gap : null,
+    openToOlder: direction !== "younger",
+    openToYounger: direction !== "older",
+  };
 }
 
 /**
@@ -53,19 +61,19 @@ function _passesConstraints(
   partnerAge: number,
   gap: number
 ): boolean {
-  // Directional hard blocks apply regardless of max_age_gap — the three age
-  // questions are independent in the questionnaire, so a blank gap preference
-  // must not void an explicit "not open to older/younger" veto.
-  if (partnerAge > ownAge && bool(answers, "open_to_older") === false) return false;
-  if (partnerAge < ownAge && bool(answers, "open_to_younger") === false) return false;
+  const { maxGap, openToOlder, openToYounger } = agePrefs(answers);
 
-  const maxGap = num(answers, "max_age_gap");
+  // Direction applies regardless of the gap limit — the two questions are
+  // independent, so "no limit" must not void an explicit "older only".
+  if (partnerAge > ownAge && !openToOlder) return false;
+  if (partnerAge < ownAge && !openToYounger) return false;
 
   // null = no gap preference → no outer limit to enforce
   if (maxGap === null) return true;
 
-  // Hard outer limit: gap > 2× max_gap → reject
-  if (gap > 2 * maxGap) return false;
+  // Hard outer limit, exclusive: the modifier reaches 0 at exactly 2× max_gap,
+  // so letting that pair through would store a proposal scored 0.
+  if (gap >= 2 * maxGap) return false;
 
   return true;
 }
@@ -87,8 +95,8 @@ export function ageModifier(a: ApplicantDoc, b: ApplicantDoc): number {
   const gap = Math.abs(ageA - ageB);
 
   return Math.min(
-    _computeModifier(num(a.answers, "max_age_gap"), gap),
-    _computeModifier(num(b.answers, "max_age_gap"), gap)
+    _computeModifier(agePrefs(a.answers).maxGap, gap),
+    _computeModifier(agePrefs(b.answers).maxGap, gap)
   );
 }
 

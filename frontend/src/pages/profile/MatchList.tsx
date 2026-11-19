@@ -2,7 +2,7 @@ import { useTranslation } from 'react-i18next'
 import { MatchCard } from './MatchCard'
 import EmptyState from '../../components/ui/EmptyState'
 import { useToast } from '../../components/ui/Toast'
-import type { MatchView, ContactResult } from '../../api/profile.client'
+import type { ContactResponse, ContactResult, MatchView } from '../../api/profile.client'
 import { requestContact, respondToContact, withdrawContact, reportOutcome } from '../../api/profile.client'
 
 interface Props {
@@ -31,8 +31,9 @@ export default function MatchList({ matches, onMatchesChange }: Props) {
     return result
   }
 
-  async function handleRespond(matchId: string, accept: boolean): Promise<void> {
-    const { partnerInstagram, partnerFullName } = await respondToContact(matchId, accept)
+  async function handleRespond(matchId: string, accept: boolean): Promise<ContactResponse> {
+    const revealed = await respondToContact(matchId, accept)
+    const { partnerInstagram, partnerFullName, partnerNote } = revealed
     onMatchesChange(
       matches.map(m =>
         m.matchId === matchId
@@ -41,10 +42,12 @@ export default function MatchList({ matches, onMatchesChange }: Props) {
               status: accept ? ('dating' as const) : ('declined' as const),
               partnerInstagram: partnerInstagram ?? m.partnerInstagram,
               partnerFullName: partnerFullName ?? m.partnerFullName,
+              partnerNote: partnerNote ?? m.partnerNote,
             }
           : m,
       ),
     )
+    return revealed
   }
 
   async function handleWithdraw(matchId: string): Promise<void> {

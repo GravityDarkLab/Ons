@@ -12,14 +12,14 @@ export interface MatchView {
   matchId: string
   partnerAlias: string
   score: number // 0–1
-  breakdown?: Record<string, number> // per-dimension scores from the matching algorithm
-  llmReasoning?: string // grounded explanation from the LLM rerank stage that produced `score`
+  breakdown?: Record<string, number> // values / lifestyle / goals — the dimensions applicants may see
   status: MatchStatus
   perspective: MatchPerspective
   contactRequestedAt?: string // ISO date string
   iceBreakers?: string[] // only for initiator in in_progress/dating
   dateIdeas?: string[] // only for initiator in in_progress/dating
   partnerProfile?: Record<string, unknown> // partner's public questionnaire answers
+  partnerNote?: string // partner's optional free-text note — only ever set once status is "dating"
   partnerInstagram?: string // partner's handle — only ever set once status is "dating" (mutual reveal)
   partnerFullName?: string
   datingStartedAt?: string
@@ -162,11 +162,18 @@ export async function requestContact(matchId: string): Promise<ContactResult> {
   return body.data
 }
 
+/** What accepting reveals: the partner's identity and note (all null on decline). */
+export interface ContactResponse {
+  partnerInstagram: string | null
+  partnerFullName: string | null
+  partnerNote: string | null
+}
+
 export async function respondToContact(
   matchId: string,
   accept: boolean,
-): Promise<{ partnerInstagram: string | null; partnerFullName: string | null }> {
-  const body = await profileRequest<{ data: { partnerInstagram: string | null; partnerFullName: string | null } }>(
+): Promise<ContactResponse> {
+  const body = await profileRequest<{ data: ContactResponse }>(
     `/profile/matches/${matchId}/respond`,
     { method: 'POST', body: JSON.stringify({ accept }) },
   )

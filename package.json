@@ -20,7 +20,6 @@
     "dev:api:prod": "cd api && bun run dev:prod",
     "dev:frontend": "cd frontend && bun run dev",
     "seed": "bun run scripts/seed.ts",
-    "eval:rerank": "bun run scripts/eval-rerank.ts",
     "lockfiles": "sh scripts/gen-lockfiles.sh",
     "build": "bun run --filter '*' build",
     "typecheck": "bunx tsc --noEmit -p tsconfig.json && bun run --filter '*' typecheck",
@@ -29,7 +28,7 @@
     "test:frontend": "bun run --cwd frontend test",
     "test:smoke": "bun --env-file=tests/smoke/.env.smoke test  ./tests/smoke/portal.smoke.ts",
     "test:smoke:match": "bun --env-file=tests/smoke/.env.smoke test ./tests/smoke/match-flow.smoke.ts",
-    "test:smoke:all": "bun --env-file=tests/smoke/.env.smoke test ./tests/smoke/"
+    "test:smoke:all": "bun --env-file=tests/smoke/.env.smoke test ./tests/smoke/portal.smoke.ts ./tests/smoke/match-flow.smoke.ts"
   },
   "devDependencies": {
     "@types/bun": "^1.2.0",

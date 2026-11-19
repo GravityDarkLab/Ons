@@ -38,7 +38,7 @@ describe('ThemeProvider', () => {
 
   it('toggling applies .dark to <html> and persists to localStorage', async () => {
     renderThemed()
-    await userEvent.click(screen.getByRole('button', { name: /switch to dark mode/i }))
+    await userEvent.click(screen.getByRole('button', { name: 'common.themeToDark' }))
     expect(document.documentElement).toHaveClass('dark')
     expect(localStorage.getItem('ons-theme')).toBe('dark')
     expect(screen.getByTestId('resolved')).toHaveTextContent('dark')
@@ -53,7 +53,7 @@ describe('ThemeProvider', () => {
 
   it('removes .dark from <html> on unmount (public pages stay light)', async () => {
     const { unmount } = renderThemed()
-    await userEvent.click(screen.getByRole('button', { name: /switch to dark mode/i }))
+    await userEvent.click(screen.getByRole('button', { name: 'common.themeToDark' }))
     expect(document.documentElement).toHaveClass('dark')
     unmount()
     expect(document.documentElement).not.toHaveClass('dark')
@@ -62,7 +62,7 @@ describe('ThemeProvider', () => {
   it('toggling back to light persists light explicitly', async () => {
     localStorage.setItem('ons-theme', 'dark')
     renderThemed()
-    await userEvent.click(screen.getByRole('button', { name: /switch to light mode/i }))
+    await userEvent.click(screen.getByRole('button', { name: 'common.themeToLight' }))
     expect(localStorage.getItem('ons-theme')).toBe('light')
     expect(document.documentElement).not.toHaveClass('dark')
   })

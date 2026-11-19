@@ -143,11 +143,9 @@ export async function removeMatch(id: string): Promise<void> {
 
 // ── Matching ──────────────────────────────────────────────────────────────────
 
-export async function runMatching(algorithm: string): Promise<MatchingRun> {
-  return request<MatchingRun>('/api/v1/matching/run', {
-    method: 'POST',
-    body: JSON.stringify({ algorithm }),
-  })
+/** Runs a full matching pass. The API has one algorithm, `rules-v1`, used by default. */
+export async function runMatching(): Promise<MatchingRun> {
+  return request<MatchingRun>('/api/v1/matching/run', { method: 'POST', body: '{}' })
 }
 
 export async function fetchMatchingLastRun(): Promise<MatchingLastRun | null> {
@@ -155,12 +153,9 @@ export async function fetchMatchingLastRun(): Promise<MatchingLastRun | null> {
   return res.data
 }
 
-export async function fetchCandidates(
-  applicantId: string,
-  top = 10,
-  algorithm = 'embedding-cosine',
-): Promise<MatchCandidate[]> {
-  const params = new URLSearchParams({ top: String(top), algorithm })
+/** The best-scoring candidates for one applicant, with the full per-dimension breakdown. */
+export async function fetchCandidates(applicantId: string, top = 10): Promise<MatchCandidate[]> {
+  const params = new URLSearchParams({ top: String(top) })
   const res = await request<{ candidates: MatchCandidate[] }>(
     `/api/v1/matching/candidates/${applicantId}?${params}`,
   )

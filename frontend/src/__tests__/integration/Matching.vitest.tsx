@@ -15,7 +15,7 @@ const mockRunMatching = vi.mocked(client.runMatching)
 const mockFetchLastRun = vi.mocked(client.fetchMatchingLastRun)
 
 const RUN_RESULT = {
-  algorithm: 'embedding-cosine',
+  algorithm: 'rules-v1',
   totalApplicants: 130,
   durationMs: 93,
   couplesProposed: 480,
@@ -42,38 +42,43 @@ async function clickRunAndConfirm() {
   await userEvent.click(screen.getByRole('button', { name: /admin\.matching\.confirmRun|yes, run matching/i }))
 }
 
-describe('Matching page — algorithm selector', () => {
-  it('renders only the embedding algorithm option', () => {
+describe('Matching page — how matching works', () => {
+  it('has no algorithm picker: rule-based scoring is the only algorithm', () => {
     renderMatching()
-    expect(screen.getAllByRole('radio')).toHaveLength(1)
+    expect(screen.queryByRole('radio')).not.toBeInTheDocument()
   })
 
-  it('selects Embedding by default', () => {
+  it('lists the six hard filters', () => {
     renderMatching()
-    const radio = screen.getByRole('radio', { name: /admin\.matching\.embedding/i }) as HTMLInputElement
-    expect(radio).toBeChecked()
+    for (const f of ['orientation', 'age', 'religion', 'distance', 'children', 'habits']) {
+      expect(screen.getByText(`admin.matching.filters.${f}`)).toBeInTheDocument()
+    }
   })
 
-  it('never shows the multilingual warning (only embedding is available)', () => {
+  it('lists the five scored dimensions with their weights', () => {
     renderMatching()
-    expect(screen.queryByText(/admin\.matching\.multilingualWarning/i)).not.toBeInTheDocument()
+    const weights = { values: 25, lifestyle: 25, connection: 30, personality: 10, goals: 10 }
+    for (const [dim, weight] of Object.entries(weights)) {
+      const row = screen.getByText(`portal.matches.breakdown.${dim}.label`).closest('li')!
+      expect(row).toHaveTextContent(`${weight}%`)
+    }
   })
 })
 
 describe('Matching page — run button', () => {
-  it('calls runMatching with embedding-cosine', async () => {
+  it('calls runMatching without choosing an algorithm', async () => {
     mockRunMatching.mockResolvedValue(RUN_RESULT)
     renderMatching()
     await clickRunAndConfirm()
-    expect(mockRunMatching).toHaveBeenCalledWith('embedding-cosine')
+    expect(mockRunMatching).toHaveBeenCalledWith()
   })
 
   it('shows error message when run fails', async () => {
-    mockRunMatching.mockRejectedValue(new Error('Embedding server unreachable'))
+    mockRunMatching.mockRejectedValue(new Error('Database unavailable'))
     renderMatching()
     await clickRunAndConfirm()
     await waitFor(() =>
-      expect(screen.getByText('Embedding server unreachable')).toBeInTheDocument(),
+      expect(screen.getByText('Database unavailable')).toBeInTheDocument(),
     )
   })
 
@@ -152,7 +157,7 @@ describe('Matching page — last run info', () => {
   it('shows the stored last-run summary on mount', async () => {
     mockFetchLastRun.mockResolvedValue({
       at: new Date(Date.now() - 60 * 60 * 1000).toISOString(),
-      algorithm: 'embedding-cosine',
+      algorithm: 'rules-v1',
       totalApplicants: 12,
       couplesProposed: 4,
       durationMs: 850,

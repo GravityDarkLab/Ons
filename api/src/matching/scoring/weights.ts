@@ -1,10 +1,13 @@
 /**
  * Single source of truth for all scoring weights.
  * Weights sum to 1.0; age is applied as a multiplier after the weighted sum.
+ * Starting values, not fitted to outcome data — revisit once real match
+ * outcomes (success / failed) exist.
  */
 export const WEIGHTS = {
-  numeric:               0.22,
-  lifestyle:             0.22,
-  character_cross_match: 0.35, // 0.175 per direction
-  deal_breakers:         0.21,
+  values:      0.25,
+  lifestyle:   0.25,
+  connection:  0.30,
+  personality: 0.10,
+  goals:       0.10,
 } as const;

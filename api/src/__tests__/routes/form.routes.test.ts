@@ -39,6 +39,7 @@ import { Hono } from "hono";
 const { formRoutes } = await import("../../routes/form.routes.js");
 import { generateSubmissionKey } from "../../privacy/submission-key.js";
 import { ObjectId } from "mongodb";
+import { validAnswers } from "../unit/matching/_fixtures.js";
 
 // ── Fixture: minimal questionnaire ──────────────────────────────────────────
 
@@ -58,32 +59,7 @@ function makeQuestionnaire(overrides = {}) {
 // ── Minimal valid submission body ────────────────────────────────────────────
 
 function validBody() {
-  return {
-    questionnaireVersion: "1.0.0",
-    answers: {
-      first_name: "Test",
-      last_name: "User",
-      instagram_handle: "@test_user",
-      location: "Tunis",
-      birth_date: "2000-05-15",
-      work: "Engineer",
-      gender_identity: "Male",
-      sexual_orientation: "Straight",
-      religion: "Islam",
-      vibe_words: "funny kind",
-      lifestyle: "gym coffee",
-      relationship_type: "Long Term",
-      open_to_long_distance: false,
-      preferred_physical_traits: "tall",
-      preferred_character_traits: "kind",
-      deal_breakers: "smoking",
-      okay_with_opposite_gender_friends: true,
-      religion_deal_breaker: false,
-      physical_affection_importance: 7,
-      dream_first_date: "coffee walk",
-      disclaimer_agreed: true,
-    },
-  };
+  return { questionnaireVersion: "1.0.0", answers: validAnswers() };
 }
 
 // ── Test app ─────────────────────────────────────────────────────────────────
@@ -289,14 +265,14 @@ describe("POST /form/submit", () => {
     expect(res.status).toBe(422);
   });
 
-  it("returns 422 when physical_affection_importance is out of range (0)", async () => {
-    const bad = { ...validBody(), answers: { ...validBody().answers, physical_affection_importance: 0 } };
+  it("returns 422 when an agreement answer is out of range (0)", async () => {
+    const bad = { ...validBody(), answers: { ...validBody().answers, p_calm: 0 } };
     const res = await post("/form/submit", bad);
     expect(res.status).toBe(422);
   });
 
-  it("returns 422 when physical_affection_importance is out of range (11)", async () => {
-    const bad = { ...validBody(), answers: { ...validBody().answers, physical_affection_importance: 11 } };
+  it("returns 422 when an agreement answer is out of range (6)", async () => {
+    const bad = { ...validBody(), answers: { ...validBody().answers, p_calm: 6 } };
     const res = await post("/form/submit", bad);
     expect(res.status).toBe(422);
   });

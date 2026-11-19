@@ -80,8 +80,21 @@ export function AdminLayout({ children }: { children: ReactNode }) {
   const { logout, role } = useAuth()
   const navigate = useNavigate()
   const location = useLocation()
-  // Sidebar starts collapsed on narrow screens — w-56 would eat half a phone
-  const [collapsed, setCollapsed] = useState(() => window.innerWidth < 768)
+  // On phones the sidebar is a drawer over the page: closed by default, and
+  // closed again once a page is picked. From md up it is a collapsible rail.
+  const isPhone = () => window.innerWidth < 768
+  const [collapsed, setCollapsed] = useState(isPhone)
+
+  useEffect(() => {
+    if (isPhone()) setCollapsed(true)
+  }, [location.pathname])
+
+  useEffect(() => {
+    if (collapsed || !isPhone()) return
+    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') setCollapsed(true) }
+    document.addEventListener('keydown', onKey)
+    return () => document.removeEventListener('keydown', onKey)
+  }, [collapsed])
 
   const NAV = [
     { to: '/admin',            icon: HomeIcon,      label: t('admin.nav.dashboard'),  end: true  },
@@ -104,25 +117,26 @@ export function AdminLayout({ children }: { children: ReactNode }) {
   return (
     <div className="flex flex-col min-h-screen bg-bg">
       {/* Topbar */}
-      <header className="h-14 flex items-center justify-between px-4 bg-surface border-b border-border shrink-0 z-10">
+      <header className="sticky top-0 h-14 flex items-center justify-between px-4 bg-surface border-b border-border shrink-0 z-10">
         {/* Left: toggle + brand */}
         <div className="flex items-center gap-3">
           <button
             onClick={() => setCollapsed(c => !c)}
             className="flex items-center justify-center p-2 rounded-xl text-muted hover:text-primary hover:bg-bg transition-colors"
             aria-label={t('admin.nav.toggleSidebar')}
+            aria-expanded={!collapsed}
           >
             <MenuIcon />
           </button>
           <span className="font-semibold text-primary">Ons</span>
-          <span className="text-xs text-muted ml-1">Admin</span>
+          <span className="text-xs text-muted ms-1">Admin</span>
         </div>
 
         {/* Right: theme + language switcher + role badge + logout */}
         <div className="flex items-center gap-1.5">
           <ThemeToggle />
           <LanguageSwitcher />
-          <Badge tone="accent" size="sm" className="ml-1.5">
+          <Badge tone="accent" size="sm" className="ms-1.5">
             {role === 'super_admin' ? t('admin.nav.roleSuperAdmin') : t('admin.nav.roleAdmin')}
           </Badge>
           <button
@@ -138,9 +152,19 @@ export function AdminLayout({ children }: { children: ReactNode }) {
 
       {/* Body */}
       <div className="flex flex-1 min-h-0">
-        {/* Sidebar */}
+        {/* Phone: tap outside the open drawer to close it */}
+        {!collapsed && (
+          <div aria-hidden="true" onClick={() => setCollapsed(true)}
+            className="fixed inset-x-0 bottom-0 top-14 z-20 bg-primary/20 md:hidden" />
+        )}
+
+        {/* Sidebar: drawer on phones, rail from md up */}
         <aside
-          className={`shrink-0 flex flex-col bg-surface border-r border-border transition-all duration-200 ${collapsed ? 'w-14' : 'w-56'}`}
+          className={`shrink-0 flex-col bg-surface border-e border-border transition-all duration-200 md:sticky md:top-14 md:z-auto md:h-[calc(100dvh-3.5rem)] ${
+            collapsed
+              ? 'hidden md:flex md:w-14'
+              : 'flex fixed bottom-0 start-0 top-14 z-30 w-64 shadow-xl md:w-56 md:shadow-none'
+          }`}
         >
           <nav className="flex-1 px-2 py-3 space-y-0.5">
             {NAV.map(({ to, icon: Icon, label, end }) => (
@@ -170,7 +194,7 @@ export function AdminLayout({ children }: { children: ReactNode }) {
 
         {/* Main content */}
         <main className="flex-1 overflow-y-auto">
-          <div className="max-w-5xl mx-auto px-8 py-8">{children}</div>
+          <div className="max-w-5xl mx-auto px-4 py-6 sm:px-6 lg:px-8 lg:py-8">{children}</div>
         </main>
       </div>
     </div>

@@ -154,7 +154,6 @@ export async function saveMatchProposals(
           $set: {
             score:        p.score,
             breakdown:    p.breakdown,
-            llmReasoning: p.llmReasoning,
             algorithm,
             status:       "proposed",
             updatedAt:    now,
@@ -181,7 +180,6 @@ export async function saveMatchProposals(
         applicantBAlias: p.applicantBAlias,
         score:           p.score,
         breakdown:       p.breakdown,
-        llmReasoning:    p.llmReasoning,
         algorithm,
         status:          "proposed",
         createdAt:       now,

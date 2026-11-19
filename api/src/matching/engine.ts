@@ -1,16 +1,15 @@
 import { ObjectId } from "mongodb";
 import { AppError } from "../errors.js";
 import type { ApplicantDoc } from "../models/applicant.model.js";
-import type { QuestionnaireDoc } from "../models/questionnaire.model.js";
 import { getDb } from "../db/connection.js";
 import { getApplicantsCollection, getMatchesCollection } from "../db/collections.js";
-import { getActiveQuestionnaire } from "../services/questionnaire.service.js";
 import { isOrientationCompatible } from "./filters/orientation.filter.js";
 import { isAgeCompatible } from "./filters/age.filter.js";
 import { isReligionCompatible } from "./filters/religion.filter.js";
 import { isLongDistanceCompatible } from "./filters/location.filter.js";
-import { prepare, score, hasEmbedding, type ScoreContext } from "./scorer.js";
-import { rerankCandidates } from "../services/match-rerank.service.js";
+import { isChildrenCompatible } from "./filters/children.filter.js";
+import { isHabitsCompatible } from "./filters/habits.filter.js";
+import { score } from "./scorer.js";
 
 export interface MatchScore {
   score: number;
@@ -20,14 +19,9 @@ export interface MatchScore {
 export interface RankedCandidate {
   alias: string;
   applicantId: string;
-  /** The displayed score (0-1) — from the LLM rerank stage, or the embedding
-   *  score unchanged if reranking failed/was skipped. */
+  /** Compatibility score in [0, 1] from the rule-based scorer. */
   score: number;
   breakdown: Record<string, number>;
-  /** The pre-rerank embedding-cosine score (0-1) — kept for debugging/transparency. */
-  embeddingScore: number;
-  /** Short grounded explanation from the LLM rerank stage; "" if unavailable. */
-  llmReasoning: string;
 }
 
 /**
@@ -51,106 +45,29 @@ export async function getActiveContactApplicantIds(): Promise<Set<string>> {
   return ids;
 }
 
+/** Hard, binary filters — an excluded pair gets no result, not a low score. */
 function applyFilters(target: ApplicantDoc, candidates: ApplicantDoc[]): ApplicantDoc[] {
   return candidates.filter(
     (c) =>
       isOrientationCompatible(target, c) &&
       isAgeCompatible(target, c) &&
       isReligionCompatible(target, c) &&
-      isLongDistanceCompatible(target, c),
+      isLongDistanceCompatible(target, c) &&
+      isChildrenCompatible(target, c) &&
+      isHabitsCompatible(target, c),
   );
 }
 
-const SHORTLIST_SIZE = 15;
-
-interface EmbeddingRanked {
-  alias: string;
-  applicantId: string;
-  score: number;
-  breakdown: Record<string, number>;
-}
-
-/**
- * Scores `target` against each candidate and returns them sorted by score,
- * descending. A candidate whose pair can't be scored (e.g. score() throws on
- * a vector of the wrong length from a different embedding model) is skipped
- * rather than failing the whole ranking — one bad vector must never empty a
- * target's list or 500 the candidate-detail endpoint.
- */
-function rankByEmbedding(
-  target: ApplicantDoc,
-  candidates: ApplicantDoc[],
-  questionnaire: QuestionnaireDoc,
-  context: ScoreContext,
-): EmbeddingRanked[] {
-  const ranked: EmbeddingRanked[] = [];
-  let skipped = 0;
-  let firstError: unknown;
-  for (const other of candidates) {
-    try {
-      const result = score(target, other, questionnaire, context);
-      ranked.push({
-        alias:       other.alias,
-        applicantId: other._id.toHexString(),
-        score:       result.score,
-        breakdown:   result.breakdown,
-      });
-    } catch (err) {
-      skipped++;
-      firstError ??= err;
-    }
-  }
-  if (skipped > 0) {
-    // One line per target, not per pair — a bad target vector fails every pair.
-    console.error(
-      `[engine] Skipped ${skipped}/${candidates.length} unscorable candidates for applicant ` +
-      `${target._id.toHexString()}:`,
-      firstError,
-    );
-  }
-  return ranked.sort((a, b) => b.score - a.score);
-}
-
-/**
- * Takes the embedding-ranked list (already sorted desc), shortlists it,
- * reranks the shortlist with the LLM, and returns the final topN sorted by
- * the (now LLM-derived) displayed score. Never throws — falls back to the
- * embedding order/score if the rerank call itself errors.
- */
-async function applyRerank(
-  target: ApplicantDoc,
-  embeddingRanked: EmbeddingRanked[],
-  docsById: Map<string, ApplicantDoc>,
-  topN: number,
-): Promise<RankedCandidate[]> {
-  const shortlist = embeddingRanked.slice(0, Math.max(topN, SHORTLIST_SIZE));
-  if (shortlist.length === 0) return [];
-
-  let results: { applicantId: string; score: number; reasoning: string }[];
-  try {
-    results = await rerankCandidates(
-      target,
-      shortlist.map((c) => ({ doc: docsById.get(c.applicantId)!, embeddingScore: c.score })),
-    );
-  } catch (err) {
-    console.error("[engine] Rerank failed, falling back to embedding order:", err);
-    results = [];
-  }
-  const byId = new Map(results.map((r) => [r.applicantId, r]));
-
-  const reranked: RankedCandidate[] = shortlist.map((c) => {
-    const r = byId.get(c.applicantId);
-    return {
-      alias:          c.alias,
-      applicantId:    c.applicantId,
-      breakdown:      c.breakdown,
-      embeddingScore: c.score,
-      score:          r ? r.score : c.score,
-      llmReasoning:   r ? r.reasoning : "",
-    };
-  });
-
-  return reranked.sort((a, b) => b.score - a.score).slice(0, topN);
+/** Filters, scores and ranks `candidates` for `target`; best first, at most `topN`. */
+function rank(target: ApplicantDoc, candidates: ApplicantDoc[], topN: number): RankedCandidate[] {
+  return applyFilters(target, candidates)
+    .map((other) => ({
+      alias:       other.alias,
+      applicantId: other._id.toHexString(),
+      ...score(target, other),
+    }))
+    .sort((a, b) => b.score - a.score)
+    .slice(0, topN);
 }
 
 /**
@@ -160,11 +77,6 @@ export async function getCandidates(
   applicantId: string,
   topN = 10,
 ): Promise<RankedCandidate[]> {
-  const questionnaire = await getActiveQuestionnaire();
-  if (!questionnaire) {
-    throw new AppError("No active questionnaire found", 404);
-  }
-
   const db = await getDb();
   const col = getApplicantsCollection(db);
 
@@ -190,45 +102,17 @@ export async function getCandidates(
     .toArray();
 
   const eligible = others.filter((o) => !activeContactIds.has(o._id.toHexString()));
-  const compatible = applyFilters(target, eligible);
-
-  const context = await prepare([target, ...compatible], questionnaire);
-  if (!hasEmbedding(context, target)) {
-    // Target's own embedding failed to compute this round — nothing to score against.
-    return [];
-  }
-  const scorable = compatible.filter((other) => hasEmbedding(context, other));
-
-  const embeddingRanked = rankByEmbedding(target, scorable, questionnaire, context);
-
-  const docsById = new Map(scorable.map((d) => [d._id.toHexString(), d]));
-  return applyRerank(target, embeddingRanked, docsById, topN);
+  return rank(target, eligible, topN);
 }
-
-// Caps concurrent in-flight rerank calls during a full pass. Without this,
-// N applicants means N simultaneous LLM requests; with it, worst case
-// (45s timeout each, from match-rerank.service.ts) is ceil(N / 5) × 45s
-// instead of N × 45s — and the cache means most passes see nowhere near
-// the worst case.
-const RERANK_CONCURRENCY = 5;
 
 /**
  * Runs a full pairwise matching pass over all active applicants.
- * Returns a map of applicantId → ranked candidates.
+ * Returns a map of applicantId → ranked candidates (top 10 each).
  */
 export async function runFullMatchingPass(): Promise<Record<string, RankedCandidate[]>> {
-  const questionnaire = await getActiveQuestionnaire();
-  if (!questionnaire) {
-    throw new AppError("No active questionnaire found", 404);
-  }
-
   const db = await getDb();
   const col = getApplicantsCollection(db);
   const applicants = await col.find({ status: { $in: ["applied", "matched"] } }).toArray();
-
-  if (applicants.length < 2) {
-    return {};
-  }
 
   const activeContactIds = await getActiveContactApplicantIds();
   const eligible = applicants.filter((a) => !activeContactIds.has(a._id.toHexString()));
@@ -237,46 +121,23 @@ export async function runFullMatchingPass(): Promise<Record<string, RankedCandid
     return {};
   }
 
-  const context = await prepare(eligible, questionnaire);
-
   const results: Record<string, RankedCandidate[]> = {};
 
-  for (let i = 0; i < eligible.length; i += RERANK_CONCURRENCY) {
-    const batch = eligible.slice(i, i + RERANK_CONCURRENCY);
-    await Promise.all(
-      batch.map(async (applicant) => {
-        // Never let one applicant's failure (missing embedding, an
-        // unexpected rerank error, anything else) abort its whole
-        // concurrency batch — degrade that applicant to no candidates
-        // this round instead.
-        try {
-          if (!hasEmbedding(context, applicant)) {
-            results[applicant._id.toHexString()] = [];
-            return;
-          }
-
-          const others = eligible.filter((o) => !o._id.equals(applicant._id));
-          const compatible = applyFilters(applicant, others)
-            .filter((other) => hasEmbedding(context, other));
-
-          const embeddingRanked = rankByEmbedding(applicant, compatible, questionnaire, context);
-
-          const docsById = new Map(compatible.map((d) => [d._id.toHexString(), d]));
-          results[applicant._id.toHexString()] = await applyRerank(applicant, embeddingRanked, docsById, 10);
-        } catch (err) {
-          console.error(
-            `[engine] Scoring failed for applicant ${applicant._id.toHexString()}, ` +
-            `degrading to no candidates this round:`,
-            err
-          );
-          results[applicant._id.toHexString()] = [];
-        }
-      }),
-    );
+  for (const applicant of eligible) {
+    const id = applicant._id.toHexString();
+    // The scorer is total by design, but one unexpected failure must never
+    // abort matching for everyone else — degrade that applicant to no
+    // candidates this round instead.
+    try {
+      results[id] = rank(applicant, eligible.filter((o) => !o._id.equals(applicant._id)), 10);
+    } catch (err) {
+      console.error(`[engine] Scoring failed for applicant ${id}, degrading to no candidates this round:`, err);
+      results[id] = [];
+    }
   }
 
   return results;
 }
 
 // Re-export types needed by other modules
-export type { ApplicantDoc, QuestionnaireDoc };
+export type { ApplicantDoc };

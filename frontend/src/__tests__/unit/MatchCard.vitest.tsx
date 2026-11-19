@@ -53,6 +53,24 @@ describe('MatchCard', () => {
     expect(screen.getByRole('button', { name: /portal\.matches\.decline/i })).toBeInTheDocument()
   })
 
+  it("shows the partner's Instagram and note right after accepting, without a reload", async () => {
+    const onRespond = vi.fn().mockResolvedValue({
+      partnerInstagram: 'crescent.river', partnerFullName: 'Crescent River', partnerNote: 'I make a great couscous',
+    })
+    const match: MatchView = {
+      ...base,
+      status: 'in_progress',
+      perspective: 'target',
+      contactRequestedAt: new Date().toISOString(),
+    }
+    render(<MatchCard match={match} onRespond={onRespond} />)
+    await userEvent.click(screen.getByRole('button', { name: /portal\.matches\.accept/i }))
+
+    expect(onRespond).toHaveBeenCalledWith('m1', true)
+    expect(await screen.findByText('I make a great couscous')).toBeInTheDocument()
+    expect(screen.getByRole('link', { name: /crescent\.river/ })).toBeInTheDocument()
+  })
+
   it('shows relative time in target view (contactRequestedAt)', () => {
     const twoHoursAgo = new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString()
     const match: MatchView = {
@@ -77,6 +95,24 @@ describe('MatchCard', () => {
     render(<MatchCard match={match} />)
     expect(screen.getByRole('button', { name: /portal\.matches\.workedOut/i })).toBeInTheDocument()
     expect(screen.getByRole('button', { name: /portal\.matches\.didntWork/i })).toBeInTheDocument()
+  })
+
+  it("shows the partner's note on a dating card, once the match is mutual", () => {
+    const match: MatchView = {
+      ...base,
+      status: 'dating',
+      perspective: 'none',
+      partnerInstagram: 'crescent.river',
+      partnerNote: 'I make a great couscous',
+    }
+    render(<MatchCard match={match} />)
+    expect(screen.getByText('portal.matches.partnerNote:{"alias":"Crescent River"}')).toBeInTheDocument()
+    expect(screen.getByText('I make a great couscous')).toBeInTheDocument()
+  })
+
+  it.each(['proposed', 'in_progress'] as const)('never renders a note on a %s card', (status) => {
+    render(<MatchCard match={{ ...base, status, perspective: status === 'proposed' ? 'none' : 'initiator', partnerNote: 'leaked' }} />)
+    expect(screen.queryByText('leaked')).not.toBeInTheDocument()
   })
 
   it('renders read-only status badge for terminal statuses (declined)', () => {
@@ -200,44 +236,6 @@ describe('MatchCard', () => {
   })
 })
 
-// tested: the "why this match" LLM reasoning quote, always visible (not behind
-// the expand toggle) and shown unconditionally — distinct from the score
-// breakdown's gated-by-status behavior tested below.
-describe('MatchCard match reason quote', () => {
-  it('does not render the quote when llmReasoning is absent', () => {
-    render(<MatchCard match={base} />)
-    expect(screen.queryByText('portal.matches.whyThisMatch')).not.toBeInTheDocument()
-  })
-
-  it('does not render the quote when llmReasoning is an empty string (embedding fallback)', () => {
-    render(<MatchCard match={{ ...base, llmReasoning: '' }} />)
-    expect(screen.queryByText('portal.matches.whyThisMatch')).not.toBeInTheDocument()
-  })
-
-  it('renders the quote immediately (not behind the expand toggle) when llmReasoning is present', () => {
-    const reasoning = 'Shared values around honesty and a love of the outdoors.'
-    render(<MatchCard match={{ ...base, llmReasoning: reasoning }} />)
-    expect(screen.getByText('portal.matches.whyThisMatch')).toBeInTheDocument()
-    expect(screen.getByText(`“${reasoning}”`)).toBeInTheDocument()
-  })
-
-  it('renders the quote for an in_progress/target card', () => {
-    const reasoning = 'Compatible lifestyles and complementary personalities.'
-    render(
-      <MatchCard
-        match={{ ...base, status: 'in_progress', perspective: 'target', llmReasoning: reasoning }}
-      />
-    )
-    expect(screen.getByText(`“${reasoning}”`)).toBeInTheDocument()
-  })
-
-  it('renders the quote for a dating-status card', () => {
-    const reasoning = 'Strong alignment on relationship goals.'
-    render(<MatchCard match={{ ...base, status: 'dating', llmReasoning: reasoning }} />)
-    expect(screen.getByText(`“${reasoning}”`)).toBeInTheDocument()
-  })
-})
-
 // tested: score breakdown expand/collapse (item 2/3 — "why this score")
 describe('MatchCard score breakdown', () => {
   it('does not show an expand toggle when breakdown is missing', () => {
@@ -255,44 +253,44 @@ describe('MatchCard score breakdown', () => {
   it('expands to reveal labeled bars for each dimension when the header is clicked', async () => {
     const match: MatchView = {
       ...base,
-      breakdown: { numeric_compatibility: 0.9, lifestyle_similarity: 0.5 },
+      breakdown: { values: 0.9, lifestyle: 0.5 },
     }
     render(<MatchCard match={match} />)
 
     const toggle = screen.getByRole('button', { name: /Crescent River/i })
     expect(toggle).toHaveAttribute('aria-expanded', 'false')
-    expect(screen.queryByText('portal.matches.breakdown.numeric_compatibility.label')).not.toBeInTheDocument()
+    expect(screen.queryByText('portal.matches.breakdown.values.label')).not.toBeInTheDocument()
 
     await userEvent.click(toggle)
 
     expect(toggle).toHaveAttribute('aria-expanded', 'true')
-    expect(screen.getByText('portal.matches.breakdown.numeric_compatibility.label')).toBeInTheDocument()
-    expect(screen.getByText('portal.matches.breakdown.lifestyle_similarity.label')).toBeInTheDocument()
+    expect(screen.getByText('portal.matches.breakdown.values.label')).toBeInTheDocument()
+    expect(screen.getByText('portal.matches.breakdown.lifestyle.label')).toBeInTheDocument()
   })
 
   it('sorts breakdown entries by value descending', async () => {
     const match: MatchView = {
       ...base,
-      breakdown: { lifestyle_similarity: 0.3, numeric_compatibility: 0.9 },
+      breakdown: { lifestyle: 0.3, values: 0.9 },
     }
     render(<MatchCard match={match} />)
     await userEvent.click(screen.getByRole('button', { name: /Crescent River/i }))
 
     const labels = screen.getAllByText(/portal\.matches\.breakdown\..*\.label/)
-    expect(labels[0]).toHaveTextContent('numeric_compatibility')
-    expect(labels[1]).toHaveTextContent('lifestyle_similarity')
+    expect(labels[0]).toHaveTextContent('values')
+    expect(labels[1]).toHaveTextContent('lifestyle')
   })
 
   it('clicking again collapses the breakdown', async () => {
-    const match: MatchView = { ...base, breakdown: { numeric_compatibility: 0.9 } }
+    const match: MatchView = { ...base, breakdown: { values: 0.9 } }
     render(<MatchCard match={match} />)
 
     const toggle = screen.getByRole('button', { name: /Crescent River/i })
     await userEvent.click(toggle)
-    expect(screen.getByText('portal.matches.breakdown.numeric_compatibility.label')).toBeInTheDocument()
+    expect(screen.getByText('portal.matches.breakdown.values.label')).toBeInTheDocument()
 
     await userEvent.click(toggle)
-    expect(screen.queryByText('portal.matches.breakdown.numeric_compatibility.label')).not.toBeInTheDocument()
+    expect(screen.queryByText('portal.matches.breakdown.values.label')).not.toBeInTheDocument()
   })
 
   it('shows the breakdown toggle for in_progress/initiator cards too', async () => {
@@ -300,12 +298,12 @@ describe('MatchCard score breakdown', () => {
       ...base,
       status: 'in_progress',
       perspective: 'initiator',
-      breakdown: { numeric_compatibility: 0.7 },
+      breakdown: { values: 0.7 },
     }
     render(<MatchCard match={match} />)
 
     await userEvent.click(screen.getByRole('button', { name: /Crescent River/i }))
-    expect(screen.getByText('portal.matches.breakdown.numeric_compatibility.label')).toBeInTheDocument()
+    expect(screen.getByText('portal.matches.breakdown.values.label')).toBeInTheDocument()
   })
 
   it('shows the breakdown toggle for dating cards too', async () => {
@@ -313,23 +311,26 @@ describe('MatchCard score breakdown', () => {
       ...base,
       status: 'dating',
       perspective: 'none',
-      breakdown: { numeric_compatibility: 0.7 },
+      breakdown: { values: 0.7 },
       datingStartedAt: new Date(Date.now() - 8 * 24 * 60 * 60 * 1000).toISOString(),
     }
     render(<MatchCard match={match} />)
 
     await userEvent.click(screen.getByRole('button', { name: /portal\.matches\.dating/i }))
-    expect(screen.getByText('portal.matches.breakdown.numeric_compatibility.label')).toBeInTheDocument()
+    expect(screen.getByText('portal.matches.breakdown.values.label')).toBeInTheDocument()
   })
 })
 
-// tested: partner profile (raw questionnaire answers shown alongside the breakdown)
+// tested: partner profile (the partner's shared answers shown alongside the breakdown)
 describe('MatchCard partner profile', () => {
   const profile = {
     location: 'Paris, France',
     age: 27,
-    vibe_words: ['calm', 'curious'],
-    open_to_long_distance: true,
+    religion: 'muslim',
+    top_values: ['family', 'growth', 'fun'],
+    relationship_type: 'Long Term',
+    smoking: 'never',
+    work: 'Engineer', // not a shared v2 answer — must be ignored
   }
 
   it('shows an expand toggle when only partnerProfile is present (no breakdown)', () => {
@@ -342,27 +343,38 @@ describe('MatchCard partner profile', () => {
     expect(screen.queryByRole('button', { name: /Crescent River/i })).not.toBeInTheDocument()
   })
 
-  it('expands to reveal the partner profile section with formatted values', async () => {
+  it('expands to reveal the partner profile with translated answers', async () => {
     render(<MatchCard match={{ ...base, partnerProfile: profile }} />)
     expect(screen.queryByText('Paris, France')).not.toBeInTheDocument()
 
     await userEvent.click(screen.getByRole('button', { name: /Crescent River/i }))
 
     expect(screen.getByText(/portal\.matches\.aboutPartner/)).toBeInTheDocument()
+    // snapshot chips: age, city, religion
     expect(screen.getByText('Paris, France')).toBeInTheDocument()
-    // vibe_words array rendered as individual chips
-    expect(screen.getByText('calm')).toBeInTheDocument()
-    expect(screen.getByText('curious')).toBeInTheDocument()
-    // booleans rendered as yes/no labels
-    expect(screen.getByText('common.yes')).toBeInTheDocument()
-    // section labels use i18n keys
-    expect(screen.getByText('portal.matches.longDistance')).toBeInTheDocument()
+    expect(screen.getByText('portal.profile.yearsOld:{"age":27}')).toBeInTheDocument()
+    expect(screen.getByText('questions.religion.options.muslim')).toBeInTheDocument()
+    // top values as individual chips
+    for (const v of ['family', 'growth', 'fun']) {
+      expect(screen.getByText(`questions.top_values.options.${v}`)).toBeInTheDocument()
+    }
+    // every other shared answer as a "question: answer" row
+    expect(screen.getByText('questions.smoking.label')).toBeInTheDocument()
+    expect(screen.getByText('questions.smoking.options.never')).toBeInTheDocument()
+    expect(screen.getByText('questions.relationship_type.options.Long Term')).toBeInTheDocument()
+  })
+
+  it('ignores keys that are not shared v2 answers', async () => {
+    render(<MatchCard match={{ ...base, partnerProfile: profile }} />)
+    await userEvent.click(screen.getByRole('button', { name: /Crescent River/i }))
+    expect(screen.queryByText('Engineer')).not.toBeInTheDocument()
+    expect(screen.queryByText(/work/i)).not.toBeInTheDocument()
   })
 
   it('renders profile and score breakdown together when both are present', async () => {
     const match: MatchView = {
       ...base,
-      breakdown: { numeric_compatibility: 0.9 },
+      breakdown: { values: 0.9 },
       partnerProfile: profile,
     }
     render(<MatchCard match={match} />)
@@ -370,7 +382,7 @@ describe('MatchCard partner profile', () => {
 
     expect(screen.getByText(/portal\.matches\.aboutPartner/)).toBeInTheDocument()
     expect(screen.getByText('portal.matches.scoreBreakdown')).toBeInTheDocument()
-    expect(screen.getByText('portal.matches.breakdown.numeric_compatibility.label')).toBeInTheDocument()
+    expect(screen.getByText('portal.matches.breakdown.values.label')).toBeInTheDocument()
   })
 
   it('shows the partner profile on dating cards too', async () => {
@@ -396,7 +408,7 @@ describe('MatchCard mutual identity reveal', () => {
     // Even if a stale/unexpected partnerInstagram value were present while
     // in_progress, the card must withhold it — reveal only happens at "dating".
     partnerInstagram: 'horizon.swift',
-    breakdown: { numeric_compatibility: 0.9 },
+    breakdown: { values: 0.9 },
     partnerProfile: { location: 'Paris, France', age: 27 },
   }
 
@@ -415,7 +427,7 @@ describe('MatchCard mutual identity reveal', () => {
     await userEvent.click(screen.getByRole('button', { name: /portal\.matches\.wantsToMeet/i }))
 
     expect(screen.getByText('Paris, France')).toBeInTheDocument()
-    expect(screen.getByText('portal.matches.breakdown.numeric_compatibility.label')).toBeInTheDocument()
+    expect(screen.getByText('portal.matches.breakdown.values.label')).toBeInTheDocument()
   })
 
   it('shows no expand toggle on the target card without details', () => {
@@ -618,45 +630,32 @@ describe('MatchCard AI match summary (Section E)', () => {
   })
 })
 
-// tested: PartnerProfileView adversarial input — non-standard field types
+// tested: PartnerProfileView adversarial input — shared answers with unexpected types or values
 describe('PartnerProfileView adversarial field types', () => {
   async function expandWith(partnerProfile: Record<string, unknown>) {
     render(<MatchCard match={{ ...base, partnerProfile }} />)
     await userEvent.click(screen.getByRole('button', { name: /Crescent River/i }))
   }
 
-  it('handles vibe_words as an empty array without crashing', async () => {
-    await expandWith({ location: 'Paris', vibe_words: [] })
+  it.each([
+    ['top_values as a number', { top_values: 42 }],
+    ['top_values as null', { top_values: null }],
+    ['an unknown option value', { smoking: 'typo', wants_children: 'maybe' }],
+    ['a select answer stored as an object', { relationship_type: { $ne: 1 } }],
+    ['a boolean where a select is expected', { social_energy: true }],
+  ])('renders the rest of the profile with %s', async (_name, odd) => {
+    await expandWith({ location: 'Paris', ...odd })
     expect(screen.getByText('Paris')).toBeInTheDocument()
   })
 
-  it('handles vibe_words as a number without crashing', async () => {
-    await expandWith({ location: 'Paris', vibe_words: 42 })
-    expect(screen.getByText('Paris')).toBeInTheDocument()
-  })
-
-  it('handles vibe_words as null without crashing', async () => {
-    await expandWith({ location: 'Paris', vibe_words: null })
-    expect(screen.getByText('Paris')).toBeInTheDocument()
-  })
-
-  it('handles all fields undefined/null without crashing', async () => {
-    await expandWith({ location: 'Only Location' })
-    expect(screen.getByText('Only Location')).toBeInTheDocument()
+  it('shows an unknown option value as-is rather than a missing translation key', async () => {
+    await expandWith({ location: 'Paris', smoking: 'typo' })
+    expect(screen.getByText('typo')).toBeInTheDocument()
+    expect(screen.queryByText('questions.smoking.options.typo')).not.toBeInTheDocument()
   })
 
   it('renders nothing for a completely empty partnerProfile (no toggle shown)', () => {
     render(<MatchCard match={{ ...base, partnerProfile: {} }} />)
     expect(screen.queryByRole('button', { name: /Crescent River/i })).not.toBeInTheDocument()
-  })
-
-  it('handles physical_affection_importance as a string without crashing', async () => {
-    await expandWith({ location: 'Berlin', physical_affection_importance: 'high' })
-    expect(screen.getByText('Berlin')).toBeInTheDocument()
-  })
-
-  it('handles open_to_long_distance as a string "yes" without crashing', async () => {
-    await expandWith({ location: 'Lyon', open_to_long_distance: 'yes' })
-    expect(screen.getByText('Lyon')).toBeInTheDocument()
   })
 })

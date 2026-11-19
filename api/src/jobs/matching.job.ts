@@ -11,7 +11,7 @@ import { APP_CONFIG_KEYS, type MatchingLastRun } from "../models/appConfig.model
 /**
  * Full scheduled matching run:
  * 1. Load all eligible applicants (applied + matched)
- * 2. Run the embedding-cosine algorithm over all pairs
+ * 2. Run the rule-based scorer over all pairs
  * 3. Persist new couple proposals
  * 4. Transition any "applied" applicants who now have proposals to "matched"
  */
@@ -28,7 +28,7 @@ export async function runScheduledMatchingJob(): Promise<void> {
 
     const results  = await runFullMatchingPass();
     const proposals = generateCoupleProposals(applicants, results);
-    const saved    = await saveMatchProposals(proposals, "embedding-cosine");
+    const saved    = await saveMatchProposals(proposals, "rules-v1");
 
     console.info(`[matching-job] Saved ${saved} new proposals from ${proposals.length} candidates.`);
 
@@ -40,7 +40,7 @@ export async function runScheduledMatchingJob(): Promise<void> {
 
     const lastRun: MatchingLastRun = {
       at: new Date(),
-      algorithm: "embedding-cosine",
+      algorithm: "rules-v1",
       totalApplicants: applicants.length,
       couplesProposed: saved,
       durationMs: Date.now() - startedAt,

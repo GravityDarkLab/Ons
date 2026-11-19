@@ -4,6 +4,7 @@ import { getMatchSummary } from '../../api/profile.client'
 import type { MatchSummary } from '../../api/profile.client'
 import Spinner from '../../components/ui/Spinner'
 import Badge from '../../components/ui/Badge'
+import { formatAnswer } from '../../lib/questions'
 
 interface Props {
   profile: Record<string, unknown>
@@ -11,14 +12,15 @@ interface Props {
   matchId: string
 }
 
-function WordCard({ label, text }: { label: string; text: string }) {
-  return (
-    <div className="rounded-xl border border-border bg-bg p-3">
-      <p className="text-xs font-medium text-muted mb-1.5">{label}</p>
-      <p className="text-sm text-primary leading-relaxed">{text}</p>
-    </div>
-  )
-}
+// Shared answers shown as "question: answer" rows, in questionnaire order.
+// Age, city and religion go in the snapshot chips and top values get their own
+// chips. Anything not listed here is ignored, so a field the API should not
+// have sent is never rendered.
+const ROW_IDS = [
+  'relationship_type', 'wants_children', 'religion_practice', 'smoking', 'alcohol',
+  'social_energy', 'sleep_rhythm', 'activity_level', 'planning_style', 'money_style',
+  'conflict_style', 'physical_affection', 'contact_frequency',
+]
 
 export function PartnerProfileView({ profile, alias, matchId }: Props) {
   const { t } = useTranslation()
@@ -26,30 +28,12 @@ export function PartnerProfileView({ profile, alias, matchId }: Props) {
   const [loadingSummary, setLoadingSummary] = useState(false)
   const [summaryError, setSummaryError] = useState(false)
 
-  const age                  = profile.age as number | undefined
-  const location             = profile.location as string | undefined
-  const work                 = profile.work as string | undefined
-  const religion             = profile.religion as string | undefined
-  const heightCm             = profile.height_cm as number | undefined
-  const rawVibeWords         = profile.vibe_words
-  const vibeWordList: string[] = Array.isArray(rawVibeWords)
-    ? (rawVibeWords as unknown[]).map(String).filter(Boolean)
-    : typeof rawVibeWords === 'string'
-    ? rawVibeWords.split(',').map(w => w.trim()).filter(Boolean)
-    : []
-  const lifestyle            = profile.lifestyle as string | undefined
-  const relationshipType     = profile.relationship_type as string | undefined
-  const maxAgeGap            = profile.max_age_gap as number | null | undefined
-  const openToOlder          = profile.open_to_older as boolean | null | undefined
-  const openToYounger        = profile.open_to_younger as boolean | null | undefined
-  const openToLD             = profile.open_to_long_distance as boolean | undefined
-  const affection            = profile.physical_affection_importance as number | undefined
-  const okayOppGender        = profile.okay_with_opposite_gender_friends as boolean | undefined
-  const religionDB           = profile.religion_deal_breaker as boolean | undefined
-  const physicalTraits       = profile.preferred_physical_traits as string | undefined
-  const characterTraits      = profile.preferred_character_traits as string | undefined
-  const dealBreakers         = profile.deal_breakers as string | undefined
-  const dreamFirstDate       = profile.dream_first_date as string | undefined
+  const age      = typeof profile.age === 'number' ? profile.age : undefined
+  const location = typeof profile.location === 'string' ? profile.location : undefined
+  const religion = profile.religion ? formatAnswer(t, 'religion', profile.religion).value : undefined
+  const values   = Array.isArray(profile.top_values) ? (profile.top_values as unknown[]).map(String) : []
+  const rows     = ROW_IDS.filter(id => profile[id] !== undefined && profile[id] !== null)
+    .map(id => ({ id, ...formatAnswer(t, id, profile[id]) }))
 
   const loadSummary = async () => {
     if (summary || loadingSummary) return
@@ -65,24 +49,11 @@ export function PartnerProfileView({ profile, alias, matchId }: Props) {
     }
   }
 
-  const ageGapLabel = (() => {
-    if (maxAgeGap == null) return null
-    const parts = [t('portal.matches.ageGapValue', { n: maxAgeGap })]
-    if (openToOlder)   parts.push(t('portal.matches.openOlder'))
-    if (openToYounger) parts.push(t('portal.matches.openYounger'))
-    return parts.join(' · ')
-  })()
-
   const snapshotChips = [
-    age      && t('portal.profile.yearsOld', { age }),
+    age !== undefined && t('portal.profile.yearsOld', { age }),
     location,
-    work,
     religion,
-    heightCm && `${heightCm} cm`,
   ].filter(Boolean) as string[]
-
-  const hasPrefs = relationshipType || maxAgeGap != null || openToLD !== undefined || affection || okayOppGender !== undefined || (religionDB === true)
-  const hasWords = physicalTraits || characterTraits || dealBreakers || dreamFirstDate
 
   return (
     <div className="mt-4 pt-4 border-t border-border space-y-5">
@@ -99,82 +70,36 @@ export function PartnerProfileView({ profile, alias, matchId }: Props) {
         </div>
       )}
 
-      {/* Section B — Vibe */}
-      {(vibeWordList.length > 0 || lifestyle) && (
+      {/* Section B — What matters to them */}
+      {values.length > 0 && (
         <div>
           <p className="text-xs font-medium text-muted uppercase tracking-wider mb-2">
-            {t('portal.matches.vibe')}
+            {t('questions.sections.values')}
           </p>
-          {vibeWordList.length > 0 && (
-            <div className="flex flex-wrap gap-1.5 mb-2">
-              {vibeWordList.map((word, i) => (
-                <span key={i} className="text-xs bg-accent/10 text-accent rounded-full px-2.5 py-0.5 font-medium">
-                  {word}
-                </span>
-              ))}
-            </div>
-          )}
-          {lifestyle && <p className="text-sm text-primary leading-relaxed">{lifestyle}</p>}
-        </div>
-      )}
-
-      {/* Section C — What they're looking for */}
-      {hasPrefs && (
-        <div>
-          <p className="text-xs font-medium text-muted uppercase tracking-wider mb-2">
-            {t('portal.matches.lookingFor')}
-          </p>
-          <div className="space-y-1.5 text-sm">
-            {relationshipType && (
-              <div className="flex justify-between gap-3">
-                <span className="text-muted">{t('portal.matches.relationship')}</span>
-                <span className="text-primary font-medium">{relationshipType}</span>
-              </div>
-            )}
-            {ageGapLabel && (
-              <div className="flex justify-between gap-3">
-                <span className="text-muted">{t('portal.matches.ageGap')}</span>
-                <span className="text-primary font-medium text-end">{ageGapLabel}</span>
-              </div>
-            )}
-            {openToLD !== undefined && (
-              <div className="flex justify-between gap-3">
-                <span className="text-muted">{t('portal.matches.longDistance')}</span>
-                <span className="text-primary font-medium">{openToLD ? t('common.yes') : t('common.no')}</span>
-              </div>
-            )}
-            {affection !== undefined && (
-              <div className="flex justify-between items-center gap-3">
-                <span className="text-muted">{t('portal.matches.affection')}</span>
-                <span className="text-primary font-medium">{affection}/10</span>
-              </div>
-            )}
-            {okayOppGender !== undefined && (
-              <div className="flex justify-between gap-3">
-                <span className="text-muted">{t('portal.matches.oppGenderFriends')}</span>
-                <span className="text-primary font-medium">{okayOppGender ? t('common.yes') : t('common.no')}</span>
-              </div>
-            )}
-            {religionDB === true && (
-              <div className="flex justify-between gap-3">
-                <span className="text-muted">{t('portal.matches.religionDB')}</span>
-                <span className="text-primary font-medium">{t('common.yes')}</span>
-              </div>
-            )}
+          <div className="flex flex-wrap gap-1.5">
+            {values.map(value => (
+              <span key={value} className="text-xs bg-accent-light text-accent-ink rounded-full px-2.5 py-0.5 font-medium">
+                {t(`questions.top_values.options.${value}`)}
+              </span>
+            ))}
           </div>
         </div>
       )}
 
-      {/* Section D — In their own words */}
-      {hasWords && (
-        <div className="space-y-2">
-          <p className="text-xs font-medium text-muted uppercase tracking-wider">
-            {t('portal.matches.inTheirWords')}
+      {/* Section C — Their other shared answers */}
+      {rows.length > 0 && (
+        <div>
+          <p className="text-xs font-medium text-muted uppercase tracking-wider mb-2">
+            {t('portal.matches.answers')}
           </p>
-          {physicalTraits  && <WordCard label={t('portal.matches.physicalTraits')}  text={physicalTraits} />}
-          {characterTraits && <WordCard label={t('portal.matches.characterTraits')} text={characterTraits} />}
-          {dealBreakers    && <WordCard label={t('portal.matches.dealBreakers')}    text={dealBreakers} />}
-          {dreamFirstDate  && <WordCard label={t('portal.matches.dreamDate')}       text={dreamFirstDate} />}
+          <dl className="space-y-2 text-sm">
+            {rows.map(row => (
+              <div key={row.id} className="flex justify-between gap-3">
+                <dt className="text-muted min-w-0">{row.label}</dt>
+                <dd className="text-primary font-medium text-end shrink-0 max-w-[50%]">{row.value}</dd>
+              </div>
+            ))}
+          </dl>
         </div>
       )}
 

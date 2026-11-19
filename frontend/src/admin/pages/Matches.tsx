@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useId, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { Link } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
@@ -14,6 +14,7 @@ import { usePagedFilter } from '../hooks/usePagedFilter'
 import { useDebouncedValue } from '../hooks/useDebouncedValue'
 import { Th, PageButton, TrashIcon } from '../components/Table'
 import type { Match, MatchStatus } from '../types'
+import { ScoreBreakdown } from '../components/ScoreBreakdown'
 
 const LIMIT = 20
 
@@ -183,14 +184,14 @@ export function Matches() {
         ))}
       </div>
 
-      {/* Desktop table */}
-      <div className="hidden md:block bg-surface border border-border rounded-2xl overflow-hidden shadow-card">
+      {/* Desktop table: from lg, since five columns don't fit beside the sidebar at md */}
+      <div className="hidden lg:block bg-surface border border-border rounded-2xl overflow-hidden shadow-card">
         <table className="w-full text-sm">
           <thead className="bg-surface-subtle">
             <tr className="border-b border-border">
               <Th>{t('admin.matches.colCouple')}</Th>
               <Th>{t('admin.matches.colScore')}</Th>
-              <Th>{t('admin.matches.colAlgorithm')}</Th>
+              <Th>{t('admin.matches.colBreakdown')}</Th>
               <Th>{t('admin.matches.colStatus')}</Th>
               <Th>{t('admin.matches.colActions')}</Th>
             </tr>
@@ -218,7 +219,7 @@ export function Matches() {
       </div>
 
       {/* Mobile card list */}
-      <div className="md:hidden space-y-3">
+      <div className="lg:hidden space-y-3">
         {loading ? (
           Array.from({ length: 4 }).map((_, i) => (
             <div key={i} className="bg-surface border border-border rounded-2xl p-4 space-y-2 shadow-card">
@@ -238,7 +239,7 @@ export function Matches() {
         title={t('admin.matches.delete')}
         description={t('admin.matches.deleteConfirm')}
         confirmLabel={t('admin.matches.delete')}
-        cancelLabel={t('admin.matches.cancelNotes')}
+        cancelLabel={t('admin.matching.cancel')}
         tone="danger"
         loading={deleteLoading}
         onConfirm={handleDelete}
@@ -333,7 +334,7 @@ function StatusMenu({ match, saving, onStatusChange }: Pick<RowProps, 'match' | 
               role="menuitem"
               disabled={saving}
               onClick={() => { onStatusChange(s); setOpen(false) }}
-              className={`w-full text-left px-3 py-1.5 text-xs hover:bg-bg transition-colors disabled:opacity-40 ${s === match.status ? 'font-medium text-primary' : 'text-muted'}`}
+              className={`w-full text-start px-3 py-1.5 text-xs hover:bg-bg transition-colors disabled:opacity-40 ${s === match.status ? 'font-medium text-primary' : 'text-muted'}`}
             >
               {STATUS_LABEL[s]}
             </button>
@@ -351,7 +352,7 @@ function RowActions({ match, expanded, saving, onToggleExpand, onStatusChange, o
   const nextStatuses = STATUS_NEXT[match.status] ?? []
 
   return (
-    <div className="flex items-center gap-1.5 flex-nowrap overflow-x-auto pb-0.5">
+    <div className="flex flex-wrap items-center gap-1.5">
       {nextStatuses.map(s => (
         <button key={s} disabled={saving}
           onClick={() => onStatusChange(s)}
@@ -359,9 +360,9 @@ function RowActions({ match, expanded, saving, onToggleExpand, onStatusChange, o
           {ACTION_LABEL[s]}
         </button>
       ))}
-      <button onClick={onToggleExpand}
+      <button onClick={onToggleExpand} aria-expanded={expanded}
         className="px-2 py-1 rounded-lg border border-border text-xs text-muted hover:text-primary hover:bg-bg transition-colors whitespace-nowrap shrink-0">
-        {expanded ? t('admin.matches.cancelNotes') : t('admin.matches.editNotes')}
+        {expanded ? t('admin.matches.hideDetails') : t('admin.matches.details')}
       </button>
       <button onClick={onDelete} disabled={saving}
         className="p-1.5 rounded-lg text-error hover:bg-error-light transition-colors disabled:opacity-40 shrink-0"
@@ -375,18 +376,37 @@ function RowActions({ match, expanded, saving, onToggleExpand, onStatusChange, o
 
 function NotesEditor({ notes, saving, onNotesChange, onSaveNotes }: Pick<RowProps, 'notes' | 'saving' | 'onNotesChange' | 'onSaveNotes'>) {
   const { t } = useTranslation()
+  const id = useId()
   return (
-    <div className="flex gap-2 items-end">
+    <div className="flex h-full flex-col gap-2">
+      <label htmlFor={id} className={DETAIL_HEADING}>{t('admin.matches.notes')}</label>
       <textarea
-        rows={2}
+        id={id}
+        rows={4}
         value={notes}
         onChange={e => onNotesChange(e.target.value)}
         placeholder={t('admin.matches.notesPlaceholder')}
-        className="flex-1 rounded-xl border border-border bg-surface px-3 py-2 text-sm text-primary placeholder:text-muted resize-none focus:outline-none focus:ring-2 focus:ring-accent/40"
+        className="min-h-24 flex-1 rounded-xl border border-border bg-surface px-3 py-2 text-sm text-primary placeholder:text-muted resize-none focus:outline-none focus:ring-2 focus:ring-accent/40"
       />
-      <Button onClick={onSaveNotes} loading={saving} variant="primary">
+      <Button onClick={onSaveNotes} loading={saving} variant="primary" size="sm" className="self-end">
         {t('admin.matches.saveNotes')}
       </Button>
+    </div>
+  )
+}
+
+const DETAIL_HEADING = 'text-xs font-medium uppercase tracking-wider text-muted'
+
+/** The full per-dimension breakdown next to the notes editor. */
+function MatchDetails(props: RowProps) {
+  const { t } = useTranslation()
+  return (
+    <div className="grid gap-6 md:grid-cols-2 md:gap-8">
+      <section aria-label={t('admin.matches.colBreakdown')} className="flex flex-col gap-2">
+        <p className={DETAIL_HEADING}>{t('admin.matches.colBreakdown')}</p>
+        <ScoreBreakdown breakdown={props.match.breakdown} />
+      </section>
+      <NotesEditor {...props} />
     </div>
   )
 }
@@ -435,9 +455,9 @@ function MatchRow(props: RowProps) {
           <ScoreBar score={match.score} />
         </td>
 
-        {/* Algorithm */}
+        {/* Per-dimension breakdown */}
         <td className="px-4 py-3.5">
-          <span className="text-xs font-mono text-muted">{match.algorithm}</span>
+          <ScoreBreakdown breakdown={match.breakdown} variant="compact" />
         </td>
 
         {/* Status badge with dropdown */}
@@ -451,11 +471,11 @@ function MatchRow(props: RowProps) {
         </td>
       </tr>
 
-      {/* Inline notes editor */}
+      {/* Details: full breakdown + notes editor */}
       {expanded && (
         <tr className="border-b border-border bg-bg">
-          <td colSpan={5} className="px-4 py-3">
-            <NotesEditor {...props} />
+          <td colSpan={5} className="px-4 py-4">
+            <MatchDetails {...props} />
           </td>
         </tr>
       )}
@@ -487,7 +507,7 @@ function MatchCard(props: RowProps) {
 
       <div className="flex items-center justify-between gap-3">
         <ScoreBar score={match.score} width="w-28" />
-        <span className="text-[11px] font-mono text-muted truncate">{match.algorithm}</span>
+        <ScoreBreakdown breakdown={match.breakdown} variant="compact" />
       </div>
 
       {match.notes && !expanded && (
@@ -496,7 +516,7 @@ function MatchCard(props: RowProps) {
 
       <RowActions {...props} />
 
-      {expanded && <NotesEditor {...props} />}
+      {expanded && <MatchDetails {...props} />}
     </div>
   )
 }

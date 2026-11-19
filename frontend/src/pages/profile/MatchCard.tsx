@@ -7,7 +7,7 @@ import { matchStatusTone } from '../../components/ui/statusTones'
 import { useTimeAgo } from '../../lib/timeAgo'
 import { getBreakdownEntry } from './matchBreakdownLabels'
 import { PartnerProfileView } from './PartnerProfileView'
-import type { MatchView, ContactResult } from '../../api/profile.client'
+import type { ContactResponse, ContactResult, MatchView } from '../../api/profile.client'
 import {
   daysSince,
   CANCEL_ELIGIBLE_DAYS,
@@ -22,7 +22,8 @@ import {
 interface MatchCardProps {
   match: MatchView
   onContactRequest?: (matchId: string) => Promise<ContactResult>
-  onRespond?: (matchId: string, accept: boolean) => Promise<void>
+  /** Resolves with what accepting reveals, so the card can show it at once. */
+  onRespond?: (matchId: string, accept: boolean) => Promise<ContactResponse | void>
   onWithdraw?: (matchId: string) => Promise<void>
   onOutcome?: (
     matchId: string,
@@ -36,28 +37,13 @@ interface MatchCardProps {
 function ScoreBar({ score }: { score: number }) {
   return (
     <div className="flex items-center gap-2">
-      <div className="bg-border rounded-full h-1.5 w-32">
+      <div className="bg-border rounded-full h-1.5 w-16 sm:w-32 shrink-0" aria-hidden="true">
         <div
           className="bg-accent rounded-full h-1.5"
           style={{ width: `${score * 100}%` }}
         />
       </div>
-      <span className="text-sm text-muted">{Math.round(score * 100)}%</span>
-    </div>
-  )
-}
-
-/** A short, italicized pull-quote of the LLM rerank stage's reasoning for this match. */
-function MatchReasonQuote({ reasoning }: { reasoning: string }) {
-  const { t } = useTranslation()
-  return (
-    <div className="mt-3 bg-accent-light rounded-xl px-4 py-3">
-      <p className="text-[11px] font-medium text-accent-ink uppercase tracking-wider mb-1">
-        {t('portal.matches.whyThisMatch')}
-      </p>
-      <p className="font-display italic text-sm text-primary leading-relaxed">
-        “{reasoning}”
-      </p>
+      <span className="text-sm text-muted tabular-nums">{Math.round(score * 100)}%</span>
     </div>
   )
 }
@@ -100,8 +86,8 @@ function ExpandableHeader({
 }) {
   const content = (
     <>
-      {left}
-      <div className="flex items-center gap-2">
+      <div className="min-w-0 break-words">{left}</div>
+      <div className="flex items-center gap-2 shrink-0">
         {right}
         {hasDetails && <ChevronIcon expanded={expanded} />}
       </div>
@@ -117,7 +103,7 @@ function ExpandableHeader({
       type="button"
       onClick={onToggle}
       aria-expanded={expanded}
-      className="flex items-center justify-between gap-3 w-full text-left"
+      className="flex items-center justify-between gap-3 w-full text-start"
     >
       {content}
     </button>
@@ -138,9 +124,14 @@ function MatchBreakdown({ breakdown }: { breakdown: Record<string, number> }) {
       <div className="space-y-3">
         {entries.map(({ key, value, label, description }) => (
           <div key={key}>
-            <p className="text-sm font-medium text-primary mb-1">{label}</p>
-            <ScoreBar score={value} />
-            {description && <p className="text-xs text-muted mt-1">{description}</p>}
+            <div className="flex items-baseline justify-between gap-3 mb-1.5">
+              <p className="text-sm font-medium text-primary">{label}</p>
+              <span className="text-sm text-muted tabular-nums">{Math.round(value * 100)}%</span>
+            </div>
+            <div className="bg-border rounded-full h-1.5" aria-hidden="true">
+              <div className="bg-accent rounded-full h-1.5" style={{ width: `${value * 100}%` }} />
+            </div>
+            {description && <p className="text-xs text-muted mt-1.5">{description}</p>}
           </div>
         ))}
       </div>
@@ -233,8 +224,7 @@ export function MatchCard({ match, onContactRequest, onRespond, onWithdraw, onOu
     setActionError(err instanceof Error ? err.message : t('portal.matches.genericError'))
   }
 
-  const { matchId, partnerAlias, score, status, perspective, contactRequestedAt, breakdown, llmReasoning, partnerProfile, partnerInstagram } = displayMatch
-  const reasonQuote = llmReasoning ? <MatchReasonQuote reasoning={llmReasoning} /> : null
+  const { matchId, partnerAlias, score, status, perspective, contactRequestedAt, breakdown, partnerProfile, partnerInstagram } = displayMatch
   const hasBreakdown = !!breakdown && Object.keys(breakdown).length > 0
   const hasProfile = !!partnerProfile && Object.keys(partnerProfile).length > 0
   const hasDetails = hasBreakdown || hasProfile
@@ -280,10 +270,17 @@ export function MatchCard({ match, onContactRequest, onRespond, onWithdraw, onOu
       else setLoadingDecline(true)
       setActionError('')
       try {
-        await onRespond(matchId, accept)
+        const revealed = await onRespond(matchId, accept)
         setDisplayMatch(prev => ({
           ...prev,
           status: accept ? 'dating' : 'declined',
+          ...(accept && revealed
+            ? {
+                partnerInstagram: revealed.partnerInstagram ?? prev.partnerInstagram,
+                partnerFullName: revealed.partnerFullName ?? prev.partnerFullName,
+                partnerNote: revealed.partnerNote ?? prev.partnerNote,
+              }
+            : {}),
         }))
       } catch (err) {
         failAction(err)
@@ -306,7 +303,6 @@ export function MatchCard({ match, onContactRequest, onRespond, onWithdraw, onOu
           }
           right={<ScoreBar score={score} />}
         />
-        {reasonQuote}
         {contactRequestedAt && (
           <p className="text-sm text-muted mt-0.5">
             {t('portal.matches.requested', { time: timeAgo(new Date(contactRequestedAt).getTime()) })}
@@ -351,7 +347,6 @@ export function MatchCard({ match, onContactRequest, onRespond, onWithdraw, onOu
           left={<span className="text-base font-medium text-primary">{partnerAlias}</span>}
           right={<Badge tone="warning" size="sm">{t('portal.matches.waiting')}</Badge>}
         />
-        {reasonQuote}
         <IceBreakersSection
           iceBreakers={displayMatch.iceBreakers}
           dateIdeas={displayMatch.dateIdeas}
@@ -410,11 +405,18 @@ export function MatchCard({ match, onContactRequest, onRespond, onWithdraw, onOu
 
     const sharedSections = (
       <>
-        {reasonQuote}
         {displayMatch.partnerFullName && (
           <p className="text-base font-medium text-primary mt-1">{displayMatch.partnerFullName}</p>
         )}
         {partnerHandle && <InstagramLink handle={partnerHandle} />}
+        {displayMatch.partnerNote && (
+          <div className="mt-3 rounded-xl bg-accent-light px-4 py-3">
+            <p className="text-[11px] font-medium text-accent-ink uppercase tracking-wider mb-1">
+              {t('portal.matches.partnerNote', { alias: partnerAlias })}
+            </p>
+            <p className="text-sm text-primary leading-relaxed break-words">{displayMatch.partnerNote}</p>
+          </div>
+        )}
         {detailsSection}
         {perspective === 'initiator' && (
           <IceBreakersSection iceBreakers={displayMatch.iceBreakers} dateIdeas={displayMatch.dateIdeas} />
@@ -624,7 +626,6 @@ export function MatchCard({ match, onContactRequest, onRespond, onWithdraw, onOu
         left={<span className="text-base font-medium text-primary">{partnerAlias}</span>}
         right={<ScoreBar score={score} />}
       />
-      {reasonQuote}
       {detailsSection}
       <div className="mt-4">
         <button
