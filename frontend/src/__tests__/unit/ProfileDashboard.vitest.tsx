@@ -66,6 +66,35 @@ describe('ProfileDashboard', () => {
     expect(screen.getByText('Test User')).toBeInTheDocument()
   })
 
+  // The header must fit a phone with a long name: one line each for the name
+  // and the codename, both truncated, with the status as a translated label.
+  it('keeps a long name and codename to one truncated line each in the header', async () => {
+    mockGetMyProfile.mockResolvedValue({
+      applicantId: '3',
+      alias: 'Nebula Electric',
+      fullName: 'Maximiliane Alexandra von Hohenzollern-Sigmaringen',
+      status: 'matched',
+      scoreThreshold: 0.6,
+      createdAt: '2026-01-01',
+      deletionScheduledAt: null,
+      distanceNudge: null,
+    })
+
+    renderDashboard()
+
+    const name = await screen.findByText('Maximiliane Alexandra von Hohenzollern-Sigmaringen')
+    const alias = screen.getByText('Nebula Electric')
+    for (const el of [name, alias]) {
+      expect(el.className).toContain('truncate')
+      expect(el).toHaveAttribute('title', el.textContent)
+    }
+    // the block holding them can shrink below its content width
+    expect(name.parentElement!.className).toContain('min-w-0')
+    // status reads as a translated label, never the raw stored value
+    expect(screen.getByText('portal.dashboard.statusLabel.matched')).toBeInTheDocument()
+    expect(screen.queryByText('matched')).not.toBeInTheDocument()
+  })
+
   it('shows a threshold slider from 50% and reveals more matches when lowered', async () => {
     mockGetMyProfile.mockResolvedValue({
       applicantId: '2',

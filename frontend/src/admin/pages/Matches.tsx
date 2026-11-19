@@ -333,7 +333,7 @@ function StatusMenu({ match, saving, onStatusChange }: Pick<RowProps, 'match' | 
               role="menuitem"
               disabled={saving}
               onClick={() => { onStatusChange(s); setOpen(false) }}
-              className={`w-full text-left px-3 py-1.5 text-xs hover:bg-bg transition-colors disabled:opacity-40 ${s === match.status ? 'font-medium text-primary' : 'text-muted'}`}
+              className={`w-full text-start px-3 py-1.5 text-xs hover:bg-bg transition-colors disabled:opacity-40 ${s === match.status ? 'font-medium text-primary' : 'text-muted'}`}
             >
               {STATUS_LABEL[s]}
             </button>

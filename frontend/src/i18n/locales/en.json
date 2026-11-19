@@ -358,6 +358,12 @@
         "yes": "Yes, open me up",
         "no": "No, keep as is",
         "ackFailed": "Couldn't save your choice. Please try again."
+      },
+      "statusLabel": {
+        "applied": "Applied",
+        "matched": "Matched",
+        "dating": "Dating",
+        "inactive": "Inactive"
       }
     },
     "matches": {

@@ -358,6 +358,12 @@
         "yes": "Ja, öffne mich dafür",
         "no": "Nein, so lassen",
         "ackFailed": "Deine Wahl konnte nicht gespeichert werden. Bitte versuche es erneut."
+      },
+      "statusLabel": {
+        "applied": "Beworben",
+        "matched": "Gematcht",
+        "dating": "Beim Dating",
+        "inactive": "Inaktiv"
       }
     },
     "matches": {

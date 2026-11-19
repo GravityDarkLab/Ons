@@ -141,8 +141,8 @@ export default function ProfileSettingsDrawer({ onClose, applicantStatus }: Prop
         aria-labelledby="settings-drawer-title"
         className="fixed z-50 bg-surface overflow-y-auto p-6 shadow-raised
                    inset-x-0 bottom-0 max-h-[85dvh] rounded-t-2xl border-t border-border
-                   sm:inset-x-auto sm:right-0 sm:top-0 sm:bottom-auto sm:h-full sm:max-h-none
-                   sm:w-full sm:max-w-sm sm:rounded-t-none sm:border-t-0 sm:border-l"
+                   sm:inset-x-auto sm:end-0 sm:top-0 sm:bottom-auto sm:h-full sm:max-h-none
+                   sm:w-full sm:max-w-sm sm:rounded-t-none sm:border-t-0 sm:border-s"
       >
 
         {/* Header */}

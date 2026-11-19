@@ -128,7 +128,7 @@ export function ToastProvider({ children }: { children: ReactNode }) {
   return (
     <ToastContext.Provider value={api.current}>
       {children}
-      <div className="fixed z-[60] bottom-4 inset-x-4 sm:inset-x-auto sm:right-4 sm:w-80 flex flex-col gap-2 pointer-events-none">
+      <div className="fixed z-[60] bottom-4 inset-x-4 sm:inset-x-auto sm:end-4 sm:w-80 flex flex-col gap-2 pointer-events-none">
         {toasts.map(toast => (
           <div
             key={toast.id}
@@ -136,9 +136,9 @@ export function ToastProvider({ children }: { children: ReactNode }) {
             aria-live={toast.kind === 'error' ? 'assertive' : 'polite'}
             onMouseEnter={() => pause(toast.id)}
             onMouseLeave={() => resume(toast.id)}
-            className="pointer-events-auto flex items-center gap-3 bg-surface border border-border rounded-xl pl-3 pr-2 py-3 shadow-raised overflow-hidden relative"
+            className="pointer-events-auto flex items-center gap-3 bg-surface border border-border rounded-xl ps-3 pe-2 py-3 shadow-raised overflow-hidden relative"
           >
-            <span className={`absolute left-0 top-0 bottom-0 w-1 ${kindStyles[toast.kind].bar}`} aria-hidden="true" />
+            <span className={`absolute start-0 top-0 bottom-0 w-1 ${kindStyles[toast.kind].bar}`} aria-hidden="true" />
             {kindStyles[toast.kind].icon}
             <p className="flex-1 text-sm text-primary leading-snug">{toast.message}</p>
             <button

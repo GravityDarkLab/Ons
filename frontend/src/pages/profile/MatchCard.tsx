@@ -36,13 +36,13 @@ interface MatchCardProps {
 function ScoreBar({ score }: { score: number }) {
   return (
     <div className="flex items-center gap-2">
-      <div className="bg-border rounded-full h-1.5 w-32">
+      <div className="bg-border rounded-full h-1.5 w-16 sm:w-32 shrink-0" aria-hidden="true">
         <div
           className="bg-accent rounded-full h-1.5"
           style={{ width: `${score * 100}%` }}
         />
       </div>
-      <span className="text-sm text-muted">{Math.round(score * 100)}%</span>
+      <span className="text-sm text-muted tabular-nums">{Math.round(score * 100)}%</span>
     </div>
   )
 }
@@ -85,8 +85,8 @@ function ExpandableHeader({
 }) {
   const content = (
     <>
-      {left}
-      <div className="flex items-center gap-2">
+      <div className="min-w-0 break-words">{left}</div>
+      <div className="flex items-center gap-2 shrink-0">
         {right}
         {hasDetails && <ChevronIcon expanded={expanded} />}
       </div>
@@ -102,7 +102,7 @@ function ExpandableHeader({
       type="button"
       onClick={onToggle}
       aria-expanded={expanded}
-      className="flex items-center justify-between gap-3 w-full text-left"
+      className="flex items-center justify-between gap-3 w-full text-start"
     >
       {content}
     </button>

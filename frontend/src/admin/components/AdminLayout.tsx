@@ -115,14 +115,14 @@ export function AdminLayout({ children }: { children: ReactNode }) {
             <MenuIcon />
           </button>
           <span className="font-semibold text-primary">Ons</span>
-          <span className="text-xs text-muted ml-1">Admin</span>
+          <span className="text-xs text-muted ms-1">Admin</span>
         </div>
 
         {/* Right: theme + language switcher + role badge + logout */}
         <div className="flex items-center gap-1.5">
           <ThemeToggle />
           <LanguageSwitcher />
-          <Badge tone="accent" size="sm" className="ml-1.5">
+          <Badge tone="accent" size="sm" className="ms-1.5">
             {role === 'super_admin' ? t('admin.nav.roleSuperAdmin') : t('admin.nav.roleAdmin')}
           </Badge>
           <button
@@ -140,7 +140,7 @@ export function AdminLayout({ children }: { children: ReactNode }) {
       <div className="flex flex-1 min-h-0">
         {/* Sidebar */}
         <aside
-          className={`shrink-0 flex flex-col bg-surface border-r border-border transition-all duration-200 ${collapsed ? 'w-14' : 'w-56'}`}
+          className={`shrink-0 flex flex-col bg-surface border-e border-border transition-all duration-200 ${collapsed ? 'w-14' : 'w-56'}`}
         >
           <nav className="flex-1 px-2 py-3 space-y-0.5">
             {NAV.map(({ to, icon: Icon, label, end }) => (

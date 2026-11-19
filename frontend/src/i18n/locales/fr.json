@@ -358,6 +358,12 @@
         "yes": "Oui, ouvrez-moi à ça",
         "no": "Non, laissez comme c'est",
         "ackFailed": "Impossible d'enregistrer votre choix. Veuillez réessayer."
+      },
+      "statusLabel": {
+        "applied": "Candidature envoyée",
+        "matched": "Matché·e",
+        "dating": "En rencontre",
+        "inactive": "Inactif·ve"
       }
     },
     "matches": {

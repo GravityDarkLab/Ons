@@ -410,18 +410,18 @@ export function ApplicantDetail() {
             <dl className="space-y-2.5 text-sm">
               <div className="flex justify-between gap-3">
                 <dt className="text-muted">{t('admin.detail.submitted', { date: '' }).replace(':', '').trim()}</dt>
-                <dd className="text-primary text-right">
+                <dd className="text-primary text-end">
                   {new Date(applicant.createdAt).toLocaleDateString()}
                 </dd>
               </div>
               <div className="flex justify-between gap-3">
                 <dt className="text-muted">{t('admin.detail.version')}</dt>
-                <dd className="text-primary font-mono text-right">{applicant.questionnaireVersion}</dd>
+                <dd className="text-primary font-mono text-end">{applicant.questionnaireVersion}</dd>
               </div>
               {applicant.submissionIp && (
                 <div className="flex justify-between gap-3">
                   <dt className="text-muted">{t('admin.detail.submissionIp')}</dt>
-                  <dd className="text-primary font-mono text-right text-xs">{applicant.submissionIp}</dd>
+                  <dd className="text-primary font-mono text-end text-xs">{applicant.submissionIp}</dd>
                 </div>
               )}
             </dl>

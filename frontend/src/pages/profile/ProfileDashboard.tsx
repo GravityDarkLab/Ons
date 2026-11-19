@@ -24,10 +24,11 @@ const DEFAULT_THRESHOLD = 0.6
 // ── Sub-components ────────────────────────────────────────────────────────────
 
 function StatusBadge({ status }: { status: ApplicantStatus | undefined }) {
+  const { t } = useTranslation()
   if (!status) return null
   return (
-    <Badge tone={applicantStatusTone(status)} size="sm">
-      {status}
+    <Badge tone={applicantStatusTone(status)} size="sm" className="shrink-0">
+      {t(`portal.dashboard.statusLabel.${status}`)}
     </Badge>
   )
 }
@@ -135,16 +136,25 @@ export default function ProfileDashboard() {
   return (
     <div className="min-h-screen bg-bg">
       {/* Status bar */}
-      <header className="h-14 flex items-center justify-between px-6 bg-surface border-b border-border">
-        <div className="flex items-center gap-3">
-          <span className="font-semibold text-primary">Ons</span>
-          <div className="flex flex-col leading-tight">
-            <span className="text-sm text-primary">{profile?.fullName ?? profile?.alias}</span>
-            {profile?.fullName && <span className="text-xs text-muted">{profile.alias}</span>}
+      {/* Fixed height on every screen: the name and codename each keep to one
+          truncated line (full text in the tooltip), and the status sits next to
+          the codename so a long name never pushes the controls off the bar. */}
+      <header className="h-14 flex items-center justify-between gap-3 px-4 sm:px-6 bg-surface border-b border-border">
+        <div className="flex items-center gap-3 min-w-0 flex-1">
+          <span className="font-semibold text-primary shrink-0">Ons</span>
+          <div className="flex flex-col justify-center gap-0.5 min-w-0 flex-1 leading-tight">
+            <span className="block truncate text-sm font-medium text-primary" title={profile?.fullName ?? profile?.alias}>
+              {profile?.fullName ?? profile?.alias}
+            </span>
+            <div className="flex items-center gap-1.5 min-w-0">
+              {profile?.fullName && (
+                <span className="block truncate text-xs text-muted" title={profile.alias}>{profile.alias}</span>
+              )}
+              <StatusBadge status={profile?.status} />
+            </div>
           </div>
-          <StatusBadge status={profile?.status} />
         </div>
-        <div className="flex items-center gap-1.5">
+        <div className="flex items-center gap-0.5 sm:gap-1.5 shrink-0">
         <LanguageSwitcher />
         <ThemeToggle />
         <button
