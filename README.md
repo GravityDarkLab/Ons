@@ -2,15 +2,43 @@
 
 > *Ons* (أنس) — Arabic/Tunisian for intimacy and closeness between people.
 
-A privacy-first couple matching platform. Applicants fill out a form, an admin reviews and runs the matching engine, and compatible pairs are surfaced — no Instagram handles or personal details ever leave the encrypted identity store.
+A privacy-first couple matching platform. Applicants answer a short tap-only questionnaire, an admin reviews and runs the matching engine, and compatible pairs are surfaced — Instagram handles and names stay in an encrypted identity store until both people agree to connect.
 
 **Stack:** Bun · Hono · MongoDB · React · Vite · Tailwind  
 **Docs:** [`api/README.md`](./api/README.md) · [`frontend/README.md`](./frontend/README.md) · [`api/src/matching/README.md`](./api/src/matching/README.md)
 
 ---
 
+## Preview
+
+**The application form** — four typed fields on the first screen, then 32 questions answered by tapping, one per screen. Built for phones first.
+
+![Application form on a phone: the identity screen, a single-choice question, the pick-three values question and an agreement question with keyboard focus](./docs/screenshots/form-mobile.webp)
+
+**On a laptop** — the same form, and the applicant portal where matches appear with the answers each person chose to share.
+
+| Application form | Applicant portal |
+|---|---|
+| ![Application form on a laptop, showing the values question with three options selected](./docs/screenshots/form-desktop.webp) | ![Applicant portal on a laptop: a match card expanded to show the partner's shared answers](./docs/screenshots/portal-matches-desktop.webp) |
+| ![Landing page on a laptop](./docs/screenshots/home-desktop.webp) | ![Applicant portal on a laptop: the score breakdown for a match](./docs/screenshots/portal-breakdown-desktop.webp) |
+
+**Four languages and dark mode** — English, French, German and Arabic (right-to-left). The portal and admin panel have a dark theme; the public form is light-only by design.
+
+<img src="./docs/screenshots/mobile-arabic-and-dark.webp" alt="The values question in Arabic with a right-to-left layout, and the applicant portal in dark mode on a phone" width="520">
+
+What the form is built to do:
+
+- **Fast** — single-choice answers advance by themselves; Back keeps every answer.
+- **Accessible** — real radio and checkbox groups, full keyboard support, visible focus, selection shown by more than colour.
+- **Private by default** — only answers marked as shareable are ever shown to a match or sent to OpenAI. Attachment and personality answers are used for scoring only.
+
+Screenshots show seeded demo data, not real people.
+
+---
+
 ## Contents
 
+- [Preview](#preview)
 - [Quick start](#quick-start)
 - [Monorepo layout](#monorepo-layout)
 - [How it works](#how-it-works)
@@ -41,10 +69,10 @@ bun install
 ### 2. Configure the API
 
 ```bash
-cp api/.env.example api/.env
+cp api/.env.example api/.env.dev
 ```
 
-Open `api/.env` and fill in the required secrets — see [`api/README.md`](./api/README.md) for the full variable reference. The two that vary by MongoDB option are covered below.
+Open `api/.env.dev` (the file `bun run dev` loads) and fill in the required secrets — see [`api/README.md`](./api/README.md) for the full variable reference. The two that vary by MongoDB option are covered below.
 
 ### 3. Choose your MongoDB
 
@@ -61,7 +89,7 @@ For more information, see [Local MongoDB (Docker)](#local-mongodb-docker) below 
 
 Now you can seed MongoDB using the seeders in `scripts/seed.ts` and connect the API using the app user credentials you set in `.env.mongo.dev`:
 
-You also need to set the following in `api/.env`:
+You also need to set the following in `api/.env.dev`:
 
 ```env
 MONGODB_URI=mongodb://ons_app:<MONGO_APP_PASSWORD>@localhost:27017/ons?authSource=ons
@@ -108,14 +136,15 @@ bun run dev
 ons/
 ├── api/                            ← REST API (Bun · Hono · MongoDB)
 │   ├── src/
-│   │   ├── matching/               ← Algorithms, engine, filters
+│   │   ├── matching/               ← Engine, hard filters, rule-based scorer
 │   │   │   └── README.md           ← Matching system deep-dive
 │   │   ├── privacy/                ← Encryption, alias generation, submission keys
 │   │   ├── services/               ← Business logic
 │   │   ├── controllers/            ← Request handlers
 │   │   ├── routes/                 ← Hono route definitions
 │   │   ├── middleware/             ← Auth, rate limiting, audit logging
-│   │   └── __tests__/             ← Full test suite (515 tests)
+│   │   ├── questionnaire/          ← The question definitions (single source of truth)
+│   │   └── __tests__/             ← Full test suite (no DB required)
 │   ├── docs/openapi.yaml           ← Full OpenAPI 3.1 spec
 │   ├── Dockerfile
 │   └── README.md                   ← API setup & reference
@@ -204,7 +233,7 @@ docker compose -f docker-compose-mongo-dev.yml down -v
 
 ### Connection strings
 
-**App user** (use this in `api/.env`):
+**App user** (use this in `api/.env.dev`):
 ```
 MONGODB_URI=mongodb://ons_app:<MONGO_APP_PASSWORD>@localhost:27017/ons?authSource=ons
 ```
@@ -332,5 +361,5 @@ Inject secrets via ECS task-definition environment variables or AWS Secrets Mana
 | `bun run seed` | Interactive seed runner — choose questionnaire, applicants, or both; prompts for environment |
 | `bun run build` | Build all workspaces |
 | `bun run typecheck` | Type-check all workspaces |
-| `bun run test` | Run API + frontend test suites in parallel (API: 515 tests, no DB required) |
+| `bun run test` | Run API + frontend test suites in parallel (no DB or network required) |
 | `bun run test:smoke` | Run smoke tests against a live server + DB (requires env vars — see `tests/smoke/`) |
