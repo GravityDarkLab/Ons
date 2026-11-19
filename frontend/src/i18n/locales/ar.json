@@ -2,6 +2,8 @@
   "brand": "أنس",
   "common": {
     "dismiss": "إغلاق",
+    "themeToDark": "التبديل إلى الوضع الداكن",
+    "themeToLight": "التبديل إلى الوضع الفاتح",
     "timeAgo": {
       "justNow": "الآن",
       "minutesAgo_zero": "منذ أقل من دقيقة",

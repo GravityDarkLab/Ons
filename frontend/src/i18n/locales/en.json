@@ -2,6 +2,8 @@
   "brand": "Ons",
   "common": {
     "dismiss": "Dismiss",
+    "themeToDark": "Switch to dark mode",
+    "themeToLight": "Switch to light mode",
     "timeAgo": {
       "justNow": "just now",
       "minutesAgo_one": "{{count}} minute ago",
