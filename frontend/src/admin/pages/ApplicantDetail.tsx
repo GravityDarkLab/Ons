@@ -285,7 +285,6 @@ function MatchHistory({ matches, applicantId }: MatchHistoryProps) {
     <div className="space-y-3">
       {matches.map(m => {
         const isA          = m.applicantAId === applicantId
-        const ownAlias     = isA ? m.applicantAAlias : m.applicantBAlias
         const partnerId    = isA ? m.applicantBId    : m.applicantAId
         const partnerAlias = isA ? m.applicantBAlias : m.applicantAAlias
         const scorePercent = Math.round(m.score * 100)
@@ -293,16 +292,12 @@ function MatchHistory({ matches, applicantId }: MatchHistoryProps) {
         return (
           <div key={m.id} className="flex items-center justify-between gap-3">
             <div className="min-w-0">
-              <div className="flex items-center gap-1.5 text-sm font-mono text-primary">
-                <span className="text-muted shrink-0">{ownAlias}</span>
-                <span className="text-muted shrink-0">↔</span>
-                <Link
-                  to={`/admin/applicants/${partnerId}`}
-                  className="text-accent hover:underline truncate"
-                >
-                  {partnerAlias}
-                </Link>
-              </div>
+              <Link
+                to={`/admin/applicants/${partnerId}`}
+                className="block truncate text-sm font-mono text-accent hover:underline"
+              >
+                {partnerAlias}
+              </Link>
               <div className="flex items-center gap-2 mt-1.5">
                 <div className="bg-border rounded-full h-1.5 w-24">
                   <div

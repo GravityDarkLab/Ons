@@ -205,6 +205,14 @@ describe('ApplicantDetail — matches section', () => {
     expect(screen.getByText('admin.matches.proposed')).toBeInTheDocument()
   })
 
+  it('names only the partner, so a long partner alias is not squeezed out on a phone', async () => {
+    mockFetchMatches.mockResolvedValue({ data: [MATCH_WITH_B], total: 1, page: 1, limit: 10, totalPages: 1 })
+    renderDetail()
+    await screen.findByRole('link', { name: 'Pearl Lantern' })
+    // The applicant's own alias appears once — as the page heading — not again per match row.
+    expect(screen.getAllByText('Lunar Ocean')).toHaveLength(1)
+  })
+
   it('fetches matches with the current applicant id as participantId', async () => {
     renderDetail('id-a')
     await waitFor(() => mockFetchMatches.mock.calls.length > 0)

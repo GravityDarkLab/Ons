@@ -352,7 +352,7 @@ function RowActions({ match, expanded, saving, onToggleExpand, onStatusChange, o
   const nextStatuses = STATUS_NEXT[match.status] ?? []
 
   return (
-    <div className="flex items-center gap-1.5 flex-nowrap overflow-x-auto pb-0.5">
+    <div className="flex flex-wrap items-center gap-1.5">
       {nextStatuses.map(s => (
         <button key={s} disabled={saving}
           onClick={() => onStatusChange(s)}
