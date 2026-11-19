@@ -249,7 +249,7 @@ export default function Apply() {
           </Button>
         )}
         {screen === finalScreen && screen > 0 && (
-          <Button variant="accent" onClick={handleSubmit} loading={isSubmitting} disabled={isSubmitting} className="w-full">
+          <Button variant="accent" onClick={handleSubmit} loading={isSubmitting} disabled={isSubmitting} className="w-full !text-primary">
             {!isSubmitting && t('apply.submit')}
           </Button>
         )}

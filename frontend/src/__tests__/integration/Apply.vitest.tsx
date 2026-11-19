@@ -234,6 +234,13 @@ describe('Apply — tap questions', () => {
 })
 
 describe('Apply — final screen and submission', () => {
+  it('keeps the gold Submit button readable: dark text, not the page-background colour', async () => {
+    renderApply()
+    await answerAll()
+    // near-white on the gold accent is about 2:1; ink on gold is above 7:1
+    expect(screen.getByRole('button', { name: 'apply.submit' }).className).toContain('!text-primary')
+  })
+
   it('asks for consent before submitting', async () => {
     renderApply()
     await answerAll()
