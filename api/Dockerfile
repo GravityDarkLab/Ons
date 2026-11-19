@@ -6,7 +6,7 @@ FROM oven/bun:1.4.4-alpine AS deps
 WORKDIR /app
 
 COPY package.json bun.lock ./
-RUN bun install --frozen --production
+RUN bun install --frozen-lockfile --production
 
 # ─── Stage 2: lean production image ──────────────────────────────────────────
 FROM oven/bun:1.4.4-alpine AS runner
