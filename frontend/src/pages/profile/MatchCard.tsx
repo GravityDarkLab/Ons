@@ -396,6 +396,14 @@ export function MatchCard({ match, onContactRequest, onRespond, onWithdraw, onOu
           <p className="text-base font-medium text-primary mt-1">{displayMatch.partnerFullName}</p>
         )}
         {partnerHandle && <InstagramLink handle={partnerHandle} />}
+        {displayMatch.partnerNote && (
+          <div className="mt-3 rounded-xl bg-accent-light px-4 py-3">
+            <p className="text-[11px] font-medium text-accent-ink uppercase tracking-wider mb-1">
+              {t('portal.matches.partnerNote', { alias: partnerAlias })}
+            </p>
+            <p className="text-sm text-primary leading-relaxed break-words">{displayMatch.partnerNote}</p>
+          </div>
+        )}
         {detailsSection}
         {perspective === 'initiator' && (
           <IceBreakersSection iceBreakers={displayMatch.iceBreakers} dateIdeas={displayMatch.dateIdeas} />

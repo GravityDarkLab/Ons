@@ -19,6 +19,7 @@ export interface MatchView {
   iceBreakers?: string[] // only for initiator in in_progress/dating
   dateIdeas?: string[] // only for initiator in in_progress/dating
   partnerProfile?: Record<string, unknown> // partner's public questionnaire answers
+  partnerNote?: string // partner's optional free-text note — only ever set once status is "dating"
   partnerInstagram?: string // partner's handle — only ever set once status is "dating" (mutual reveal)
   partnerFullName?: string
   datingStartedAt?: string

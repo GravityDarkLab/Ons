@@ -64,7 +64,7 @@
       "title": "Fast geschafft",
       "subtitle": "Eine optionale Zeile, dann bist du dabei.",
       "noteLabel": "Etwas, das ein Match über dich wissen sollte?",
-      "noteHint": "Optional. Dient als Anregung für Gesprächseinstiege, sobald ihr in Kontakt seid. Fließt nie in die Bewertung ein.",
+      "noteHint": "Optional. Wird einem Match erst angezeigt, wenn ihr beide dem Kontakt zugestimmt habt. Fließt nie in die Bewertung ein.",
       "notePlaceholder": "z. B. Ich mache ein großartiges Couscous",
       "disclaimer": "Ich verstehe, dass meine Daten nur für das Matchmaking verwendet, sicher gespeichert und niemals an Dritte verkauft oder weitergegeben werden.",
       "disclaimerRequired": "Du musst zustimmen, um fortzufahren."
@@ -448,7 +448,8 @@
           "description": "Wie ähnlich eure Temperamente sind"
         }
       },
-      "answers": "Die Antworten"
+      "answers": "Die Antworten",
+      "partnerNote": "{{alias}} möchte, dass du weißt"
     },
     "settings": {
       "title": "Einstellungen",

@@ -17,6 +17,12 @@ import Step1Identity from '../steps/Step1Identity'
 
 /** Pause after a single-choice tap so the selection is seen before the next question appears. */
 const ADVANCE_DELAY_MS = 250
+/**
+ * Taps are ignored for this long after a new screen appears. A slow double-tap
+ * would otherwise land on the option in the same position of the next question
+ * and answer it unread; nobody reads and answers a question this fast.
+ */
+const TAP_COOLDOWN_MS = 350
 const NOTE_MAX_LENGTH = 280
 
 /**
@@ -46,6 +52,7 @@ export default function Apply() {
 
   const headingRef = useRef<HTMLHeadingElement>(null)
   const advanceTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const acceptTapsAt = useRef(0)
 
   // The questionnaire carries both the questions and the HMAC submission key.
   useEffect(() => {
@@ -75,6 +82,7 @@ export default function Apply() {
     advanceTimer.current = null
     const target = questions[next - 1]
     setAnsweredOnEntry(target ? isAnswered(target, answers[target.id]) : false)
+    acceptTapsAt.current = Date.now() + TAP_COOLDOWN_MS
     setScreen(next)
     window.scrollTo(0, 0)
   }
@@ -85,7 +93,9 @@ export default function Apply() {
   }
 
   function answer(value: AnswerValue) {
-    if (!question || advanceTimer.current) return // a tap during the pause must not skip a question
+    // A tap during the pause before advancing, or just after the next question
+    // appears, must never answer a question the user has not seen.
+    if (!question || advanceTimer.current || Date.now() < acceptTapsAt.current) return
     setAnswers(prev => ({ ...prev, [question.id]: value }))
     if (question.type !== 'multiselect') {
       advanceTimer.current = setTimeout(() => go(screen + 1), ADVANCE_DELAY_MS)

@@ -79,6 +79,24 @@ describe('MatchCard', () => {
     expect(screen.getByRole('button', { name: /portal\.matches\.didntWork/i })).toBeInTheDocument()
   })
 
+  it("shows the partner's note on a dating card, once the match is mutual", () => {
+    const match: MatchView = {
+      ...base,
+      status: 'dating',
+      perspective: 'none',
+      partnerInstagram: 'crescent.river',
+      partnerNote: 'I make a great couscous',
+    }
+    render(<MatchCard match={match} />)
+    expect(screen.getByText('portal.matches.partnerNote:{"alias":"Crescent River"}')).toBeInTheDocument()
+    expect(screen.getByText('I make a great couscous')).toBeInTheDocument()
+  })
+
+  it.each(['proposed', 'in_progress'] as const)('never renders a note on a %s card', (status) => {
+    render(<MatchCard match={{ ...base, status, perspective: status === 'proposed' ? 'none' : 'initiator', partnerNote: 'leaked' }} />)
+    expect(screen.queryByText('leaked')).not.toBeInTheDocument()
+  })
+
   it('renders read-only status badge for terminal statuses (declined)', () => {
     const match: MatchView = {
       ...base,

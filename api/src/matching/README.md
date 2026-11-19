@@ -61,10 +61,15 @@ records and bad data lower confidence instead of breaking the run.
 - **Relationship-goal fit** is the cosine of each answer's `[long-term, short-term]` affinity.
 - **Age modifier**: 1 within the preferred gap, cosine decay to 0 at twice the gap.
 
-The breakdown stored on a match has the keys `values`, `lifestyle`, `connection`, `personality`, `goals`
-and `age_modifier`. Applicants are only shown `values`, `lifestyle` and `goals`
-(`APPLICANT_BREAKDOWN_KEYS` in `services/match-state.service.ts`): the other two are computed from private
-answers and could be worked backwards.
+The breakdown stored on a match has the keys `values`, `lifestyle`, `connection`, `personality`, `goals`,
+`age_modifier`, plus `values_shared` and `lifestyle_shared`.
+
+An applicant knows their own answers and their partner's shared ones, so any displayed number that also
+depends on a private answer can be worked backwards. Applicants are therefore shown three bars only
+(`APPLICANT_BREAKDOWN_KEYS` in `services/match-state.service.ts`): `values` and `lifestyle` read the
+`*_shared` variants, which the scorer computes from shared answers alone (no faith preference, no habit
+preferences, no `opposite_gender_friends`), and `goals`. `connection` and `personality` are never shown.
+The overall score is still the full one.
 
 ## Thresholds
 
@@ -94,5 +99,9 @@ personality items are written for Ons and modelled on ECR-S (Wei et al., 2007) a
 ## OpenAI
 
 Matching never calls OpenAI. It is still used for match summaries and ice-breakers, which receive only the
-answers marked `shared` in the question definitions; the optional free-text note goes to the ice-breaker
-prompt only, which runs after a contact request has already revealed the Instagram handle.
+answers marked `shared` in the question definitions.
+
+The optional free-text note (`note_to_match`) is never sent to OpenAI and never scored. Ice-breakers are
+generated when contact is *requested* and shown to the initiator before the other person accepts, so a note
+in that prompt could carry a handle around the mutual reveal. The note is returned on the match view only
+once the match is mutual (`dating`), by the same gate as the identity reveal (`toMatchView`).

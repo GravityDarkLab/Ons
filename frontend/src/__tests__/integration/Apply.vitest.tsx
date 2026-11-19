@@ -56,7 +56,19 @@ function renderApply() {
   )
 }
 
-const heading = (id: string) => screen.findByRole('heading', { name: `questions.${id}.label` })
+// The form ignores taps for a moment after a new question appears (so a slow
+// double-tap cannot answer a question the user has not read). `heading` waits
+// that out, like a person reading the question would; `rawHeading` does not.
+const TAP_COOLDOWN_MS = 350
+const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms))
+const rawHeading = (id: string) => screen.findByRole('heading', { name: `questions.${id}.label` })
+const heading = async (id: string) => {
+  const element = await rawHeading(id)
+  await sleep(TAP_COOLDOWN_MS + 30)
+  return element
+}
+
+vi.setConfig({ testTimeout: 20_000 })
 const option = (id: string, value: string, role = 'radio') =>
   screen.getByRole(role, { name: `questions.${id}.options.${value}` })
 
@@ -142,9 +154,27 @@ describe('Apply — tap questions', () => {
     await userEvent.click(option('gender_identity', 'Female'))
     await userEvent.click(option('gender_identity', 'Male'))
     await heading('smoking')
-    await new Promise(resolve => setTimeout(resolve, 400))
+    await sleep(400)
     expect(screen.getByRole('heading', { name: 'questions.smoking.label' })).toBeInTheDocument()
     expect(screen.queryAllByRole('radio', { checked: true })).toHaveLength(0)
+  })
+
+  it('ignores a tap that lands just after the next question appears', async () => {
+    renderApply()
+    await fillIdentity()
+    await heading('gender_identity')
+    await userEvent.click(option('gender_identity', 'Female'))
+
+    // a slow double-tap: the second tap arrives right after the auto-advance
+    await rawHeading('smoking')
+    await userEvent.click(option('smoking', 'never'))
+    await sleep(500)
+    expect(screen.getByRole('heading', { name: 'questions.smoking.label' })).toBeInTheDocument()
+    expect(screen.queryAllByRole('radio', { checked: true })).toHaveLength(0)
+
+    // once the question has been on screen for a moment, a tap answers it as usual
+    await userEvent.click(option('smoking', 'never'))
+    await heading('open_to_long_distance')
   })
 
   it('announces progress as "question n of N"', async () => {

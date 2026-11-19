@@ -78,7 +78,7 @@ The single source of truth for the questionnaire: every question, its ordered op
 
 - Option **order is meaningful**: ordered answers are compared by index in the scorer.
 - Stored values are language-independent: kept fields keep their old values (`"Long Term"`, `"Male"`), new selects store snake_case slugs, agreement items store integers 1–5, `top_values` an array of exactly three.
-- `shared` is opt-in and default-deny. Only `shared: true` answers may be shown to a match (`toMatchView`) or sent to OpenAI (`buildProfileSnippet`). Attachment, personality, partner-preference and identity answers are never shared. The optional `note_to_match` goes to the ice-breaker prompt only.
+- `shared` is opt-in and default-deny. Only `shared: true` answers may be shown to a match (`toMatchView`) or sent to OpenAI (`buildProfileSnippet`). Attachment, personality, partner-preference and identity answers are never shared. The optional free-text `note_to_match` is never scored and never sent to OpenAI; `toMatchView` returns it only once a match is mutual (`dating`), the same gate as the identity reveal — ice-breakers are generated at contact *request*, before the other person accepts, so it must not go into that prompt.
 
 ### Matching pipeline (`api/src/matching/`)
 
@@ -90,7 +90,7 @@ Single deterministic pipeline, two stages: **filter → score**. No network call
 - `scoring/weights.ts` — the per-dimension weights (sum to 1.0)
 - `proposals.ts` — derives unique couple proposals (canonicalized pair, symmetric score) from a full matching pass
 
-Matches are stored with `algorithm: "rules-v1"`. Applicants only see the `values`, `lifestyle` and `goals` breakdown bars (`APPLICANT_BREAKDOWN_KEYS`); `connection` and `personality` derive from private answers and stay admin-only. Portal thresholds live in `services/match-state.service.ts` (`PORTAL_MIN_SCORE` 0.5, `DEFAULT_SCORE_THRESHOLD` 0.6).
+Matches are stored with `algorithm: "rules-v1"`. Applicants only see three breakdown bars (`APPLICANT_BREAKDOWN_KEYS`): `values` and `lifestyle` read the scorer's `values_shared` / `lifestyle_shared` (computed from shared answers only, so a partner's private preferences cannot be worked backwards from a bar) and `goals`; `connection` and `personality` stay admin-only. Portal thresholds live in `services/match-state.service.ts` (`PORTAL_MIN_SCORE` 0.5, `DEFAULT_SCORE_THRESHOLD` 0.6).
 
 OpenAI (`OPENAI_API_KEY`) is used only for match summaries and ice-breakers (`services/ai.service.ts`), never for matching.
 

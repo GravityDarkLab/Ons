@@ -64,7 +64,7 @@
       "title": "Presque terminé",
       "subtitle": "Une ligne facultative, et c'est fini.",
       "noteLabel": "Une chose que vous aimeriez qu'un match sache ?",
-      "noteHint": "Facultatif. Sert à proposer des idées pour lancer la conversation une fois en contact. Jamais utilisé pour le score.",
+      "noteHint": "Facultatif. Montré à un match uniquement une fois que vous avez tous les deux accepté d'entrer en contact. Jamais utilisé pour le score.",
       "notePlaceholder": "p. ex. Je fais un excellent couscous",
       "disclaimer": "Je comprends que mes informations sont collectées uniquement pour le matchmaking, stockées en toute sécurité et jamais vendues ni partagées avec des tiers.",
       "disclaimerRequired": "Vous devez accepter pour continuer."
@@ -448,7 +448,8 @@
           "description": "À quel point vos tempéraments se ressemblent"
         }
       },
-      "answers": "Ses réponses"
+      "answers": "Ses réponses",
+      "partnerNote": "{{alias}} voulait que vous sachiez"
     },
     "settings": {
       "title": "Réglages",

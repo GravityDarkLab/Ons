@@ -64,7 +64,7 @@
       "title": "Almost done",
       "subtitle": "One optional line, then you're in.",
       "noteLabel": "One thing you would love a match to know?",
-      "noteHint": "Optional. Used to suggest conversation starters once you connect. Never used for scoring.",
+      "noteHint": "Optional. Shown to a match only after you have both agreed to connect. Never used for scoring.",
       "notePlaceholder": "e.g. I make a great couscous",
       "disclaimer": "I understand that my information is collected only for matchmaking, stored securely, and never sold or shared with third parties.",
       "disclaimerRequired": "You must agree to continue."
@@ -448,7 +448,8 @@
           "description": "How similar your temperaments are"
         }
       },
-      "answers": "Their answers"
+      "answers": "Their answers",
+      "partnerNote": "{{alias}} wanted you to know"
     },
     "settings": {
       "title": "Settings",
