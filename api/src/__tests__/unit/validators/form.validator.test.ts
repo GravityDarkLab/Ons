@@ -1,6 +1,8 @@
 import { describe, expect, test } from "bun:test";
 import { formSubmissionSchema } from "../../../validators/form.validator.js";
 import { updateAnswersSchema } from "../../../validators/profile.validator.js";
+import { createQuestionnaireSchema } from "../../../validators/admin.validator.js";
+import { QUESTIONNAIRE_VERSION, SECTIONS } from "../../../questionnaire/questions.js";
 import { validAnswers } from "../matching/_fixtures.js";
 
 const submit = (answers: Record<string, unknown>) =>
@@ -83,5 +85,48 @@ describe("updateAnswersSchema (v2)", () => {
 
   test("rejects unknown keys", () => {
     expect(updateAnswersSchema.safeParse({ answers: editable({ work: "Engineer" }) }).success).toBe(false);
+  });
+});
+
+describe("createQuestionnaireSchema — sharing policy", () => {
+  // Sharing is enforced from the code definitions (toMatchView, buildProfileSnippet),
+  // so an admin-supplied questionnaire must not claim a different policy.
+  const builtIn = () => ({ version: QUESTIONNAIRE_VERSION, name: "Matching Form v2", sections: structuredClone(SECTIONS) });
+  const withQuestion = (id: string, patch: Record<string, unknown>) => {
+    const body = builtIn();
+    for (const section of body.sections) for (const q of section.questions) if (q.id === id) Object.assign(q, patch);
+    return body;
+  };
+
+  test("accepts the built-in questionnaire unchanged", () => {
+    expect(createQuestionnaireSchema.safeParse(builtIn()).success).toBe(true);
+  });
+
+  test("rejects making a shared question private", () => {
+    const result = createQuestionnaireSchema.safeParse(withQuestion("smoking", { shared: false }));
+    expect(result.success).toBe(false);
+    expect(JSON.stringify(result.error?.issues)).toContain("smoking");
+  });
+
+  test("rejects leaving out the flag on a shared question", () => {
+    const body = builtIn();
+    for (const section of body.sections) for (const q of section.questions) if (q.id === "smoking") delete (q as { shared?: boolean }).shared;
+    expect(createQuestionnaireSchema.safeParse(body).success).toBe(false);
+  });
+
+  test("rejects sharing a private question", () => {
+    expect(createQuestionnaireSchema.safeParse(withQuestion("attach_anxiety_1", { shared: true })).success).toBe(false);
+  });
+
+  test("rejects sharing a question the code does not know", () => {
+    const body = builtIn();
+    body.sections[1]!.questions.push({ ...body.sections[1]!.questions[0]!, id: "favourite_colour", order: 99, shared: true });
+    expect(createQuestionnaireSchema.safeParse(body).success).toBe(false);
+  });
+
+  test("allows an unknown question that stays private", () => {
+    const body = builtIn();
+    body.sections[1]!.questions.push({ ...body.sections[1]!.questions[0]!, id: "favourite_colour", order: 99, shared: undefined });
+    expect(createQuestionnaireSchema.safeParse(body).success).toBe(true);
   });
 });

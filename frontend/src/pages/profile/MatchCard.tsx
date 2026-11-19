@@ -7,7 +7,7 @@ import { matchStatusTone } from '../../components/ui/statusTones'
 import { useTimeAgo } from '../../lib/timeAgo'
 import { getBreakdownEntry } from './matchBreakdownLabels'
 import { PartnerProfileView } from './PartnerProfileView'
-import type { MatchView, ContactResult } from '../../api/profile.client'
+import type { ContactResponse, ContactResult, MatchView } from '../../api/profile.client'
 import {
   daysSince,
   CANCEL_ELIGIBLE_DAYS,
@@ -22,7 +22,8 @@ import {
 interface MatchCardProps {
   match: MatchView
   onContactRequest?: (matchId: string) => Promise<ContactResult>
-  onRespond?: (matchId: string, accept: boolean) => Promise<void>
+  /** Resolves with what accepting reveals, so the card can show it at once. */
+  onRespond?: (matchId: string, accept: boolean) => Promise<ContactResponse | void>
   onWithdraw?: (matchId: string) => Promise<void>
   onOutcome?: (
     matchId: string,
@@ -264,10 +265,17 @@ export function MatchCard({ match, onContactRequest, onRespond, onWithdraw, onOu
       else setLoadingDecline(true)
       setActionError('')
       try {
-        await onRespond(matchId, accept)
+        const revealed = await onRespond(matchId, accept)
         setDisplayMatch(prev => ({
           ...prev,
           status: accept ? 'dating' : 'declined',
+          ...(accept && revealed
+            ? {
+                partnerInstagram: revealed.partnerInstagram ?? prev.partnerInstagram,
+                partnerFullName: revealed.partnerFullName ?? prev.partnerFullName,
+                partnerNote: revealed.partnerNote ?? prev.partnerNote,
+              }
+            : {}),
         }))
       } catch (err) {
         failAction(err)

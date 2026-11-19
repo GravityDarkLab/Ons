@@ -19,6 +19,7 @@ import {
   DELETION_GRACE_MS,
   type ApplicantMatchView,
   DEFAULT_SCORE_THRESHOLD,
+  noteForPartner,
 } from "./match-state.service.js";
 import {
   resolveIdentityById,
@@ -433,7 +434,7 @@ export async function respondToContact(
   matchId: string,
   accept: boolean,
   audit: { ipAddress: string; userAgent: string } = { ipAddress: "unknown", userAgent: "unknown" },
-): Promise<{ partnerInstagram: string | null; partnerFullName: string | null }> {
+): Promise<{ partnerInstagram: string | null; partnerFullName: string | null; partnerNote: string | null }> {
   const db       = await getDb();
   const matchCol = getMatchesCollection(db);
 
@@ -473,7 +474,7 @@ export async function respondToContact(
     throw new AppError("Match was already responded to", 409);
   }
 
-  if (!accept) return { partnerInstagram: null, partnerFullName: null };
+  if (!accept) return { partnerInstagram: null, partnerFullName: null, partnerNote: null };
 
   const ids = [match.applicantAId, match.applicantBId];
   await applyMatchStatusSideEffects("dating", ids);
@@ -520,9 +521,17 @@ export async function respondToContact(
     }
   );
 
+  // The match is now mutual, so the initiator's note may be shown to the
+  // target — returned here too so the card can show it without a reload.
+  const initiatorDoc = await getApplicantsCollection(db).findOne(
+    { _id: initiatorId },
+    { projection: { answers: 1 } },
+  );
+
   return {
     partnerInstagram: initiatorIdentity?.instagram ?? null,
     partnerFullName: initiatorIdentity?.fullName ?? null,
+    partnerNote: noteForPartner(initiatorDoc?.answers) ?? null,
   };
 }
 

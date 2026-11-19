@@ -55,6 +55,16 @@ const APPLICANT_BREAKDOWN_SOURCE: Record<(typeof APPLICANT_BREAKDOWN_KEYS)[numbe
 };
 
 /**
+ * The partner-facing form of an applicant's optional note: trimmed text, or
+ * undefined. Callers decide *when* it may be shown — only once a match is
+ * mutual (toMatchView, and the accept response in respondToContact).
+ */
+export function noteForPartner(answers: Record<string, unknown> | undefined): string | undefined {
+  const note = answers?.["note_to_match"];
+  return typeof note === "string" && note.trim() ? note.trim() : undefined;
+}
+
+/**
  * Pure function — no DB calls. Projects a MatchDoc into the applicant-facing view
  * from the perspective of `actorId`. `partnerAnswers` holds only the public
  * answers (identity fields are stored encrypted in a separate collection and
@@ -114,10 +124,8 @@ export function toMatchView(
   // The partner's free-text note is shown only once the match is mutual — the
   // same gate as the identity reveal. It is free text, so before that point it
   // could carry a handle or phone number around the mutual-reveal rule.
-  const note = partnerAnswers?.["note_to_match"];
-  if (doc.status === "dating" && typeof note === "string" && note.trim()) {
-    view.partnerNote = note.trim();
-  }
+  const note = noteForPartner(partnerAnswers);
+  if (doc.status === "dating" && note) view.partnerNote = note;
 
   if (partnerInstagram && doc.status === "dating") {
     view.partnerInstagram = partnerInstagram;

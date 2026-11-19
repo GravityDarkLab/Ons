@@ -21,7 +21,9 @@ const mockGetMyAnswers        = mock(async () => null as any);
 const mockUpdateMyAnswers     = mock(async () => {});
 const mockGetMyMatches        = mock(async () => [] as any[]);
 const mockRequestContact      = mock(async () => ({ iceBreakers: [] as string[], dateIdeas: [] as string[] }));
-const mockRespondToContact    = mock(async () => ({ partnerInstagram: null as string | null }));
+const mockRespondToContact    = mock(async () => ({
+  partnerInstagram: null as string | null, partnerFullName: null as string | null, partnerNote: null as string | null,
+}));
 const mockWithdrawContact     = mock(async () => {});
 const mockReportOutcome       = mock(async () => {});
 const mockDeactivateMyAccount = mock(async () => {});
@@ -123,7 +125,7 @@ beforeEach(() => {
   mockSetPassword.mockResolvedValue(null);
   mockGetMyMatches.mockResolvedValue([]);
   mockRequestContact.mockResolvedValue({ iceBreakers: ["Q1"], dateIdeas: ["D1"] });
-  mockRespondToContact.mockResolvedValue({ partnerInstagram: null });
+  mockRespondToContact.mockResolvedValue({ partnerInstagram: null, partnerFullName: null, partnerNote: null });
 });
 
 // ── POST /profile/login ───────────────────────────────────────────────────────
@@ -522,6 +524,18 @@ describe("POST /profile/matches/:id/respond", () => {
     const token = await applicantToken();
     const res = await post("/profile/matches/abc123/respond", { accept: true }, token);
     expect(res.status).toBe(200);
+  });
+
+  it("returns the partner's identity and note on accept, so the card updates without a reload", async () => {
+    mockRespondToContact.mockResolvedValueOnce({
+      partnerInstagram: "partner.handle", partnerFullName: "Partner Name", partnerNote: "I make a great couscous",
+    });
+    const token = await applicantToken();
+    const res = await post("/profile/matches/abc123/respond", { accept: true }, token);
+    expect(res.status).toBe(200);
+    expect((await res.json()).data).toEqual({
+      partnerInstagram: "partner.handle", partnerFullName: "Partner Name", partnerNote: "I make a great couscous",
+    });
   });
 
   it("returns 200 on decline", async () => {

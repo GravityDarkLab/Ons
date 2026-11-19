@@ -162,11 +162,18 @@ export async function requestContact(matchId: string): Promise<ContactResult> {
   return body.data
 }
 
+/** What accepting reveals: the partner's identity and note (all null on decline). */
+export interface ContactResponse {
+  partnerInstagram: string | null
+  partnerFullName: string | null
+  partnerNote: string | null
+}
+
 export async function respondToContact(
   matchId: string,
   accept: boolean,
-): Promise<{ partnerInstagram: string | null; partnerFullName: string | null }> {
-  const body = await profileRequest<{ data: { partnerInstagram: string | null; partnerFullName: string | null } }>(
+): Promise<ContactResponse> {
+  const body = await profileRequest<{ data: ContactResponse }>(
     `/profile/matches/${matchId}/respond`,
     { method: 'POST', body: JSON.stringify({ accept }) },
   )

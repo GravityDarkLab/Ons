@@ -53,6 +53,24 @@ describe('MatchCard', () => {
     expect(screen.getByRole('button', { name: /portal\.matches\.decline/i })).toBeInTheDocument()
   })
 
+  it("shows the partner's Instagram and note right after accepting, without a reload", async () => {
+    const onRespond = vi.fn().mockResolvedValue({
+      partnerInstagram: 'crescent.river', partnerFullName: 'Crescent River', partnerNote: 'I make a great couscous',
+    })
+    const match: MatchView = {
+      ...base,
+      status: 'in_progress',
+      perspective: 'target',
+      contactRequestedAt: new Date().toISOString(),
+    }
+    render(<MatchCard match={match} onRespond={onRespond} />)
+    await userEvent.click(screen.getByRole('button', { name: /portal\.matches\.accept/i }))
+
+    expect(onRespond).toHaveBeenCalledWith('m1', true)
+    expect(await screen.findByText('I make a great couscous')).toBeInTheDocument()
+    expect(screen.getByRole('link', { name: /crescent\.river/ })).toBeInTheDocument()
+  })
+
   it('shows relative time in target view (contactRequestedAt)', () => {
     const twoHoursAgo = new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString()
     const match: MatchView = {

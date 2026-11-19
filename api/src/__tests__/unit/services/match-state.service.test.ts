@@ -45,6 +45,7 @@ import {
   expireConflictingMatches,
   recalcOrphanedStatuses,
   toMatchView,
+  noteForPartner,
   DELETION_GRACE_MS,
   daysSince,
   getDatingAnchor,
@@ -552,6 +553,15 @@ describe("toMatchView – the partner's note", () => {
     expect(toMatchView(match, match.applicantAId, validAnswers()).partnerNote).toBeUndefined();
     expect(toMatchView(match, match.applicantAId, validAnswers({ note_to_match: "   " })).partnerNote).toBeUndefined();
     expect(toMatchView(match, match.applicantAId, validAnswers({ note_to_match: { $ne: 1 } })).partnerNote).toBeUndefined();
+  });
+});
+
+describe("noteForPartner", () => {
+  it("returns the trimmed note, or nothing when empty or not text", () => {
+    expect(noteForPartner(validAnswers({ note_to_match: "  hi there " }))).toBe("hi there");
+    expect(noteForPartner(validAnswers({ note_to_match: "   " }))).toBeUndefined();
+    expect(noteForPartner(validAnswers({ note_to_match: { $ne: 1 } }))).toBeUndefined();
+    expect(noteForPartner(undefined)).toBeUndefined();
   });
 });
 
