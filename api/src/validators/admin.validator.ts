@@ -51,10 +51,12 @@ export const createQuestionnaireSchema = z.object({
               sensitive: z.boolean(),
               required: z.boolean(),
               order: z.number().int().min(1),
-              options: z.array(z.string()).optional(),
+              options: z.array(z.object({ value: z.string().min(1), label: z.string().min(1) })).optional(),
               min: z.number().optional(),
               max: z.number().optional(),
               placeholder: z.string().optional(),
+              maxSelect: z.number().int().min(1).optional(),
+              shared: z.boolean().optional(),
             })
           )
           .min(1),
