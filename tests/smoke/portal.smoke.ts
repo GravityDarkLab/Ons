@@ -558,47 +558,42 @@ describe("Deactivate", () => {
 // ─────────────────────────────────────────────────────────────────────────────
 
 describe("Admin matching", () => {
-  T("POST /matching/run baseline → 200 + couplesProposed", async () => {
-    const r = await post(
-      "/matching/run",
-      { algorithm: "baseline", topN: 3 },
-      { cookie: S.adminCookie },
-    );
+  T("POST /matching/run → 200 + couplesProposed, rule-based", async () => {
+    const r = await post("/matching/run", {}, { cookie: S.adminCookie });
     expect(r.status).toBe(200);
+    expect(r.body.algorithm).toBe("rules-v1");
     expect(typeof r.body.couplesProposed).toBe("number");
   });
 
   T("POST /matching/run — no auth → 401", async () => {
-    const r = await post("/matching/run", { algorithm: "baseline" });
+    const r = await post("/matching/run", {});
     expect(r.status).toBe(401);
   });
 
-  T("POST /matching/run — invalid algorithm → 422", async () => {
-    const r = await post(
-      "/matching/run",
-      { algorithm: "invalid_algo" },
-      { cookie: S.adminCookie },
-    );
-    expect(r.status).toBe(422);
+  T("POST /matching/run — retired or unknown algorithm → 422", async () => {
+    for (const algorithm of ["embedding-cosine", "invalid_algo"]) {
+      const r = await post("/matching/run", { algorithm }, { cookie: S.adminCookie });
+      expect(r.status).toBe(422);
+    }
   });
 
   T("POST /matching/run — applicant JWT → 401 or 403", async () => {
     const r = await post(
       "/matching/run",
-      { algorithm: "baseline" },
+      {},
       { bearer: S.jwtB },
     );
     expect([401, 403]).toContain(r.status);
   });
 
-  // tested: candidates endpoint is admin-only (compatibility data + paid
-  // embedding calls must not be reachable anonymously)
+  // tested: candidates endpoint is admin-only (per-dimension compatibility
+  // data must not be reachable anonymously)
   T("GET /matching/candidates — no auth → 401", async () => {
     const r = await get(`/matching/candidates/${S.sampleApplicantId}`);
     expect(r.status).toBe(401);
   });
 
-  T("GET /matching/candidates — admin → 200 + candidates array", async () => {
+  T("GET /matching/candidates — admin → 200 + candidates with the full breakdown", async () => {
     // sampleApplicantId may have been deactivated by the Deactivate section
     // (candidates 404s on inactive applicants) — fetch a currently active one
     const list = await get("/admin/applicants?status=applied&limit=1", { cookie: S.adminCookie });
@@ -606,11 +601,15 @@ describe("Admin matching", () => {
     expect(activeId).toBeTruthy();
 
     const r = await get(
-      `/matching/candidates/${activeId}?algorithm=baseline`,
+      `/matching/candidates/${activeId}?top=3`,
       { cookie: S.adminCookie },
     );
     expect(r.status).toBe(200);
     expect(Array.isArray(r.body.candidates)).toBe(true);
+    for (const c of r.body.candidates) {
+      // admins see all five dimensions, including the private-derived ones
+      expect(Object.keys(c.breakdown)).toEqual(expect.arrayContaining(["values", "lifestyle", "connection", "personality", "goals"]));
+    }
   });
 
   // tested: last-run persistence — POST /matching/run above must have written

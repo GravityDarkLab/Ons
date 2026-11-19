@@ -28,7 +28,7 @@
     "test:frontend": "bun run --cwd frontend test",
     "test:smoke": "bun --env-file=tests/smoke/.env.smoke test  ./tests/smoke/portal.smoke.ts",
     "test:smoke:match": "bun --env-file=tests/smoke/.env.smoke test ./tests/smoke/match-flow.smoke.ts",
-    "test:smoke:all": "bun --env-file=tests/smoke/.env.smoke test ./tests/smoke/"
+    "test:smoke:all": "bun --env-file=tests/smoke/.env.smoke test ./tests/smoke/portal.smoke.ts ./tests/smoke/match-flow.smoke.ts"
   },
   "devDependencies": {
     "@types/bun": "^1.2.0",

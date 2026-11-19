@@ -122,7 +122,7 @@ beforeAll(async () => {
   }
 
   const now = new Date();
-  const algorithm = "baseline";
+  const algorithm = "rules-v1";
 
   // Pair A-B → decline flow
   const [cAB_a, cAB_b] = canonical(S.idA, S.idB);
@@ -258,6 +258,15 @@ describe("Match state machine — D-C accept → success flow", () => {
   });
 
   T("D reports success → 200", async () => {
+    // \'success\' unlocks after 7 days of dating — move the start back instead of waiting
+    const client = new MongoClient(MONGO_URI);
+    await client.connect();
+    await client.db().collection("matches").updateOne(
+      { _id: new ObjectId(S.matchDC) },
+      { $set: { datingStartedAt: new Date(Date.now() - 8 * 24 * 60 * 60 * 1000) } },
+    );
+    await client.close();
+
     const r = await post(
       `/profile/matches/${S.matchDC}/outcome`,
       { outcome: "success" },
@@ -291,15 +300,18 @@ describe("Match state machine — B-C failed outcome flow", () => {
     const bcAliasA = cBC_a.equals(S.idB) ? S.aliasB : S.aliasC;
     const bcAliasB = cBC_a.equals(S.idB) ? S.aliasC : S.aliasB;
     const now = new Date();
+    // Outcome reporting is time-gated (\'failed\' after 3 days of dating,
+    // \'success\' after 7), so the injected match has been dating for 8 days.
+    const datingSince = new Date(now.getTime() - 8 * 24 * 60 * 60 * 1000);
 
     const mBC = await db.collection("matches").insertOne({
       _id: new ObjectId(),
       applicantAId: cBC_a, applicantBId: cBC_b,
       applicantAAlias: bcAliasA, applicantBAlias: bcAliasB,
-      score: 0.78, algorithm: "baseline",
+      score: 0.78, algorithm: "rules-v1",
       status: "dating",
       initiatorId: cBC_a, // B is A in canonical order
-      contactRequestedAt: now, contactRespondedAt: now,
+      contactRequestedAt: datingSince, contactRespondedAt: datingSince, datingStartedAt: datingSince,
       createdAt: now, updatedAt: now,
     });
     S.matchBC = mBC.insertedId.toHexString();
@@ -375,16 +387,18 @@ describe("Match state machine — concurrent transitions", () => {
     const aliasB = cBC_a.equals(idB) ? S.aliasC : S.aliasB;
     const initiatorId = cBC_a.equals(idB) ? cBC_a : cBC_b;
     const now = new Date();
+    const datingSince = new Date(now.getTime() - 8 * 24 * 60 * 60 * 1000);
 
     await db.collection("matches").deleteMany({ applicantAId: cBC_a, applicantBId: cBC_b });
     const inserted = await db.collection("matches").insertOne({
       _id: new ObjectId(),
       applicantAId: cBC_a, applicantBId: cBC_b,
       applicantAAlias: aliasA, applicantBAlias: aliasB,
-      score: 0.77, algorithm: "baseline",
+      score: 0.77, algorithm: "rules-v1",
       status, initiatorId,
       contactRequestedAt: now,
-      ...(status === "dating" ? { contactRespondedAt: now } : {}),
+      // dating for 8 days, past the outcome-reporting time gate
+      ...(status === "dating" ? { contactRespondedAt: datingSince, datingStartedAt: datingSince } : {}),
       createdAt: now, updatedAt: now,
     });
 

@@ -152,7 +152,7 @@ SMOKE_ADMIN_USER=... SMOKE_ADMIN_PASS=... \
 SMOKE_MONGO_URI='mongodb://.../ons?authSource=ons' \
 bun test ./tests/smoke/portal.smoke.ts ./tests/smoke/match-flow.smoke.ts
 ```
-Credentials are in `api/.env.dev`; `SMOKE_MONGO_URI` matches `MONGODB_URI` there.
+Credentials live in `tests/smoke/.env.smoke` (gitignored; `bun run test:smoke:all` loads it); `SMOKE_MONGO_URI` matches `MONGODB_URI` in `api/.env.dev`. The API under test must run with `TRUST_PROXY=true`: the helpers send a different `X-Forwarded-For` per request so the form's 3-per-hour-per-IP limit doesn't trip, and without it every submission counts against one IP (`429`).
 
 ## Conventions
 
