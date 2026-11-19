@@ -122,38 +122,33 @@ function birthDateForAge(age: number): string {
   return `${year}-${month}-${day}`;
 }
 
-export function maleAnswers(handle: string, run: number) {
+/** A complete, valid v2 submission; `overrides` vary gender, age and handle. */
+function answersFor(overrides: Record<string, unknown>) {
   return {
-    questionnaireVersion: "1.0.0",
+    questionnaireVersion: "2.0.0",
     answers: {
-      location: "Paris, France", birth_date: birthDateForAge(26), height_cm: 178, work: "Engineer",
-      gender_identity: "Male", sexual_orientation: "Straight", religion: "Muslim",
-      vibe_words: "curious, calm", lifestyle: "Active, gym 3x/week",
-      relationship_type: "Long Term", open_to_long_distance: false,
-      preferred_physical_traits: "Athletic, fit",
-      preferred_character_traits: "Kind, ambitious",
-      deal_breakers: "Smoking", okay_with_opposite_gender_friends: true,
-      religion_deal_breaker: false, physical_affection_importance: 7,
-      dream_first_date: "Coffee and a walk", disclaimer_agreed: true,
-      instagram_handle: `${handle}_${run}`,
+      first_name: "Smoke", last_name: "Test",
+      location: "Paris, France", sexual_orientation: "Straight",
+      religion: "muslim", religion_practice: "a_little",
+      relationship_type: "Long Term", wants_children: "want",
+      smoking: "never", partner_smoking: "fine", alcohol: "never", partner_alcohol: "fine",
+      religion_match: "fine", open_to_long_distance: false, age_gap: "10", age_direction: "either",
+      top_values: ["family", "growth", "fun"],
+      social_energy: "mix", sleep_rhythm: "between", activity_level: "weekly",
+      planning_style: "mostly_plan", money_style: "between", opposite_gender_friends: "fine",
+      attach_anxiety_1: 2, attach_anxiety_2: 2, attach_avoidance_1: 2, attach_avoidance_2: 2,
+      conflict_style: "cool_off", physical_affection: "quite", contact_frequency: "few_times",
+      p_calm: 4, p_trust: 3, p_thorough: 4, p_open: 4,
+      disclaimer_agreed: true,
+      ...overrides,
     },
   };
 }
 
+export function maleAnswers(handle: string, run: number) {
+  return answersFor({ gender_identity: "Male", birth_date: birthDateForAge(26), instagram_handle: `${handle}_${run}` });
+}
+
 export function femaleAnswers(handle: string, run: number) {
-  return {
-    questionnaireVersion: "1.0.0",
-    answers: {
-      location: "Paris, France", birth_date: birthDateForAge(25), height_cm: 165, work: "Designer",
-      gender_identity: "Female", sexual_orientation: "Straight", religion: "Muslim",
-      vibe_words: "warm, creative", lifestyle: "Yoga, healthy eater",
-      relationship_type: "Long Term", open_to_long_distance: false,
-      preferred_physical_traits: "Tall, well-groomed",
-      preferred_character_traits: "Funny, emotionally intelligent",
-      deal_breakers: "Arrogance", okay_with_opposite_gender_friends: true,
-      religion_deal_breaker: false, physical_affection_importance: 8,
-      dream_first_date: "Museum then dinner", disclaimer_agreed: true,
-      instagram_handle: `${handle}_${run}`,
-    },
-  };
+  return answersFor({ gender_identity: "Female", birth_date: birthDateForAge(25), instagram_handle: `${handle}_${run}` });
 }
