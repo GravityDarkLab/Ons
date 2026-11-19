@@ -79,17 +79,18 @@ export type NudgeAckInput = z.infer<typeof nudgeAckSchema>;
  * `.strict()` rejects all of them (and any unknown key) instead of silently
  * dropping.
  */
+const SELF_LOCKED_KEYS = new Set([
+  "instagram_handle", "first_name", "last_name", "disclaimer_agreed", "birth_date", "gender_identity",
+]);
+
+// Filtered at runtime rather than with .omit(): most answer rules are generated
+// from the question definitions, so their keys are not statically known.
+const editableAnswers = Object.fromEntries(
+  Object.entries(formSubmissionSchema.shape.answers.shape).filter(([key]) => !SELF_LOCKED_KEYS.has(key))
+);
+
 export const updateAnswersSchema = z.object({
-  answers: formSubmissionSchema.shape.answers
-    .omit({
-      instagram_handle: true,
-      first_name: true,
-      last_name: true,
-      disclaimer_agreed: true,
-      birth_date: true,
-      gender_identity: true,
-    })
-    .strict(),
+  answers: z.object(editableAnswers).strict(),
 });
 
 export type UpdateAnswersInput = z.infer<typeof updateAnswersSchema>;
