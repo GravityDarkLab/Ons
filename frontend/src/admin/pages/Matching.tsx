@@ -16,7 +16,7 @@ const PHASE_INTERVAL_MS = 1700
 export function Matching() {
   const { t } = useTranslation()
   const timeAgo = useTimeAgo()
-  const [algorithm, setAlgorithm] = useState('embedding-cosine')
+  const [algorithm, setAlgorithm] = useState('rules-v1')
   const [loading, setLoading]     = useState(false)
   const [result, setResult]       = useState<MatchingRun | null>(null)
   const [error, setError]         = useState('')
@@ -37,7 +37,7 @@ export function Matching() {
   }, [loading])
 
   const ALGORITHMS = [
-    { value: 'embedding-cosine', label: t('admin.matching.embedding'), hint: t('admin.matching.embeddingHint'), recommended: true },
+    { value: 'rules-v1', label: t('admin.matching.rules'), hint: t('admin.matching.rulesHint'), recommended: true },
   ]
 
   const selectedAlgorithm = ALGORITHMS.find(a => a.value === algorithm)

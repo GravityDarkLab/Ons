@@ -10,6 +10,7 @@ import { useToast } from '../../components/ui/Toast'
 import { applicantStatusTone, matchStatusTone } from '../../components/ui/statusTones'
 import { useOptionalAuth } from '../context/AuthContext'
 import type { Applicant, ApplicantStatus, Match } from '../types'
+import { formatAnswer } from '../../lib/questions'
 
 // ── Icons ──────────────────────────────────────────────────────────────────────
 
@@ -450,14 +451,15 @@ export function ApplicantDetail() {
                 {t('admin.detail.answers')}
               </p>
               <div className="space-y-2.5">
-                {Object.entries(applicant.answers).map(([key, value]) => (
-                  <div key={key} className="flex justify-between gap-3 text-sm">
-                    <span className="text-muted capitalize">{key.replace(/_/g, ' ')}</span>
-                    <span className="text-primary text-right break-words max-w-[60%]">
-                      {typeof value === 'boolean' ? (value ? t('common.yes') : t('common.no')) : String(value ?? '—')}
-                    </span>
-                  </div>
-                ))}
+                {Object.entries(applicant.answers).map(([key, raw]) => {
+                  const { label, value } = formatAnswer(t, key, raw)
+                  return (
+                    <div key={key} className="flex justify-between gap-3 text-sm">
+                      <span className="text-muted">{label}</span>
+                      <span className="text-primary text-end break-words max-w-[60%]">{value}</span>
+                    </div>
+                  )
+                })}
               </div>
             </div>
 

@@ -66,39 +66,44 @@ describe('ProfileDashboard', () => {
     expect(screen.getByText('Test User')).toBeInTheDocument()
   })
 
-  it('shows a threshold slider and reveals more matches when lowered', async () => {
+  it('shows a threshold slider from 50% and reveals more matches when lowered', async () => {
     mockGetMyProfile.mockResolvedValue({
       applicantId: '2',
       alias: 'River Moon',
       fullName: null,
       status: 'matched',
-      scoreThreshold: 0.8,
+      scoreThreshold: 0.6,
       createdAt: '2026-01-01',
       deletionScheduledAt: null,
       distanceNudge: null,
     })
     mockGetMyMatches.mockResolvedValue([
-      { matchId: 'm1', partnerAlias: 'High Score', score: 0.86, status: 'proposed', perspective: 'none' },
-      { matchId: 'm2', partnerAlias: 'Low Score', score: 0.65, status: 'proposed', perspective: 'none' },
+      { matchId: 'm1', partnerAlias: 'High Score', score: 0.72, status: 'proposed', perspective: 'none' },
+      { matchId: 'm2', partnerAlias: 'Low Score', score: 0.52, status: 'proposed', perspective: 'none' },
     ])
 
     renderDashboard()
 
-    // Matches are fetched at the server minimum so the slider works client-side
+    // Matches are fetched at the server minimum (0.5) so the slider works client-side
     await waitFor(() => {
-      expect(mockGetMyMatches).toHaveBeenCalledWith(0.6, 50)
+      expect(mockGetMyMatches).toHaveBeenCalledWith(0.5, 50)
     })
 
-    // Default threshold 80% — only the high-score match is visible
+    // Default threshold 60% — only the higher match is visible
     expect(await screen.findByText('High Score')).toBeInTheDocument()
     expect(screen.queryByText('Low Score')).not.toBeInTheDocument()
 
-    // Lower the slider to 60% — the second match appears
-    fireEvent.change(screen.getByRole('slider'), { target: { value: '60' } })
+    const slider = screen.getByRole('slider')
+    expect(slider).toHaveAttribute('min', '50')
+    expect(slider).toHaveAttribute('max', '100')
+    expect(slider).toHaveValue('60')
+
+    // Lower the slider to 50% — the second match appears
+    fireEvent.change(slider, { target: { value: '50' } })
     expect(screen.getByText('Low Score')).toBeInTheDocument()
 
-    // Raise back to 80% — it disappears again
-    fireEvent.change(screen.getByRole('slider'), { target: { value: '80' } })
+    // Raise back to 60% — it disappears again
+    fireEvent.change(slider, { target: { value: '60' } })
     expect(screen.queryByText('Low Score')).not.toBeInTheDocument()
   })
 

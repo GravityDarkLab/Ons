@@ -71,8 +71,6 @@
     }
   },
   "steps": {
-    "wordCount": "{{count}} Wörter",
-    "writeMoreHint": "Etwas mehr Detail verbessert deine Matches",
     "s1": {
       "title": "Wer bist du?",
       "subtitle": "Nur die Grundlagen — wir lernen dich in den nächsten Schritten besser kennen.",
@@ -85,60 +83,6 @@
       "locationPlaceholder": "Stadt, Land",
       "privacy": "Dein Instagram-Handle ist Ende-zu-Ende verschlüsselt. Nur verifizierte Admins können ihn sehen. Du erhältst einen Codenamen.",
       "birthDate": "Geburtsdatum"
-    },
-    "s2": {
-      "title": "Über dich",
-      "subtitle": "Hilf uns, dich besser zu verstehen.",
-      "birthDate": "Geburtsdatum",
-      "height": "Größe (cm)",
-      "heightPlaceholder": "175",
-      "heightHint": "Optional",
-      "work": "Beruf / Tätigkeit",
-      "workPlaceholder": "z.B. Softwareentwickler, Lehrer...",
-      "gender": "Geschlechtsidentität",
-      "orientation": "Sexuelle Orientierung",
-      "religion": "Religion",
-      "religionPlaceholder": "z.B. Muslim, Christ, Atheist..."
-    },
-    "s3": {
-      "title": "Dein Vibe",
-      "subtitle": "Hier lernen wir dich wirklich kennen. Sei ehrlich — so finden wir dein Match.",
-      "vibe": "Beschreibe dich in 3 Wörtern",
-      "vibePlaceholder": "z.B. neugierig, ruhig, lustig",
-      "lifestyle": "Erzähl uns von deinem Lebensstil",
-      "lifestylePlaceholder": "Gelegentlicher Trinker? Nachtmensch? Sportler? Erzähl es uns.",
-      "tip": "Denke daran, wie deine engsten Freunde dich beschreiben würden. Authentizität führt zu besseren Matches."
-    },
-    "s4": {
-      "title": "Was du suchst",
-      "subtitle": "Sei konkret — je mehr Details, desto besser das Match.",
-      "relationshipType": "Art der Beziehung",
-      "longDistance": "Offen für Fernbeziehung?",
-      "longDistanceHint": "Würdest du eine Beziehung über Städte oder Länder hinweg in Betracht ziehen?",
-      "maxAgeGap": "Maximaler Altersunterschied (Jahre)",
-      "maxAgeGapPlaceholder": "Leer lassen für keine Präferenz",
-      "openToOlder": "Offen für jemanden, der älter ist als ich",
-      "openToYounger": "Offen für jemanden, der jünger ist als ich",
-      "physicalTraits": "Bevorzugte körperliche Eigenschaften",
-      "physicalTraitsPlaceholder": "Beschreibe, was du körperlich ansprechend findest...",
-      "characterTraits": "Bevorzugte Charaktereigenschaften",
-      "characterTraitsPlaceholder": "Welche Persönlichkeitsmerkmale sind dir am wichtigsten?",
-      "dealBreakers": "Ausschlusskriterien",
-      "dealBreakersPlaceholder": "Was sind absolute No-Gos für dich?",
-      "oppGenderFriends": "Okay damit, dass der Partner viele Freunde des anderen Geschlechts hat?",
-      "religionDealBreaker": "Ist die Religion des Partners ein Ausschlusskriterium?",
-      "religionDealBreakerHint": "Würdest du jemanden mit einem anderen Glauben nicht daten?"
-    },
-    "s5": {
-      "title": "Letzte Worte",
-      "subtitle": "Fast fertig. Nur noch ein paar Dinge.",
-      "affection": "Wie wichtig ist dir körperliche Zuneigung?",
-      "affectionLow": "unwichtig",
-      "affectionHigh": "sehr wichtig",
-      "firstDate": "Beschreibe dein Traumerstes Date",
-      "firstDatePlaceholder": "Ein Spaziergang im Park, Abendessen auf einer Dachterrasse...",
-      "disclaimer": "Ich verstehe, dass meine Daten nur für das Matchmaking verwendet, sicher gespeichert und niemals an Dritte verkauft oder weitergegeben werden.",
-      "disclaimerRequired": "Du musst zustimmen, um fortzufahren."
     }
   },
   "success": {
@@ -271,8 +215,6 @@
       "baselineHint": "Gewichtetes regelbasiertes Scoring",
       "cosine": "Kosinus",
       "cosineHint": "Kosinus-Ähnlichkeit auf numerischen Vektoren",
-      "embedding": "Embedding",
-      "embeddingHint": "Semantische Ähnlichkeit via Texteinbettungen",
       "lastRunSummary": "Letzter Lauf: {{time}} · {{count}} Paare vorgeschlagen",
       "neverRun": "Nie ausgeführt",
       "confirmTitle": "Matching mit {{algorithm}} ausführen?",
@@ -290,7 +232,8 @@
       "statDuration": "Dauer",
       "algorithmUsed": "Algorithmus: {{algorithm}}",
       "viewMatches": "Paare anzeigen",
-      "multilingualWarning": "Baseline- und Kosinus-Algorithmen verwenden Stichwortübereinstimmung für Freitextfelder. Sie können schlechte Ergebnisse liefern, wenn Bewerber das Formular in verschiedenen Sprachen ausgefüllt haben. Verwende <bold>Embedding</bold> für mehrsprachige Genauigkeit."
+      "rules": "Regelbasiert",
+      "rulesHint": "Vergleicht die Antworten direkt: kostenlos, sofort und reproduzierbar"
     },
     "matches": {
       "title": "Paare",
@@ -478,77 +421,34 @@
       "confirmContactNo": "Nein, passen",
       "withdrawNotice": "Match geschlossen. Neue Matches gibt es in der nächsten Matching-Phase — schau morgen wieder vorbei.",
       "viewOnInstagram": "@{{handle}} auf Instagram ansehen",
-      "vibe": "Ihre Ausstrahlung",
-      "lookingFor": "Was sie suchen",
-      "relationship": "Beziehung",
-      "ageGap": "Altersunterschied",
-      "ageGapValue": "Bis zu {{n}} Jahre",
-      "openOlder": "offen für Ältere",
-      "openYounger": "offen für Jüngere",
-      "longDistance": "Fernbeziehung",
-      "affection": "Körperliche Zuneigung",
-      "oppGenderFriends": "OK mit andersgeschlechtlichen Freunden",
-      "religionDB": "Religion ist ein No-Go",
-      "inTheirWords": "In eigenen Worten",
-      "physicalTraits": "Körperliche Vorlieben",
-      "characterTraits": "Charakterliche Vorlieben",
-      "dealBreakers": "No-Gos",
-      "dreamDate": "Traumerstes Date",
       "generatingSummary": "Zusammenfassung wird erstellt…",
       "summaryError": "Zusammenfassung konnte nicht erstellt werden.",
       "summaryRetry": "Erneut versuchen",
       "strengths": "Stärken",
       "keepInMind": "Zu bedenken",
       "breakdown": {
-        "relationship_type": {
-          "label": "Beziehungsziele",
-          "description": "Wie gut eure Beziehungsziele (langfristig, kurzfristig usw.) übereinstimmen."
-        },
-        "deal_breakers": {
-          "label": "Ausschlusskriterien",
-          "description": "Ob die Ausschlusskriterien einer Person im Lebensstil der anderen vorkommen."
-        },
-        "religion_compatibility": {
-          "label": "Religion",
-          "description": "Wie kompatibel eure religiösen Hintergründe und eure Offenheit sind."
-        },
-        "affection_importance": {
-          "label": "Zärtlichkeit",
-          "description": "Wie nah eure Vorstellungen von körperlicher Zuneigung beieinander liegen."
-        },
-        "long_distance": {
-          "label": "Fernbeziehung",
-          "description": "Ob ihr beide offen für eine Fernbeziehung seid."
+        "values": {
+          "label": "Werte",
+          "description": "Gemeinsame Prioritäten und wie sehr der Glaube zum Alltag gehört"
         },
         "lifestyle": {
           "label": "Lebensstil",
-          "description": "Wie ähnlich eure Alltagsgestaltung ist."
+          "description": "Alltagsrhythmus: soziale Energie, Schlaf, Aktivität, Planung, Geld und Gewohnheiten"
         },
-        "numeric_compatibility": {
-          "label": "Kernpräferenzen",
-          "description": "Wie gut eure Beziehungspräferenzen strukturell zusammenpassen."
+        "goals": {
+          "label": "Ziele",
+          "description": "Wonach ihr jeweils sucht, und Kinder"
         },
-        "lifestyle_similarity": {
-          "label": "Lebensstil",
-          "description": "Wie ähnlich eure Lebensstile laut euren Angaben sind."
+        "connection": {
+          "label": "Verbindung",
+          "description": "Wie ihr mit Nähe, Konflikten, Zuneigung und Kontakt umgeht"
         },
-        "character_cross_match": {
+        "personality": {
           "label": "Persönlichkeit",
-          "description": "Wie gut eure Persönlichkeiten zu dem passen, was ihr jeweils sucht."
-        },
-        "character_a_wants_b": {
-          "label": "Ihre Art vs. was du suchst",
-          "description": "Wie gut die Persönlichkeit der anderen Person zu dem passt, was du suchst."
-        },
-        "character_b_wants_a": {
-          "label": "Deine Art vs. was sie suchen",
-          "description": "Wie gut deine Persönlichkeit zu dem passt, was die andere Person sucht."
-        },
-        "deal_breaker_penalty": {
-          "label": "Ausschlusskriterien",
-          "description": "Ob die Ausschlusskriterien einer Person im Lebensstil der anderen vorkommen."
+          "description": "Wie ähnlich eure Temperamente sind"
         }
-      }
+      },
+      "answers": "Die Antworten"
     },
     "settings": {
       "title": "Einstellungen",

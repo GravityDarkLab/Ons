@@ -158,7 +158,7 @@ export async function fetchMatchingLastRun(): Promise<MatchingLastRun | null> {
 export async function fetchCandidates(
   applicantId: string,
   top = 10,
-  algorithm = 'embedding-cosine',
+  algorithm = 'rules-v1',
 ): Promise<MatchCandidate[]> {
   const params = new URLSearchParams({ top: String(top), algorithm })
   const res = await request<{ candidates: MatchCandidate[] }>(

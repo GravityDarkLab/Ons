@@ -26,7 +26,7 @@ const APPLICANT_A = {
   alias: 'Lunar Ocean',
   status: 'applied' as const,
   questionnaireVersion: '1.0.0',
-  answers: { location: 'Berlin, Germany', age: 25 },
+  answers: { location: 'Berlin, Germany', age: 25, smoking: 'never', top_values: ['family', 'fun', 'faith'], p_calm: 4, open_to_long_distance: false },
   createdAt: new Date().toISOString(),
   updatedAt: new Date().toISOString(),
 }
@@ -181,6 +181,16 @@ describe('ApplicantDetail — answers section', () => {
     renderDetail()
     await waitFor(() => screen.getByText('Berlin, Germany'))
     expect(screen.getByText('25')).toBeInTheDocument()
+  })
+
+  it('shows tap answers with translated question and option labels', async () => {
+    renderDetail()
+    await waitFor(() => screen.getByText('Berlin, Germany'))
+    expect(screen.getByText('questions.smoking.label')).toBeInTheDocument()
+    expect(screen.getByText('questions.smoking.options.never')).toBeInTheDocument()
+    expect(screen.getByText(/questions\.top_values\.options\.family, questions\.top_values\.options\.fun/)).toBeInTheDocument()
+    expect(screen.getByText('questions.scale.4')).toBeInTheDocument()
+    expect(screen.getByText('questions.no')).toBeInTheDocument()
   })
 })
 

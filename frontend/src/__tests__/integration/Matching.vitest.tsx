@@ -15,7 +15,7 @@ const mockRunMatching = vi.mocked(client.runMatching)
 const mockFetchLastRun = vi.mocked(client.fetchMatchingLastRun)
 
 const RUN_RESULT = {
-  algorithm: 'embedding-cosine',
+  algorithm: 'rules-v1',
   totalApplicants: 130,
   durationMs: 93,
   couplesProposed: 480,
@@ -43,29 +43,24 @@ async function clickRunAndConfirm() {
 }
 
 describe('Matching page — algorithm selector', () => {
-  it('renders only the embedding algorithm option', () => {
+  it('renders only the rule-based algorithm option', () => {
     renderMatching()
     expect(screen.getAllByRole('radio')).toHaveLength(1)
   })
 
-  it('selects Embedding by default', () => {
+  it('selects the rule-based algorithm by default', () => {
     renderMatching()
-    const radio = screen.getByRole('radio', { name: /admin\.matching\.embedding/i }) as HTMLInputElement
+    const radio = screen.getByRole('radio', { name: /admin\.matching\.rules/i }) as HTMLInputElement
     expect(radio).toBeChecked()
-  })
-
-  it('never shows the multilingual warning (only embedding is available)', () => {
-    renderMatching()
-    expect(screen.queryByText(/admin\.matching\.multilingualWarning/i)).not.toBeInTheDocument()
   })
 })
 
 describe('Matching page — run button', () => {
-  it('calls runMatching with embedding-cosine', async () => {
+  it('calls runMatching with rules-v1', async () => {
     mockRunMatching.mockResolvedValue(RUN_RESULT)
     renderMatching()
     await clickRunAndConfirm()
-    expect(mockRunMatching).toHaveBeenCalledWith('embedding-cosine')
+    expect(mockRunMatching).toHaveBeenCalledWith('rules-v1')
   })
 
   it('shows error message when run fails', async () => {
@@ -152,7 +147,7 @@ describe('Matching page — last run info', () => {
   it('shows the stored last-run summary on mount', async () => {
     mockFetchLastRun.mockResolvedValue({
       at: new Date(Date.now() - 60 * 60 * 1000).toISOString(),
-      algorithm: 'embedding-cosine',
+      algorithm: 'rules-v1',
       totalApplicants: 12,
       couplesProposed: 4,
       durationMs: 850,
