@@ -1,2 +1,9 @@
 [test]
 preload = ["./api/src/__tests__/setup.ts"]
+
+# Supply-chain protection: never install a package version published less
+# than 15 days ago (1,296,000 seconds) — direct or transitive, for every
+# `bun install` / `bun add` / `bun update`, by people and by Dependabot.
+# Matches the cooldown in .github/dependabot.yml.
+[install]
+minimumReleaseAge = 1296000
