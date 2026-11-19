@@ -9,7 +9,7 @@ import { errorResponse } from "../utils/error-response.js";
 import type { ValidatedContext } from "../utils/validated-context.js";
 import type { MatchingRunInput } from "../validators/admin.validator.js";
 
-const ALGORITHM = "embedding-cosine";
+const ALGORITHM = "rules-v1";
 
 /**
  * GET /api/v1/matching/candidates/:applicantId

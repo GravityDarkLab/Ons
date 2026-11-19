@@ -24,7 +24,6 @@ export interface ApplicantMatchView {
   partnerAlias: string;
   score: number;
   breakdown?: Record<string, number>;
-  llmReasoning?: string;
   status: MatchStatus;
   perspective: MatchPerspective;
   contactRequestedAt?: Date; // when the initiator clicked "contact" — shown to target
@@ -78,7 +77,6 @@ export function toMatchView(
   };
 
   if (doc.breakdown) view.breakdown = doc.breakdown;
-  if (doc.llmReasoning) view.llmReasoning = doc.llmReasoning;
 
   if (partnerAnswers) {
     const profile = Object.fromEntries(
@@ -211,7 +209,10 @@ export async function expireConflictingMatches(
 }
 
 /** Portal slider floor — matches below this score are never shown to applicants. */
-export const PORTAL_MIN_SCORE = 0.6;
+export const PORTAL_MIN_SCORE = 0.5;
+
+/** Default per-applicant threshold for which matches the portal shows. */
+export const DEFAULT_SCORE_THRESHOLD = 0.6;
 
 /** Day count after which a "didn't work" outcome can be reported. */
 export const CANCEL_ELIGIBLE_DAYS: number = 3;

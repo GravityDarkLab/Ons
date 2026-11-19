@@ -5,7 +5,6 @@ import {
   getApplicantsCollection,
   getMatchesCollection,
   getIdentitiesCollection,
-  getEmbeddingsCollection,
 } from "../db/collections.js";
 import type { ApplicantDoc, ApplicantStatus } from "../models/applicant.model.js";
 import type { MatchDoc } from "../models/match.model.js";
@@ -19,6 +18,7 @@ import {
   recalcOrphanedStatuses,
   DELETION_GRACE_MS,
   type ApplicantMatchView,
+  DEFAULT_SCORE_THRESHOLD,
 } from "./match-state.service.js";
 import {
   resolveIdentityById,
@@ -27,7 +27,6 @@ import {
 import { hashMagicToken } from "../privacy/magic-token.js";
 import { writeAuditLog } from "../middleware/audit.middleware.js";
 import { generateIceBreakers } from "./icebreaker.service.js";
-import { embedApplicant, buildTexts } from "./embedding.service.js";
 
 // ── Auth ──────────────────────────────────────────────────────────────────────
 
@@ -134,7 +133,7 @@ export async function getMyProfile(applicantId: string): Promise<ApplicantProfil
     alias:          doc.alias,
     fullName:       identity?.fullName ?? null,
     status:         doc.status,
-    scoreThreshold: doc.scoreThreshold ?? 0.8,
+    scoreThreshold: doc.scoreThreshold ?? DEFAULT_SCORE_THRESHOLD,
     createdAt:      doc.createdAt,
     deletionScheduledAt: doc.deletionScheduledAt ?? null,
     distanceNudge: await getDistanceNudge(applicantId),
@@ -267,23 +266,6 @@ export async function updateMyAnswers(
   if (!("note_to_match" in updates)) delete merged["note_to_match"];
 
   await col.updateOne({ _id: oid }, { $set: { answers: merged, updatedAt: new Date() } });
-
-  // Refresh embeddings in the background (same as submission) so the next
-  // matching run scores against the updated text — but only if the edit
-  // actually touched an embedding-relevant field. Most edits (location, age
-  // preferences, etc.) don't, and re-embedding unchanged text wastes API calls.
-  const oldTexts = buildTexts(doc.answers ?? {});
-  const newTexts = buildTexts(merged);
-  const textChanged =
-    oldTexts.profile !== newTexts.profile ||
-    oldTexts.preference !== newTexts.preference ||
-    oldTexts.dealBreakers !== newTexts.dealBreakers;
-
-  if (textChanged) {
-    embedApplicant(oid, merged).catch((err) =>
-      console.error(`[profile] Background embedding refresh failed for ${doc.alias}:`, err)
-    );
-  }
 }
 
 // ── Matches ───────────────────────────────────────────────────────────────────
@@ -717,8 +699,8 @@ export async function cancelAccountDeletion(applicantId: string): Promise<void> 
 /**
  * Immediate, irreversible self-deletion — bypasses the configurable
  * deletion grace period (DELETION_GRACE_DAYS / DELETION_GRACE_MS).
- * Removes the applicant document, their identity record, embeddings, and
- * any matches involving them.
+ * Removes the applicant document, their identity record and any matches
+ * involving them.
  */
 export async function deleteMyAccountNow(
   applicantId: string,
@@ -730,7 +712,6 @@ export async function deleteMyAccountNow(
   const appCol        = getApplicantsCollection(db);
   const matchCol      = getMatchesCollection(db);
   const identitiesCol = getIdentitiesCollection(db);
-  const embeddingsCol = getEmbeddingsCollection(db);
 
   const doc = await appCol.findOne({ _id: oid });
   if (!doc) throw new AppError("Not found", 404);
@@ -766,7 +747,6 @@ export async function deleteMyAccountNow(
   await Promise.all([
     appCol.deleteOne({ _id: oid }),
     identitiesCol.deleteOne({ applicantId: oid }),
-    embeddingsCol.deleteOne({ applicantId: oid }),
     matchCol.deleteMany({ $or: [{ applicantAId: oid }, { applicantBId: oid }] }),
   ]);
 

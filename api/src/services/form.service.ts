@@ -1,4 +1,5 @@
 import { ObjectId } from "mongodb";
+import { DEFAULT_SCORE_THRESHOLD } from "./match-state.service.js";
 import { AppError } from "../errors.js";
 import { getDb } from "../db/connection.js";
 import { getApplicantsCollection } from "../db/collections.js";
@@ -12,7 +13,6 @@ import { generateUniqueAlias } from "../privacy/alias.generator.js";
 import { storeIdentity, checkInstagramExists } from "../privacy/identity.service.js";
 import { verifySubmissionKey } from "../privacy/submission-key.js";
 import { generateMagicToken, hashMagicToken } from "../privacy/magic-token.js";
-import { embedApplicant } from "./embedding.service.js";
 
 export interface FormSubmissionResult {
   alias: string;
@@ -119,7 +119,7 @@ export async function processFormSubmission(
     status: "applied",
     magicToken: hashMagicToken(magicToken), // store hash; raw token returned to user only
     passwordHash: null,
-    scoreThreshold: 0.8,
+    scoreThreshold: DEFAULT_SCORE_THRESHOLD,
     submissionIp: ipAddress,
     createdAt: now,
     updatedAt: now,
@@ -127,11 +127,6 @@ export async function processFormSubmission(
 
   // 8. Store encrypted identity with hash
   await storeIdentity(applicantId, alias, instagramHandle, fullName);
-
-  // 9. Pre-compute embeddings (fire-and-forget)
-  embedApplicant(applicantId, publicAnswers).catch((err) =>
-    console.error(`[form] Background embedding failed for ${alias}:`, err)
-  );
 
   return { alias, applicantId: applicantId.toHexString(), magicToken };
 }

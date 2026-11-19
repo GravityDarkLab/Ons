@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { DEFAULT_SCORE_THRESHOLD, PORTAL_MIN_SCORE } from "../services/match-state.service.js";
 import { formSubmissionSchema } from "./form.validator.js";
 
 export const profileLoginSchema = z.object({
@@ -27,8 +28,8 @@ export const matchQuerySchema = z.object({
     .string()
     .optional()
     .transform((v) => {
-      const n = parseFloat(v ?? "0.8");
-      return Math.min(1.0, Math.max(0.6, isNaN(n) ? 0.8 : n));
+      const n = parseFloat(v ?? String(DEFAULT_SCORE_THRESHOLD));
+      return Math.min(1.0, Math.max(PORTAL_MIN_SCORE, isNaN(n) ? DEFAULT_SCORE_THRESHOLD : n));
     }),
   limit: z
     .string()

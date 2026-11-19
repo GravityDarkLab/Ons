@@ -30,7 +30,6 @@ mock.module("../../../db/collections.js", () => ({
   getApplicantsCollection:     () => fakeApplicants,
   getIdentitiesCollection:     () => fakeApplicants,
   getAuditLogsCollection:      () => fakeApplicants,
-  getEmbeddingsCollection:     () => fakeApplicants,
   getAdminsCollection:         () => fakeApplicants,
   getMatchesCollection:        () => fakeMatches,
   getAppConfigCollection:      () => fakeApplicants,
@@ -73,7 +72,7 @@ function makeMatch(overrides: Partial<MatchDoc> = {}): MatchDoc {
     applicantBId: bId,
     applicantBAlias: "River Storm",
     score: 0.85,
-    algorithm: "embedding-cosine",
+    algorithm: "rules-v1",
     status: "proposed",
     createdAt: new Date(),
     updatedAt: new Date(),
@@ -706,6 +705,10 @@ describe("promoteAppliedToMatched", () => {
 
     expect(await promoteAppliedToMatched()).toBe(0);
     expect(fakeApplicants.updateMany).not.toHaveBeenCalled();
+  });
+
+  it("the portal floor is 0.5 (rule-based scores run lower than the old rerank scores)", () => {
+    expect(PORTAL_MIN_SCORE).toBe(0.5);
   });
 
   it("only looks at proposed matches at or above PORTAL_MIN_SCORE", async () => {

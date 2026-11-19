@@ -15,7 +15,7 @@ const matchingRoutes = new Hono();
 matchingRoutes.use("*", adminRateLimiter);
 
 // Admin-only: candidates expose compatibility data (aliases, scores,
-// breakdowns) and can trigger paid embedding calls — never public
+// breakdowns) — never public
 matchingRoutes.get("/candidates/:applicantId", requireAdmin, getMatchCandidates);
 
 // Admin-only: persisted summary of the most recent matching pass

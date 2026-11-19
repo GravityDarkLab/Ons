@@ -894,6 +894,22 @@ describe("Adversarial: malformed / oversized payloads", () => {
     expect(res.status).toBe(200);
   });
 
+  it.each([
+    ["", 0.6],
+    ["?threshold=0.5", 0.5],
+    ["?threshold=0.49", 0.5],
+    ["?threshold=-1", 0.5],
+    ["?threshold=not-a-number", 0.6],
+    ["?threshold=2.5", 1],
+  ])("GET /profile/matches%s passes threshold %p to the service", async (query, expected) => {
+    mockGetMyMatches.mockClear();
+    mockGetMyMatches.mockResolvedValue([]);
+    const token = await applicantToken();
+    await get(`/profile/matches${query}`, token);
+    const [, threshold] = mockGetMyMatches.mock.calls[0] as any[];
+    expect(threshold).toBe(expected);
+  });
+
   it("GET /profile/matches with threshold > 1 still returns 200 (service clamps)", async () => {
     const token = await applicantToken();
     const res = await get("/profile/matches?threshold=2.5", token);
