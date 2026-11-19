@@ -55,7 +55,20 @@
     "next": "Continuer",
     "submit": "Soumettre",
     "submitting": "Envoi en cours…",
-    "error": "Une erreur s'est produite. Veuillez réessayer."
+    "error": "Une erreur s'est produite. Veuillez réessayer.",
+    "progress": "Question {{n}} sur {{total}}",
+    "progressIntro": "Environ 4 minutes",
+    "progressLast": "Dernière étape",
+    "chooseMore": "Encore {{count}} à choisir",
+    "final": {
+      "title": "Presque terminé",
+      "subtitle": "Une ligne facultative, et c'est fini.",
+      "noteLabel": "Une chose que vous aimeriez qu'un match sache ?",
+      "noteHint": "Facultatif. Sert à proposer des idées pour lancer la conversation une fois en contact. Jamais utilisé pour le score.",
+      "notePlaceholder": "p. ex. Je fais un excellent couscous",
+      "disclaimer": "Je comprends que mes informations sont collectées uniquement pour le matchmaking, stockées en toute sécurité et jamais vendues ni partagées avec des tiers.",
+      "disclaimerRequired": "Vous devez accepter pour continuer."
+    }
   },
   "steps": {
     "wordCount": "{{count}} mots",
@@ -70,7 +83,8 @@
       "instagram": "Pseudo Instagram",
       "location": "Lieu de résidence",
       "locationPlaceholder": "Ville, Pays",
-      "privacy": "Votre pseudo Instagram est chiffré de bout en bout. Personne ne peut le voir sauf les admins vérifiés. Vous recevrez un nom de code."
+      "privacy": "Votre pseudo Instagram est chiffré de bout en bout. Personne ne peut le voir sauf les admins vérifiés. Vous recevrez un nom de code.",
+      "birthDate": "Date de naissance"
     },
     "s2": {
       "title": "À propos de vous",
@@ -575,6 +589,261 @@
       "adminLockedNote": "Ces informations ne peuvent être modifiées que par un admin — contactez-nous si quelque chose doit être corrigé.",
       "savedButton": "Enregistré",
       "yearsOld": "{{age}} ans"
+    }
+  },
+  "questions": {
+    "sections": {
+      "identity": "À propos de vous",
+      "basics": "Les bases",
+      "essentials": "L'essentiel",
+      "values": "Valeurs",
+      "lifestyle": "Mode de vie",
+      "connection": "Votre façon de créer du lien",
+      "personality": "Personnalité",
+      "final": "Dernière étape"
+    },
+    "yes": "Oui",
+    "no": "Non",
+    "scale": {
+      "1": "Pas du tout d'accord",
+      "2": "Pas d'accord",
+      "3": "Neutre",
+      "4": "D'accord",
+      "5": "Tout à fait d'accord"
+    },
+    "scaleHint": "Dans quelle mesure êtes-vous d'accord ?",
+    "chooseExactly": "Choisissez-en exactement {{count}}.",
+    "gender_identity": {
+      "label": "Comment vous identifiez-vous ?",
+      "options": {
+        "Male": "Homme",
+        "Female": "Femme",
+        "Non-binary": "Non binaire",
+        "Other": "Autre"
+      }
+    },
+    "sexual_orientation": {
+      "label": "Qui vous attire ?",
+      "options": {
+        "Straight": "Hétérosexuel(le)",
+        "Gay": "Homosexuel(le)",
+        "Bisexual": "Bisexuel(le)",
+        "Other": "Autre"
+      }
+    },
+    "religion": {
+      "label": "Quelle est votre religion ?",
+      "options": {
+        "muslim": "Musulman(e)",
+        "christian": "Chrétien(ne)",
+        "jewish": "Juif / Juive",
+        "spiritual": "Spirituel(le), sans religion",
+        "not_religious": "Sans religion",
+        "other": "Autre",
+        "prefer_not_to_say": "Je préfère ne pas répondre"
+      }
+    },
+    "religion_practice": {
+      "label": "Quelle place la foi occupe-t-elle dans votre quotidien ?",
+      "options": {
+        "not_at_all": "Aucune",
+        "a_little": "Un peu",
+        "quite_a_lot": "Assez importante",
+        "central": "Elle est centrale"
+      }
+    },
+    "relationship_type": {
+      "label": "Que recherchez-vous ?",
+      "options": {
+        "Long Term": "Une relation durable",
+        "Short Term": "Une relation courte",
+        "Open to Both": "Ouvert(e) aux deux",
+        "Casual": "Sans engagement",
+        "Not Sure": "Je ne sais pas encore"
+      }
+    },
+    "wants_children": {
+      "label": "Voulez-vous des enfants ?",
+      "options": {
+        "want": "Je veux des enfants",
+        "open": "J'y suis ouvert(e)",
+        "dont_want": "Je ne veux pas d'enfants",
+        "not_sure": "Je ne sais pas encore"
+      }
+    },
+    "smoking": {
+      "label": "Fumez-vous ?",
+      "options": {
+        "never": "Jamais",
+        "sometimes": "Parfois",
+        "regularly": "Régulièrement"
+      }
+    },
+    "partner_smoking": {
+      "label": "Un(e) partenaire qui fume, c'est…",
+      "options": {
+        "fine": "Ça me va",
+        "rather_not": "Je préférerais que non",
+        "deal_breaker": "Rédhibitoire"
+      }
+    },
+    "alcohol": {
+      "label": "Buvez-vous de l'alcool ?",
+      "options": {
+        "never": "Jamais",
+        "sometimes": "Parfois",
+        "regularly": "Régulièrement"
+      }
+    },
+    "partner_alcohol": {
+      "label": "Un(e) partenaire qui boit, c'est…",
+      "options": {
+        "fine": "Ça me va",
+        "rather_not": "Je préférerais que non",
+        "deal_breaker": "Rédhibitoire"
+      }
+    },
+    "religion_match": {
+      "label": "Un(e) partenaire d'une autre confession, c'est…",
+      "options": {
+        "fine": "Ça me va",
+        "rather_share": "Je préférerais partager la même foi",
+        "deal_breaker": "Rédhibitoire"
+      }
+    },
+    "open_to_long_distance": {
+      "label": "Êtes-vous ouvert(e) à une relation à distance ?"
+    },
+    "age_gap": {
+      "label": "Quel écart d'âge maximal vous convient ?",
+      "options": {
+        "3": "3 ans",
+        "5": "5 ans",
+        "10": "10 ans",
+        "any": "Pas de limite"
+      }
+    },
+    "age_direction": {
+      "label": "Plus âgé(e) ou plus jeune ?",
+      "options": {
+        "either": "Peu importe",
+        "older": "Plus âgé(e) que moi",
+        "younger": "Plus jeune que moi"
+      }
+    },
+    "top_values": {
+      "label": "Choisissez les trois qui comptent le plus pour vous",
+      "options": {
+        "family": "La famille",
+        "faith": "La foi",
+        "career": "Carrière et ambition",
+        "adventure": "Aventure et liberté",
+        "stability": "Stabilité et sécurité",
+        "growth": "Apprendre et évoluer",
+        "helping": "Aider les autres",
+        "fun": "Plaisir et légèreté"
+      }
+    },
+    "social_energy": {
+      "label": "Votre week-end idéal ?",
+      "options": {
+        "home": "Au calme à la maison",
+        "small_circle": "Un petit cercle d'amis",
+        "mix": "Un peu des deux",
+        "big_crowd": "Dehors, avec beaucoup de monde"
+      }
+    },
+    "sleep_rhythm": {
+      "label": "Lève-tôt ou couche-tard ?",
+      "options": {
+        "early": "Lève-tôt",
+        "between": "Entre les deux",
+        "night": "Couche-tard"
+      }
+    },
+    "activity_level": {
+      "label": "Êtes-vous sportif(ve) ?",
+      "options": {
+        "rarely": "Je fais rarement du sport",
+        "weekly": "Une à deux fois par semaine",
+        "most_days": "Presque tous les jours"
+      }
+    },
+    "planning_style": {
+      "label": "Planifier ou improviser ?",
+      "options": {
+        "plan_all": "Je planifie tout",
+        "mostly_plan": "Je planifie le plus souvent",
+        "mostly_spontaneous": "Plutôt spontané(e)",
+        "spontaneous": "Totalement spontané(e)"
+      }
+    },
+    "money_style": {
+      "label": "Avec l'argent, vous êtes plutôt…",
+      "options": {
+        "saver": "Économe",
+        "between": "Entre les deux",
+        "spender": "Dépensier(ère)"
+      }
+    },
+    "opposite_gender_friends": {
+      "label": "Un(e) partenaire qui a des amis proches du sexe opposé, c'est…",
+      "options": {
+        "fine": "Ça me va",
+        "depends": "Ça dépend",
+        "not_ok": "Ça ne me convient pas"
+      }
+    },
+    "attach_anxiety_1": {
+      "label": "J'ai peur qu'un(e) partenaire ne tienne pas à moi autant que je tiens à lui ou à elle."
+    },
+    "attach_anxiety_2": {
+      "label": "J'ai souvent besoin d'être rassuré(e) sur le fait que je suis aimé(e)."
+    },
+    "attach_avoidance_1": {
+      "label": "Je préfère ne pas dépendre d'un(e) partenaire."
+    },
+    "attach_avoidance_2": {
+      "label": "Je suis mal à l'aise quand quelqu'un veut être très proche de moi."
+    },
+    "conflict_style": {
+      "label": "En cas de désaccord avec un(e) partenaire, en général vous…",
+      "options": {
+        "talk_now": "En parlez tout de suite",
+        "cool_off": "Prenez du recul, puis en parlez",
+        "let_go": "Laissez passer pour garder la paix",
+        "avoid": "Évitez le sujet"
+      }
+    },
+    "physical_affection": {
+      "label": "Quelle importance a l'affection physique pour vous ?",
+      "options": {
+        "not_important": "Pas importante",
+        "a_little": "Un peu",
+        "quite": "Assez importante",
+        "essential": "Essentielle"
+      }
+    },
+    "contact_frequency": {
+      "label": "À quelle fréquence aimez-vous rester en contact ?",
+      "options": {
+        "all_day": "Tout au long de la journée",
+        "few_times": "Quelques fois par jour",
+        "once": "Une fois par jour",
+        "when_needed": "Quand il y a quelque chose à dire"
+      }
+    },
+    "p_calm": {
+      "label": "Je reste calme sous pression."
+    },
+    "p_trust": {
+      "label": "J'ai tendance à faire facilement confiance aux gens."
+    },
+    "p_thorough": {
+      "label": "Je termine ce que je commence."
+    },
+    "p_open": {
+      "label": "J'adore essayer de nouvelles choses."
     }
   }
 }

@@ -1,13 +1,12 @@
 import { Controller } from 'react-hook-form'
 import { useTranslation } from 'react-i18next'
 import type { Control, FieldErrors } from 'react-hook-form'
-import type { FormValues } from '../types/form'
+import type { IdentityValues } from '../types/form'
 import Input from '../components/ui/Input'
 import Autocomplete from '../components/ui/Autocomplete'
 import { CITIES } from '../data/cities'
 
-interface Props { control: Control<FormValues>; errors: FieldErrors<FormValues> }
-export const FIELDS: (keyof FormValues)[] = ['first_name', 'last_name', 'instagram_handle', 'location']
+interface Props { control: Control<IdentityValues>; errors: FieldErrors<IdentityValues> }
 
 export default function Step1Identity({ control, errors }: Props) {
   const { t } = useTranslation()
@@ -56,13 +55,21 @@ export default function Step1Identity({ control, errors }: Props) {
               error={errors.location?.message} required suggestions={CITIES} {...field} />
           )}
         />
+        <Controller
+          name="birth_date"
+          control={control}
+          render={({ field }) => (
+            <Input label={t('steps.s1.birthDate')} type="date"
+              error={errors.birth_date?.message} required {...field} value={field.value ?? ''} />
+          )}
+        />
       </div>
       <div className="flex items-start gap-3 rounded-xl bg-accent-light border border-accent/20 px-4 py-3.5">
-        <svg className="h-4 w-4 text-accent flex-shrink-0 mt-0.5" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+        <svg className="h-4 w-4 text-accent-ink flex-shrink-0 mt-0.5" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
           <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
           <path d="M7 11V7a5 5 0 0 1 10 0v4" />
         </svg>
-        <p className="text-xs text-accent leading-relaxed">{t('steps.s1.privacy')}</p>
+        <p className="text-xs text-accent-ink leading-relaxed">{t('steps.s1.privacy')}</p>
       </div>
     </div>
   )
