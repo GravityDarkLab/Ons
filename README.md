@@ -22,7 +22,15 @@ A privacy-first couple matching platform. Applicants answer a short tap-only que
 | ![Application form on a laptop, showing the values question with three options selected](./docs/screenshots/form-desktop.webp) | ![Applicant portal on a laptop: a match card expanded to show the partner's shared answers](./docs/screenshots/portal-matches-desktop.webp) |
 | ![Landing page on a laptop](./docs/screenshots/home-desktop.webp) | ![Applicant portal on a laptop: the score breakdown for a match](./docs/screenshots/portal-breakdown-desktop.webp) |
 
-**Four languages and dark mode** — English, French, German and Arabic (right-to-left). The portal and admin panel have a dark theme; the public form is light-only by design.
+**Four languages** — English, French, German and Arabic, switchable on every page. Stored answers are language-independent, so people answering in different languages are matched the same way.
+
+| Français | Deutsch |
+|---|---|
+| ![Landing page in French on a laptop](./docs/screenshots/home-desktop-fr.webp) | ![Applicant portal in German on a laptop: a match card with the partner's shared answers](./docs/screenshots/portal-matches-desktop-de.webp) |
+
+<img src="./docs/screenshots/form-mobile-fr-de.webp" alt="The form on a phone: the pick-three values question in French, and the conflict-style question in German with an answer selected" width="520">
+
+**Right-to-left and dark mode** — Arabic flips the whole layout. The portal and admin panel have a dark theme; the public form is light-only by design.
 
 <img src="./docs/screenshots/mobile-arabic-and-dark.webp" alt="The values question in Arabic with a right-to-left layout, and the applicant portal in dark mode on a phone" width="520">
 
