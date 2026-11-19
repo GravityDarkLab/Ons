@@ -67,6 +67,7 @@ const { profileRoutes } = await import("../../routes/profile.routes.js");
 import { signApplicantToken } from "../../middleware/applicant.auth.middleware.js";
 import { signAdminToken } from "../../middleware/auth.middleware.js";
 import { ObjectId } from "mongodb";
+import { validAnswers } from "../unit/matching/_fixtures.js";
 import { AppError } from "../../errors.js";
 
 const app = new Hono();
@@ -327,23 +328,11 @@ describe("GET /profile/me", () => {
 
 // ── GET /profile/answers ──────────────────────────────────────────────────────
 
-const VALID_ANSWERS_UPDATE = {
-  location: "Paris, France",
-  work: "Student",
-  sexual_orientation: "Straight",
-  religion: "Islam",
-  vibe_words: "calm, curious",
-  lifestyle: "Early riser, gym, reading",
-  relationship_type: "Long Term",
-  open_to_long_distance: true,
-  preferred_physical_traits: "Tall",
-  preferred_character_traits: "Kind",
-  deal_breakers: "Smoking",
-  okay_with_opposite_gender_friends: true,
-  religion_deal_breaker: false,
-  physical_affection_importance: 7,
-  dream_first_date: "A walk by the sea",
-};
+const VALID_ANSWERS_UPDATE = (() => {
+  const a = validAnswers({ location: "Paris, France" });
+  for (const k of ["first_name", "last_name", "instagram_handle", "disclaimer_agreed", "birth_date", "gender_identity"]) delete a[k];
+  return a;
+})();
 
 describe("GET /profile/answers", () => {
   it("returns 401 without a token", async () => {
@@ -440,18 +429,18 @@ describe("PUT /profile/answers", () => {
     expect(mockUpdateMyAnswers).not.toHaveBeenCalled();
   });
 
-  it("rejects invalid field values with 422 (affection out of range)", async () => {
+  it("rejects invalid field values with 422 (agreement answer out of range)", async () => {
     const token = await applicantToken();
     const res = await put(
       "/profile/answers",
-      { answers: { ...VALID_ANSWERS_UPDATE, physical_affection_importance: 20 } },
+      { answers: { ...VALID_ANSWERS_UPDATE, p_calm: 20 } },
       token,
     );
     expect(res.status).toBe(422);
     expect(mockUpdateMyAnswers).not.toHaveBeenCalled();
   });
 
-  it("accepts a payload without the optional height_cm", async () => {
+  it("accepts a payload without the optional note_to_match", async () => {
     mockUpdateMyAnswers.mockResolvedValue(undefined);
     const token = await applicantToken();
     const res = await put("/profile/answers", { answers: VALID_ANSWERS_UPDATE }, token);

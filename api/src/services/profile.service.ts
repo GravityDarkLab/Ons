@@ -263,8 +263,8 @@ export async function updateMyAnswers(
     if (LOCKED_ANSWER_KEYS.has(key)) continue;
     merged[key] = value;
   }
-  // height_cm is the only optional field — absence in a full-form update means cleared
-  if (!("height_cm" in updates)) delete merged["height_cm"];
+  // note_to_match is the only optional field — absence in a full-form update means cleared
+  if (!("note_to_match" in updates)) delete merged["note_to_match"];
 
   await col.updateOne({ _id: oid }, { $set: { answers: merged, updatedAt: new Date() } });
 

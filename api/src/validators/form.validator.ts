@@ -1,10 +1,44 @@
 import { z } from "zod";
 import { ageFromBirthDate, BIRTH_DATE_PATTERN } from "../utils/age.js";
+import { QUESTIONS } from "../questionnaire/questions.js";
+import type { Question } from "../models/questionnaire.model.js";
+
+/** Fields with hand-written rules below; everything else is generated from the definitions. */
+const HAND_WRITTEN = new Set([
+  "first_name", "last_name", "instagram_handle", "location", "birth_date", "note_to_match", "disclaimer_agreed",
+]);
+
+function enumOf(q: Question) {
+  return z.enum(q.options!.map((o) => o.value) as [string, ...string[]]);
+}
+
+/** Zod rule for one tap question, derived from its definition. */
+function ruleFor(q: Question): z.ZodType {
+  switch (q.type) {
+    case "select":
+      return enumOf(q);
+    case "multiselect":
+      return z
+        .array(enumOf(q))
+        .length(q.maxSelect!, `${q.id} needs exactly ${q.maxSelect} choices`)
+        .refine((v) => new Set(v).size === v.length, `${q.id} choices must be distinct`);
+    case "range":
+      return z.number().int().min(q.min!).max(q.max!);
+    case "boolean":
+      return z.boolean();
+    default:
+      throw new Error(`[form.validator] No generated rule for question type "${q.type}" (${q.id})`);
+  }
+}
+
+const generatedAnswers = Object.fromEntries(
+  QUESTIONS.filter((q) => !HAND_WRITTEN.has(q.id)).map((q) => [q.id, ruleFor(q)])
+);
 
 /**
  * Base Zod schema for form submission.
- * Dynamic cross-validation against questionnaire question IDs is handled
- * in form.service.ts after fetching the active questionnaire.
+ * Tap-question rules are generated from questionnaire/questions.ts; identity,
+ * location, birth date, the optional note and consent are written by hand.
  */
 export const formSubmissionSchema = z.object({
   questionnaireVersion: z
@@ -45,46 +79,11 @@ export const formSubmissionSchema = z.object({
           const age = ageFromBirthDate(d);
           return age !== null && age >= 18 && age <= 120;
         }, "Must be a valid date of someone at least 18 years old"),
-      height_cm: z.number().int().min(100).max(250).optional(),
-      work: z.string().min(1).max(200),
-      gender_identity: z.string().min(1).max(100),
-      sexual_orientation: z.string().min(1).max(100),
-      religion: z.string().min(1).max(100),
 
-      // Personality / vibe
-      vibe_words: z.string().min(1).max(500),
-      lifestyle: z.string().min(1).max(1000),
+      ...generatedAnswers,
 
-      // Relationship preferences
-      relationship_type: z.enum([
-        "Long Term",
-        "Short Term",
-        "Open to Both",
-        "Casual",
-        "Not Sure",
-      ]),
-      open_to_long_distance: z.boolean(),
-
-      // Age preferences (optional — null means no preference)
-      max_age_gap: z.number().int().min(0).max(40).nullable().optional(),
-      open_to_older: z.boolean().nullable().optional(),
-      open_to_younger: z.boolean().nullable().optional(),
-
-      preferred_physical_traits: z.string().min(1).max(1000),
-      preferred_character_traits: z.string().min(1).max(1000),
-      deal_breakers: z.string().min(1).max(1000),
-      okay_with_opposite_gender_friends: z.boolean(),
-      religion_deal_breaker: z.boolean(),
-
-      // Scores
-      physical_affection_importance: z
-        .number()
-        .int()
-        .min(1, "Must be at least 1")
-        .max(10, "Must be at most 10"),
-
-      // Open-ended
-      dream_first_date: z.string().min(1).max(2000),
+      // Optional free text — ice-breaker prompt only, never scored or shown to a match
+      note_to_match: z.string().trim().max(280).optional(),
 
       // Legal
       disclaimer_agreed: z.literal(true, {
