@@ -151,7 +151,7 @@ export default function Apply() {
   return (
     <div className="relative min-h-screen bg-bg">
       <LifeBackground fixed />
-      <div className="relative z-10 mx-auto w-full max-w-form px-4 pt-8 pb-24">
+      <div className="relative z-10 mx-auto w-full max-w-form px-4 pt-8 pb-24 md:pt-20">
         <div className="mb-6">
           <div className="flex items-center gap-3 mb-4">
             {screen === 0 ? (

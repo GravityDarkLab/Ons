@@ -433,7 +433,7 @@
         },
         "lifestyle": {
           "label": "Lebensstil",
-          "description": "Alltagsrhythmus: soziale Energie, Schlaf, Aktivität, Planung, Geld und Gewohnheiten"
+          "description": "Alltagsrhythmus: soziale Energie, Schlaf, Aktivität, Planung und Geld"
         },
         "goals": {
           "label": "Ziele",

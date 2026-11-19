@@ -433,7 +433,7 @@
         },
         "lifestyle": {
           "label": "Mode de vie",
-          "description": "Rythme quotidien : énergie sociale, sommeil, activité, organisation, argent et habitudes"
+          "description": "Rythme quotidien : énergie sociale, sommeil, activité, organisation et argent"
         },
         "goals": {
           "label": "Objectifs",
