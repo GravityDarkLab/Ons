@@ -1,8 +1,12 @@
 version: 2
 
 updates:
-  # ── npm (Bun reads package.json / bun.lock) ─────────────────────────────
-  - package-ecosystem: npm
+  # ── Bun (package.json + bun.lock) ───────────────────────────────────────
+  # The `bun` ecosystem updates bun.lock together with package.json; the npm
+  # ecosystem changed package.json only, so its PRs failed `--frozen-lockfile`.
+  # The standalone api/ and frontend/ lockfiles used by the Docker builds are
+  # regenerated with `bun run lockfiles` (which honours bunfig's release age).
+  - package-ecosystem: bun
     directory: "/"
     schedule:
       interval: weekly
@@ -14,6 +18,9 @@ updates:
     # (typosquatting, hijacked maintainer accounts) are usually caught and
     # yanked within days — a cooldown window filters most of that noise.
     # Major bumps get a longer window (30d) since they carry more risk.
+    # The cooldown covers the versions Dependabot proposes; transitive
+    # versions in bun.lock are held to the same 15 days by
+    # `minimumReleaseAge` in bunfig.toml.
     cooldown:
       default-days: 15
       semver-major-days: 30
@@ -26,7 +33,7 @@ updates:
 
   # ── Docker base images ───────────────────────────────────────────────────
   - package-ecosystem: docker
-    directory: "/api"
+    directories: ["/api", "/frontend"]
     schedule:
       interval: weekly
       day: sunday
