@@ -63,10 +63,13 @@ if [[ -z "$report" ]]; then
 fi
 
 # Only report repositories not already listed in the open tracking issue.
+# The list lives in the issue BODY, which only this workflow and maintainers can
+# edit. Comments are ignored on purpose: anyone can comment on a public issue,
+# so a copier could otherwise post "[their/repo](" to silence future reports.
 issue=$(gh issue list -R "$GITHUB_REPOSITORY" --label "$LABEL" --state open --json number -q '.[0].number // ""')
 known=""
 if [[ -n "$issue" ]]; then
-  known=$(gh issue view "$issue" -R "$GITHUB_REPOSITORY" --json body,comments -q '[.body] + [.comments[].body] | join("\n")')
+  known=$(gh issue view "$issue" -R "$GITHUB_REPOSITORY" --json body -q '.body')
 fi
 new=""
 while IFS= read -r line; do
@@ -93,6 +96,9 @@ fi
 gh label create "$LABEL" -R "$GITHUB_REPOSITORY" --color B60205 \
   --description "Fingerprint watch found Ons code in another repository" 2>/dev/null || true
 if [[ -n "$issue" ]]; then
+  # Append to the body (the trusted list), then comment so watchers get notified.
+  gh issue edit "$issue" -R "$GITHUB_REPOSITORY" --body "${known}
+${new}"
   gh issue comment "$issue" -R "$GITHUB_REPOSITORY" --body "$body"
 else
   gh issue create -R "$GITHUB_REPOSITORY" --title "$TITLE" --label "$LABEL" --body "$body"
