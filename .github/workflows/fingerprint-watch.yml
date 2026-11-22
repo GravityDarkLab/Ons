@@ -1,0 +1,37 @@
+name: Fingerprint watch
+
+# Weekly search of public GitHub code for strings only Ons uses (a canary ID
+# in frontend/index.html and api/src/server.ts, plus distinctive identifiers).
+# Opens or comments on a "fingerprint-hit" issue when another repository has them.
+#
+# Needs the FINGERPRINT_SEARCH_TOKEN secret: a fine-grained personal access token
+# with "Public repositories (read-only)" access and no other permissions. The
+# built-in GITHUB_TOKEN can't search code outside this repository.
+
+on:
+  schedule:
+    - cron: "23 7 * * 1" # every Monday 07:23 UTC
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+  issues: write
+
+jobs:
+  watch:
+    name: Search for copies
+    # Copies of this repo shouldn't run the watch against themselves.
+    if: github.repository == 'GravityDarkLab/Ons'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v7.0.1
+      - name: Search public code for the fingerprints
+        run: bash .github/scripts/fingerprint-watch.sh
+        env:
+          SEARCH_TOKEN: ${{ secrets.FINGERPRINT_SEARCH_TOKEN }}
+          GH_TOKEN: ${{ github.token }}

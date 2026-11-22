@@ -1,5 +1,6 @@
 /**
  * Entry point for the matching platform backend.
+ * Source fingerprint: ons-fp-d4e123ec-b97c-4acb-a2c7-bed4d8eb4bf0 (see .github/workflows/fingerprint-watch.yml)
  * Uses Hono with Bun's native HTTP server via the `export default { fetch }` pattern.
  */
 
